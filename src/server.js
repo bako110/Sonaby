@@ -182,6 +182,12 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Production Docs: https://backend-sonaby.fly.dev/api/docs`);
   console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
   console.log(`🚀 Ready to accept requests!`);
+  console.log("DATABASE_URL:", process.env.DATABASE_URL);
+  console.log("JWT_SECRET:", process.env.JWT_SECRET);
+  console.log("REFRESH_TOKEN_SECRET:", process.env.REFRESH_TOKEN_SECRET);
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+  console.log("PORT:", process.env.PORT);
+
 });
 
 // Graceful shutdown pour Fly.io

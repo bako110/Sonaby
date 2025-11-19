@@ -29,6 +29,7 @@ model User {
   reportedIncidents   VisitIncident[]             @relation("IncidentReporter")
   organizedGroups     VisitorGroup[]
   createdVisits       Visit[]                     @relation("VisitCreator")
+  refreshTokens       RefreshToken[]
 
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
@@ -323,4 +324,18 @@ model user_roles {
 model visit_statuses {
   status_name String  @id @db.VarChar(20)
   visits      Visit[]
+}
+
+model RefreshToken {
+  id        String   @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  token     String   @unique @db.VarChar(500)
+  userId    String   @map("user_id") @db.Char(36)
+  expiresAt DateTime @map("expires_at") @db.Timestamp(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId], map: "idx_refresh_tokens_user_id")
+  @@index([expiresAt], map: "idx_refresh_tokens_expires_at")
+  @@map("refresh_tokens")
 }

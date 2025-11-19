@@ -7,6 +7,7 @@ async function main() {
     console.log('🌱 Starting database seed...');
 
     // Nettoyer la base de données dans l'ordre des dépendances
+    await prisma.refreshToken.deleteMany();
     await prisma.auditLog.deleteMany();
     await prisma.blacklistHistory.deleteMany();
     await prisma.sosAlert.deleteMany();
