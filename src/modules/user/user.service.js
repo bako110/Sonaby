@@ -13,21 +13,52 @@ class UserService {
         email: data.email,
         passwordHash: hashedPassword,
         role: data.role || 'AGENT_GESTION',
-        profilePictureId: data.profilePictureId || null
+        phone: data.phone || null
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
   }
 
   async getAllUsers() {
     return prisma.user.findMany({
-      include: { profilePicture: true }
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
   }
 
   async getUserById(id) {
     return prisma.user.findUnique({
       where: { id },
-      include: { profilePicture: true }
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
   }
 
@@ -39,7 +70,18 @@ class UserService {
     }
     return prisma.user.update({
       where: { id },
-      data: updateData
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        phone: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
   }
 
