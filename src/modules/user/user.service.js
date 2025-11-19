@@ -1,0 +1,53 @@
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
+
+const prisma = new PrismaClient();
+
+class UserService {
+  async createUser(data) {
+    const hashedPassword = await bcrypt.hash(data.password, 12);
+    return prisma.user.create({
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        passwordHash: hashedPassword,
+        role: data.role || 'AGENT_GESTION',
+        profilePictureId: data.profilePictureId || null
+      }
+    });
+  }
+
+  async getAllUsers() {
+    return prisma.user.findMany({
+      include: { profilePicture: true }
+    });
+  }
+
+  async getUserById(id) {
+    return prisma.user.findUnique({
+      where: { id },
+      include: { profilePicture: true }
+    });
+  }
+
+  async updateUser(id, data) {
+    const updateData = { ...data };
+    if (data.password) {
+      updateData.passwordHash = await bcrypt.hash(data.password, 12);
+      delete updateData.password;
+    }
+    return prisma.user.update({
+      where: { id },
+      data: updateData
+    });
+  }
+
+  async deleteUser(id) {
+    return prisma.user.delete({
+      where: { id }
+    });
+  }
+}
+
+module.exports = new UserService();
