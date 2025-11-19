@@ -28,13 +28,35 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || 'http://localhost:3000',
-    'https://backend-sonaby.fly.dev',
-  ],
+  origin: function (origin, callback) {
+    // Permettre les requêtes sans origine (comme Postman, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Liste des origines autorisées
+    const allowedOrigins = [
+      process.env.CLIENT_URL || 'http://localhost:3000',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://backend-sonaby.fly.dev',
+      'https://editor.swagger.io',
+      'https://petstore.swagger.io'
+    ];
+    
+    // Permettre toutes les origines en développement
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Temporairement permissif pour debug
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar']
 }));
 
 // Middleware de parsing
@@ -44,10 +66,33 @@ app.use(express.urlencoded({ extended: true }));
 // Servir les fichiers statiques
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Middleware pour gérer les requêtes OPTIONS (CORS preflight)
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.sendStatus(200);
+});
+
 // Logging des requêtes
 app.use(requestLogger);
 
-// Swagger UI
+// Swagger UI - Route standard
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Backend Sonaby API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+    tryItOutEnabled: true,
+    displayOperationId: true,
+    url: null // Forcer l'utilisation de la spec intégrée
+  }
+}));
+
+// Route alternative pour la documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
@@ -57,13 +102,22 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     displayRequestDuration: true,
     filter: true,
     tryItOutEnabled: true,
-    displayOperationId: true
+    displayOperationId: true,
+    url: null
   }
 }));
 
 // Endpoint pour récupérer la spec Swagger en JSON
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.send(swaggerSpec);
+});
+
+// Route alternative pour la spec JSON
 app.get('/api/docs.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.send(swaggerSpec);
 });
 
