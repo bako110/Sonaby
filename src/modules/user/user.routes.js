@@ -5,7 +5,48 @@ const { authenticateToken, allowRoles } = require('../../middleware/authMiddlewa
 
 const router = express.Router();
 
-// Toutes les routes utilisateurs nécessitent authentification
+// Route de test publique (pour vérifier que l'API fonctionne)
+/**
+ * @openapi
+ * /api/v1/users/test:
+ *   get:
+ *     summary: Test endpoint to check if users API is working
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: API is working
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 userCount:
+ *                   type: number
+ */
+router.get('/test', async (req, res) => {
+  try {
+    const { prisma } = require('../../config/prisma');
+    const userCount = await prisma.user.count();
+    res.json({
+      success: true,
+      message: 'Users API is working',
+      userCount: userCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Database connection failed',
+      message: error.message
+    });
+  }
+});
+
+// Toutes les autres routes utilisateurs nécessitent authentification
 router.use(authenticateToken);
 
 // --------------------

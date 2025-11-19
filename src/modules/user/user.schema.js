@@ -8,10 +8,7 @@ const createUserSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']).optional().default('AGENT_CONTROLE'),
   phone: z.string().optional(),
-  isActive: z.boolean().optional().default(true),
-  twoFactorEnabled: z.boolean().optional().default(false),
-  biometricEnabled: z.boolean().optional().default(false),
-  preferredAuthMethod: z.enum(['PASSWORD', 'FACE_ID', 'FINGERPRINT', 'BIOMETRIC', 'QR_CODE']).optional().default('PASSWORD')
+  isActive: z.boolean().optional().default(true)
 });
 
 const updateUserSchema = z.object({
@@ -20,10 +17,7 @@ const updateUserSchema = z.object({
   email: optionalEmailValidation,
   phone: z.string().optional(),
   role: z.enum(['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']).optional(),
-  isActive: z.boolean().optional(),
-  twoFactorEnabled: z.boolean().optional(),
-  biometricEnabled: z.boolean().optional(),
-  preferredAuthMethod: z.enum(['PASSWORD', 'FACE_ID', 'FINGERPRINT', 'BIOMETRIC', 'QR_CODE']).optional()
+  isActive: z.boolean().optional()
 });
 
 const updatePasswordSchema = z.object({
