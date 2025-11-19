@@ -369,6 +369,16 @@ const ApiError = {
   }
 };
 
+const ErrorResponse = {
+  type: "object",
+  properties: {
+    success: { type: "boolean", example: false },
+    error: { type: "string" },
+    message: { type: "string" },
+    details: { type: "object", nullable: true }
+  }
+};
+
 const PaginatedResponse = {
   type: "object",
   properties: {
@@ -478,5 +488,6 @@ module.exports = {
   // API Response Types
   ApiResponse,
   ApiError,
+  ErrorResponse,
   PaginatedResponse
 };
