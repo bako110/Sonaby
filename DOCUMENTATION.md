@@ -1,8 +1,8 @@
-# 📚 Documentation Backend Sonaby
+# 📚 Documentation Sonabhy ES Back
 
 ## 🎯 Vue d'ensemble
 
-**Backend Sonaby** est une API REST complète pour la gestion des visites multi-sites d'entreprise. Elle permet de gérer les visiteurs, les rendez-vous, les contrôles d'accès, les incidents et les alertes SOS.
+**Sonabhy ES Back** est une API REST complète pour la gestion des visites multi-sites d'entreprise. Elle permet de gérer les visiteurs, les rendez-vous, les contrôles d'accès, les incidents et les alertes SOS.
 
 ## 🏗️ Architecture
 
@@ -19,7 +19,7 @@
 
 ### Structure du Projet
 ```
-backend-sonaby/
+sonabhy-es-back/
 ├── prisma/                    # Configuration Prisma
 │   ├── schema.prisma         # Schéma de base de données
 │   ├── seed.js              # Script de données initiales
@@ -197,7 +197,7 @@ backend-sonaby/
 ```bash
 # Cloner le projet
 git clone <repository-url>
-cd backend-sonaby
+cd sonabhy-es-back
 
 # Installer les dépendances
 npm install
@@ -304,10 +304,10 @@ Une fois l'application démarrée, la documentation interactive est disponible �
 ### Docker
 ```bash
 # Construction de l'image
-docker build -t backend-sonaby .
+docker build -t sonabhy-es-back .
 
 # Exécution du conteneur
-docker run -p 3000:3000 --env-file .env backend-sonaby
+docker run -p 3000:3000 --env-file .env sonabhy-es-back
 ```
 
 ### Fly.io (Configuration incluse)

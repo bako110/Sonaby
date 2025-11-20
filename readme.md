@@ -1,4 +1,4 @@
-# 🚀 Backend Sonaby - Documentation Complète
+# 🚀 Sonabhy ES Back - Documentation Complète
 
 > **API REST complète pour la gestion des visites multi-sites d'entreprise**
 
@@ -29,7 +29,7 @@
 
 ## 🎯 Vue d'ensemble
 
-**Backend Sonaby** est une API REST moderne et sécurisée conçue pour gérer les systèmes de visites d'entreprise multi-sites. Elle offre une solution complète pour :
+**Sonabhy ES Back** est une API REST moderne et sécurisée conçue pour gérer les systèmes de visites d'entreprise multi-sites. Elle offre une solution complète pour :
 
 - 👥 **Gestion des visiteurs** et contrôle d'accès
 - 📅 **Planification de rendez-vous** avec QR codes
@@ -282,7 +282,7 @@
 ```bash
 # Cloner le projet
 git clone <repository-url>
-cd backend-sonaby
+cd sonabhy-es-back
 
 # Installer les dépendances
 npm install

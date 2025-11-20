@@ -1,9 +1,9 @@
-# 📁 Structure du Projet Backend Sonaby
+# 📁 Structure du Projet Sonabhy ES Back
 
 ## 🌳 Arborescence Complète
 
 ```
-backend-sonaby/
+sonabhy-es-back/
 │
 ├── 📄 package.json                 # Dépendances et scripts npm
 ├── 📄 package-lock.json            # Verrouillage des versions

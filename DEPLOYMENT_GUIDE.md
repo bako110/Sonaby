@@ -1,4 +1,4 @@
-# 🚀 Guide de Déploiement - Backend Sonaby
+# 🚀 Guide de Déploiement - Sonabhy ES Back
 
 ## 📋 Prérequis
 
@@ -199,7 +199,7 @@ http {
 ```bash
 # 1. Cloner le projet
 git clone <your-repo-url>
-cd backend-sonaby
+cd sonabhy-es-back
 
 # 2. Configurer l'environnement
 cp .env.example .env.production
@@ -223,7 +223,7 @@ docker-compose logs app
 
 **fly.toml** (déjà inclus)
 ```toml
-app = "backend-sonaby"
+app = "sonabhy-es-back"
 primary_region = "cdg"
 
 [build]
@@ -259,7 +259,7 @@ curl -L https://fly.io/install.sh | sh
 fly auth login
 
 # 3. Créer l'application
-fly apps create backend-sonaby
+fly apps create sonabhy-es-back
 
 # 4. Configurer les secrets
 fly secrets set JWT_SECRET="your-jwt-secret"
@@ -317,8 +317,8 @@ EXIT;
 
 ```bash
 # Cloner le projet
-git clone https://github.com/ksertia/sonabhy-es-back.git /var/www/backend-sonaby
-cd /var/www/backend-sonaby
+git clone https://github.com/ksertia/sonabhy-es-back.git /var/www/sonabhy-es-back
+cd /var/www/sonabhy-es-back
 
 # Installation des dépendances
 npm install
@@ -370,7 +370,7 @@ CORS_ORIGIN="https://votre-domaine.com"
 ```javascript
 module.exports = {
   apps: [{
-    name: 'backend-sonaby',
+    name: 'sonabhy-es-back',
     script: 'src/server.js',
     instances: 2,  // ou 'max' pour utiliser tous les CPU
     exec_mode: 'cluster',
@@ -406,20 +406,20 @@ pm2 status
 pm2 list
 
 # Voir les logs
-pm2 logs backend-sonaby
-pm2 logs backend-sonaby --lines 100
+pm2 logs sonabhy-es-back
+pm2 logs sonabhy-es-back --lines 100
 
 # Redémarrer
-pm2 restart backend-sonaby
+pm2 restart sonabhy-es-back
 
 # Recharger (zero-downtime)
-pm2 reload backend-sonaby
+pm2 reload sonabhy-es-back
 
 # Arrêter
-pm2 stop backend-sonaby
+pm2 stop sonabhy-es-back
 
 # Supprimer
-pm2 delete backend-sonaby
+pm2 delete sonabhy-es-back
 
 # Monitoring
 pm2 monit
@@ -438,10 +438,10 @@ pm2 startup
 
 ```bash
 # Créer la configuration
-sudo nano /etc/nginx/sites-available/backend-sonaby
+sudo nano /etc/nginx/sites-available/sonabhy-es-back
 ```
 
-**Contenu du fichier `/etc/nginx/sites-available/backend-sonaby`**
+**Contenu du fichier `/etc/nginx/sites-available/sonabhy-es-back`**
 
 ```nginx
 # Configuration HTTP (redirection vers HTTPS)
@@ -481,8 +481,8 @@ server {
     client_max_body_size 10M;
 
     # Logs
-    access_log /var/log/nginx/backend-sonaby-access.log;
-    error_log /var/log/nginx/backend-sonaby-error.log;
+    access_log /var/log/nginx/sonabhy-es-back-access.log;
+    error_log /var/log/nginx/sonabhy-es-back-error.log;
 
     # Proxy vers l'application Node.js
     location / {
@@ -504,7 +504,7 @@ server {
 
     # Servir les fichiers uploadés directement
     location /uploads/ {
-        alias /var/www/backend-sonaby/src/uploads/;
+        alias /var/www/sonabhy-es-back/src/uploads/;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
@@ -525,7 +525,7 @@ server {
 
 ```bash
 # Activer le site
-sudo ln -s /etc/nginx/sites-available/backend-sonaby /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/sonabhy-es-back /etc/nginx/sites-enabled/
 
 # Tester la configuration
 sudo nginx -t
@@ -557,10 +557,10 @@ sudo ufw enable
 
 ```bash
 # Installation de Logrotate pour les logs
-sudo nano /etc/logrotate.d/backend-sonaby
+sudo nano /etc/logrotate.d/sonabhy-es-back
 
 # Contenu
-/var/www/backend-sonaby/logs/*.log {
+/var/www/sonabhy-es-back/logs/*.log {
     daily
     missingok
     rotate 52
@@ -569,7 +569,7 @@ sudo nano /etc/logrotate.d/backend-sonaby
     notifempty
     create 0644 www-data www-data
     postrotate
-        pm2 reload backend-sonaby
+        pm2 reload sonabhy-es-back
     endscript
 }
 ```
@@ -594,7 +594,7 @@ mkdir -p $BACKUP_DIR
 mysqldump -u $DB_USER -p$DB_PASS $DB_NAME > $BACKUP_DIR/db_backup_$DATE.sql
 
 # Sauvegarde des fichiers uploadés
-tar -czf $BACKUP_DIR/uploads_backup_$DATE.tar.gz /var/www/backend-sonaby/src/uploads/
+tar -czf $BACKUP_DIR/uploads_backup_$DATE.tar.gz /var/www/sonabhy-es-back/src/uploads/
 
 # Nettoyage (garder seulement les 7 derniers jours)
 find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
@@ -621,10 +621,10 @@ crontab -e
 pm2 monit
 
 # Logs
-pm2 logs backend-sonaby
+pm2 logs sonabhy-es-back
 
 # Métriques
-pm2 show backend-sonaby
+pm2 show sonabhy-es-back
 ```
 
 ### 2. Health Check
@@ -689,7 +689,7 @@ npx prisma generate
 npx prisma db push
 
 # Redémarrage de l'application
-pm2 reload backend-sonaby
+pm2 reload sonabhy-es-back
 
 # Vérification
 sleep 5
@@ -700,7 +700,7 @@ if [ $? -eq 0 ]; then
 else
     echo "❌ Déploiement échoué, rollback..."
     git reset --hard HEAD~1
-    pm2 reload backend-sonaby
+    pm2 reload sonabhy-es-back
     exit 1
 fi
 ```
@@ -724,13 +724,13 @@ mysql -u sonaby_user -p sonaby_db
 **2. Application qui ne démarre pas**
 ```bash
 # Vérifier les logs PM2
-pm2 logs backend-sonaby
+pm2 logs sonabhy-es-back
 
 # Vérifier les permissions
-ls -la /var/www/backend-sonaby
+ls -la /var/www/sonabhy-es-back
 
 # Tester manuellement
-cd /var/www/backend-sonaby
+cd /var/www/sonabhy-es-back
 npm start
 ```
 
@@ -855,7 +855,7 @@ curl https://votre-domaine.com/api/v1/users \
 **Solutions**:
 ```bash
 # Vérifier les logs
-pm2 logs backend-sonaby --lines 50
+pm2 logs sonabhy-es-back --lines 50
 
 # Vérifier les variables d'environnement
 cat .env
@@ -867,7 +867,7 @@ mysql -u sonaby_user -p sonaby_db
 npx prisma generate
 
 # Redémarrer
-pm2 restart backend-sonaby
+pm2 restart sonabhy-es-back
 ```
 
 ### Problème: Erreur de connexion à la base de données
@@ -903,7 +903,7 @@ pm2 status
 netstat -tlnp | grep 3000
 
 # Vérifier les logs Nginx
-sudo tail -f /var/log/nginx/backend-sonaby-error.log
+sudo tail -f /var/log/nginx/sonabhy-es-back-error.log
 
 # Tester la connexion locale
 curl http://localhost:3000/api/v1/health
@@ -938,13 +938,13 @@ sudo systemctl reload nginx
 **Solutions**:
 ```bash
 # Augmenter la limite dans Nginx
-sudo nano /etc/nginx/sites-available/backend-sonaby
+sudo nano /etc/nginx/sites-available/sonabhy-es-back
 # Ajouter: client_max_body_size 50M;
 
 # Vérifier les permissions du dossier uploads
-ls -la /var/www/backend-sonaby/src/uploads/
-sudo chown -R $USER:$USER /var/www/backend-sonaby/src/uploads/
-sudo chmod -R 755 /var/www/backend-sonaby/src/uploads/
+ls -la /var/www/sonabhy-es-back/src/uploads/
+sudo chown -R $USER:$USER /var/www/sonabhy-es-back/src/uploads/
+sudo chmod -R 755 /var/www/sonabhy-es-back/src/uploads/
 
 # Redémarrer Nginx
 sudo systemctl reload nginx
@@ -973,20 +973,20 @@ sudo systemctl status nginx mysql
 pm2 status
 
 # Voir les logs en temps réel
-pm2 logs backend-sonaby --lines 100
-sudo tail -f /var/log/nginx/backend-sonaby-error.log
+pm2 logs sonabhy-es-back --lines 100
+sudo tail -f /var/log/nginx/sonabhy-es-back-error.log
 
 # Redémarrer tous les services
-pm2 restart backend-sonaby
+pm2 restart sonabhy-es-back
 sudo systemctl restart nginx
 
 # Mise à jour du code
-cd /var/www/backend-sonaby
+cd /var/www/sonabhy-es-back
 git pull origin main
 npm install
 npx prisma generate
 npx prisma db push
-pm2 reload backend-sonaby
+pm2 reload sonabhy-es-back
 
 # Sauvegarde manuelle
 ./backup.sh
