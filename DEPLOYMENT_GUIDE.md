@@ -21,25 +21,34 @@
 
 ### 1. Configuration Docker
 
-**Dockerfile** (déjà inclus)
+**Dockerfile** (déjà inclus dans le projet)
 ```dockerfile
-FROM node:18-alpine
+# Étape 1 : image de base
+FROM node:18
 
+# Créer le dossier de travail
 WORKDIR /app
 
-# Installation des dépendances
+# Copier package.json et package-lock.json
 COPY package*.json ./
-RUN npm ci --only=production
 
-# Copie du code source
+# Installer les dépendances
+RUN npm install
+
+# Copier le reste du code, y compris le dossier prisma
 COPY . .
 
-# Génération du client Prisma
+# Générer le client Prisma (après avoir copié le schema)
 RUN npx prisma generate
 
+# Installer OpenSSL si nécessaire
+RUN apt-get update && apt-get install -y openssl libssl-dev
+
+# Exposer le port utilisé par le serveur
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Commande de démarrage
+CMD ["node", "src/server.js"]
 ```
 
 **docker-compose.yml**
@@ -308,36 +317,62 @@ EXIT;
 
 ```bash
 # Cloner le projet
-git clone <your-repo-url> /var/www/backend-sonaby
+git clone https://github.com/ksertia/sonabhy-es-back.git /var/www/backend-sonaby
 cd /var/www/backend-sonaby
 
 # Installation des dépendances
-npm ci --only=production
+npm install
 
 # Configuration
 cp .env.example .env
-# Éditer .env avec vos valeurs
+# Éditer .env avec vos valeurs (voir section Configuration ci-dessous)
+nano .env
 
 # Génération Prisma
 npx prisma generate
+
+# Synchroniser le schéma avec la base de données
 npx prisma db push
+
+# Insérer les données initiales
 npm run prisma:seed
 
-# Configuration PM2
-pm2 start ecosystem.config.js
+# Démarrer l'application avec PM2
+pm2 start ecosystem.config.js --env production
 pm2 save
 pm2 startup
 ```
 
+#### Configuration du fichier .env
+
+Assurez-vous que votre fichier `.env` contient au minimum :
+
+```env
+# Base de données
+DATABASE_URL="mysql://sonaby_user:VOTRE_MOT_DE_PASSE@localhost:3306/sonaby_db"
+
+# JWT Secrets (générer des clés fortes)
+JWT_SECRET="votre-cle-jwt-super-securisee-32-caracteres-minimum"
+JWT_REFRESH_SECRET="votre-cle-refresh-super-securisee-32-caracteres-minimum"
+
+# Application
+PORT=3000
+NODE_ENV=production
+
+# CORS (votre domaine de production)
+CORS_ORIGIN="https://votre-domaine.com"
+```
+
 ### 4. Configuration PM2
 
-**ecosystem.config.js**
+**Créer le fichier `ecosystem.config.js` à la racine du projet**
+
 ```javascript
 module.exports = {
   apps: [{
     name: 'backend-sonaby',
     script: 'src/server.js',
-    instances: 'max',
+    instances: 2,  // ou 'max' pour utiliser tous les CPU
     exec_mode: 'cluster',
     env: {
       NODE_ENV: 'development'
@@ -351,42 +386,158 @@ module.exports = {
     error_file: './logs/error.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
     max_memory_restart: '1G',
-    node_args: '--max-old-space-size=1024'
+    node_args: '--max-old-space-size=1024',
+    watch: false,
+    autorestart: true,
+    max_restarts: 10,
+    min_uptime: '10s'
   }]
 };
 ```
 
+**Commandes PM2 utiles**
+
+```bash
+# Démarrer l'application
+pm2 start ecosystem.config.js --env production
+
+# Voir le statut
+pm2 status
+pm2 list
+
+# Voir les logs
+pm2 logs backend-sonaby
+pm2 logs backend-sonaby --lines 100
+
+# Redémarrer
+pm2 restart backend-sonaby
+
+# Recharger (zero-downtime)
+pm2 reload backend-sonaby
+
+# Arrêter
+pm2 stop backend-sonaby
+
+# Supprimer
+pm2 delete backend-sonaby
+
+# Monitoring
+pm2 monit
+
+# Sauvegarder la configuration
+pm2 save
+
+# Configurer le démarrage automatique
+pm2 startup
+# Suivre les instructions affichées
+```
+
 ### 5. Configuration Nginx
+
+**Créer le fichier de configuration Nginx**
 
 ```bash
 # Créer la configuration
 sudo nano /etc/nginx/sites-available/backend-sonaby
+```
 
-# Contenu du fichier
+**Contenu du fichier `/etc/nginx/sites-available/backend-sonaby`**
+
+```nginx
+# Configuration HTTP (redirection vers HTTPS)
 server {
     listen 80;
+    listen [::]:80;
+    server_name votre-domaine.com www.votre-domaine.com;
+    
+    # Redirection vers HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+# Configuration HTTPS
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name votre-domaine.com www.votre-domaine.com;
 
+    # Certificats SSL (Let's Encrypt)
+    ssl_certificate /etc/letsencrypt/live/votre-domaine.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/votre-domaine.com/privkey.pem;
+    
+    # Configuration SSL moderne
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # Headers de sécurité
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Taille maximale des uploads
+    client_max_body_size 10M;
+
+    # Logs
+    access_log /var/log/nginx/backend-sonaby-access.log;
+    error_log /var/log/nginx/backend-sonaby-error.log;
+
+    # Proxy vers l'application Node.js
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
+        
+        # Headers pour WebSocket et proxy
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+    }
+
+    # Servir les fichiers uploadés directement
+    location /uploads/ {
+        alias /var/www/backend-sonaby/src/uploads/;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Documentation Swagger
+    location /api-docs {
+        proxy_pass http://localhost:3000/api-docs;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
     }
 }
+```
 
+**Activer la configuration et obtenir le certificat SSL**
+
+```bash
 # Activer le site
 sudo ln -s /etc/nginx/sites-available/backend-sonaby /etc/nginx/sites-enabled/
+
+# Tester la configuration
 sudo nginx -t
+
+# Si le test est OK, recharger Nginx
 sudo systemctl reload nginx
 
-# Obtenir le certificat SSL
+# Obtenir le certificat SSL avec Certbot
 sudo certbot --nginx -d votre-domaine.com -d www.votre-domaine.com
+
+# Vérifier le renouvellement automatique
+sudo certbot renew --dry-run
 ```
 
 ## 🔒 Sécurité en Production
@@ -618,4 +769,253 @@ sudo systemctl restart nginx mysql
 
 ---
 
+## 📝 Checklist de Déploiement
+
+### Avant le Déploiement
+
+- [ ] Variables d'environnement configurées dans `.env`
+- [ ] Secrets JWT générés (32+ caractères)
+- [ ] Base de données MySQL créée et accessible
+- [ ] Nom de domaine configuré (DNS pointant vers le serveur)
+- [ ] Ports 80, 443, 3000 ouverts sur le firewall
+- [ ] Node.js 18+ installé
+- [ ] PM2 installé globalement
+- [ ] Nginx installé et configuré
+
+### Pendant le Déploiement
+
+- [ ] Code cloné depuis GitHub
+- [ ] Dépendances npm installées
+- [ ] Client Prisma généré
+- [ ] Schéma de base de données synchronisé
+- [ ] Données initiales insérées (seed)
+- [ ] Application démarrée avec PM2
+- [ ] Configuration PM2 sauvegardée
+- [ ] Démarrage automatique PM2 configuré
+- [ ] Configuration Nginx créée et activée
+- [ ] Certificat SSL obtenu avec Certbot
+
+### Après le Déploiement
+
+- [ ] Application accessible via HTTPS
+- [ ] Documentation Swagger accessible (`/api-docs`)
+- [ ] Test de connexion à l'API
+- [ ] Test d'authentification (login/register)
+- [ ] Logs PM2 vérifiés (pas d'erreurs)
+- [ ] Logs Nginx vérifiés
+- [ ] Firewall UFW activé
+- [ ] Sauvegarde automatique configurée
+- [ ] Monitoring PM2 fonctionnel
+- [ ] Renouvellement SSL automatique testé
+
+## 🔍 Tests de Validation
+
+### Test 1: Santé de l'API
+
+```bash
+curl https://votre-domaine.com/api/v1/health
+# Réponse attendue: {"status":"ok","timestamp":"..."}
+```
+
+### Test 2: Documentation Swagger
+
+```bash
+curl https://votre-domaine.com/api-docs
+# Doit retourner la page HTML de Swagger
+```
+
+### Test 3: Authentification
+
+```bash
+# Test de login
+curl -X POST https://votre-domaine.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "password": "password123"
+  }'
+# Doit retourner un accessToken et refreshToken
+```
+
+### Test 4: Endpoint Protégé
+
+```bash
+# Remplacer YOUR_TOKEN par le token obtenu
+curl https://votre-domaine.com/api/v1/users \
+  -H "Authorization: Bearer YOUR_TOKEN"
+# Doit retourner la liste des utilisateurs
+```
+
+## 🚨 Résolution de Problèmes Courants
+
+### Problème: L'application ne démarre pas
+
+**Symptômes**: PM2 montre l'app en erreur
+
+**Solutions**:
+```bash
+# Vérifier les logs
+pm2 logs backend-sonaby --lines 50
+
+# Vérifier les variables d'environnement
+cat .env
+
+# Vérifier la connexion à la base de données
+mysql -u sonaby_user -p sonaby_db
+
+# Régénérer le client Prisma
+npx prisma generate
+
+# Redémarrer
+pm2 restart backend-sonaby
+```
+
+### Problème: Erreur de connexion à la base de données
+
+**Symptômes**: `Error: Can't connect to MySQL server`
+
+**Solutions**:
+```bash
+# Vérifier que MySQL est actif
+sudo systemctl status mysql
+
+# Vérifier les credentials dans .env
+cat .env | grep DATABASE_URL
+
+# Tester la connexion manuellement
+mysql -u sonaby_user -p
+
+# Vérifier les permissions
+mysql -u root -p
+SHOW GRANTS FOR 'sonaby_user'@'localhost';
+```
+
+### Problème: Nginx retourne 502 Bad Gateway
+
+**Symptômes**: Erreur 502 lors de l'accès au site
+
+**Solutions**:
+```bash
+# Vérifier que l'application tourne
+pm2 status
+
+# Vérifier que le port 3000 est bien utilisé
+netstat -tlnp | grep 3000
+
+# Vérifier les logs Nginx
+sudo tail -f /var/log/nginx/backend-sonaby-error.log
+
+# Tester la connexion locale
+curl http://localhost:3000/api/v1/health
+
+# Redémarrer Nginx
+sudo systemctl restart nginx
+```
+
+### Problème: Certificat SSL ne se renouvelle pas
+
+**Symptômes**: Avertissement d'expiration du certificat
+
+**Solutions**:
+```bash
+# Tester le renouvellement
+sudo certbot renew --dry-run
+
+# Forcer le renouvellement
+sudo certbot renew --force-renewal
+
+# Vérifier la tâche cron
+sudo systemctl status certbot.timer
+
+# Recharger Nginx après renouvellement
+sudo systemctl reload nginx
+```
+
+### Problème: Upload de fichiers échoue
+
+**Symptômes**: Erreur 413 ou timeout
+
+**Solutions**:
+```bash
+# Augmenter la limite dans Nginx
+sudo nano /etc/nginx/sites-available/backend-sonaby
+# Ajouter: client_max_body_size 50M;
+
+# Vérifier les permissions du dossier uploads
+ls -la /var/www/backend-sonaby/src/uploads/
+sudo chown -R $USER:$USER /var/www/backend-sonaby/src/uploads/
+sudo chmod -R 755 /var/www/backend-sonaby/src/uploads/
+
+# Redémarrer Nginx
+sudo systemctl reload nginx
+```
+
+## 📞 Support et Ressources
+
+### Documentation
+- **README.md**: Vue d'ensemble du projet
+- **API_GUIDE.md**: Guide complet de l'API
+- **DOCUMENTATION.md**: Documentation technique
+- **structure_du_projet.md**: Architecture du code
+
+### Liens Utiles
+- **Repository GitHub**: https://github.com/ksertia/sonabhy-es-back
+- **Swagger Documentation**: https://votre-domaine.com/api-docs
+- **Prisma Docs**: https://www.prisma.io/docs
+- **PM2 Docs**: https://pm2.keymetrics.io/docs
+- **Nginx Docs**: https://nginx.org/en/docs
+
+### Commandes de Maintenance Rapide
+
+```bash
+# Voir le statut de tous les services
+sudo systemctl status nginx mysql
+pm2 status
+
+# Voir les logs en temps réel
+pm2 logs backend-sonaby --lines 100
+sudo tail -f /var/log/nginx/backend-sonaby-error.log
+
+# Redémarrer tous les services
+pm2 restart backend-sonaby
+sudo systemctl restart nginx
+
+# Mise à jour du code
+cd /var/www/backend-sonaby
+git pull origin main
+npm install
+npx prisma generate
+npx prisma db push
+pm2 reload backend-sonaby
+
+# Sauvegarde manuelle
+./backup.sh
+
+# Vérifier l'utilisation des ressources
+pm2 monit
+htop
+df -h
+free -h
+```
+
+---
+
+## 🎉 Félicitations !
+
+Si vous avez suivi toutes les étapes, votre application **Backend Sonaby** est maintenant déployée en production avec :
+
+✅ **Sécurité**: HTTPS, Firewall, Headers de sécurité  
+✅ **Performance**: PM2 en mode cluster, Nginx reverse proxy  
+✅ **Fiabilité**: Auto-restart, monitoring, logs  
+✅ **Maintenance**: Sauvegardes automatiques, renouvellement SSL  
+✅ **Documentation**: Swagger accessible en ligne  
+
+**URL de votre API**: `https://votre-domaine.com/api/v1`  
+**Documentation**: `https://votre-domaine.com/api-docs`
+
+---
+
 *Ce guide couvre les principales méthodes de déploiement. Adaptez les configurations selon vos besoins spécifiques et votre infrastructure.*
+
+**Dernière mise à jour**: Novembre 2024  
+**Version**: 1.0.0
