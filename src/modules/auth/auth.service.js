@@ -51,14 +51,20 @@ class AuthService {
     
     // Connexion
     async login(data) {
-        const { email, password } = data;
+        const { identifier, password } = data;
         
-        // Trouver l'utilisateur
-        const user = await prisma.user.findUnique({
-            where: { email },
+        // Déterminer si l'identifier est un email ou un téléphone
+        const isEmail = identifier.includes('@');
+        
+        // Trouver l'utilisateur par email ou téléphone
+        const user = await prisma.user.findFirst({
+            where: isEmail 
+                ? { email: identifier }
+                : { phone: identifier },
             select: {
                 id: true,
                 email: true,
+                phone: true,
                 passwordHash: true,
                 firstName: true,
                 lastName: true,

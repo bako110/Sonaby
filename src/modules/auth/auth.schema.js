@@ -10,8 +10,12 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-    email: emailValidation,
-    password: z.string().min(1, 'Password is required')
+    identifier: z.string()
+        .min(1, 'Email ou téléphone requis')
+        .describe('Email ou numéro de téléphone pour la connexion'),
+    password: z.string()
+        .min(1, 'Mot de passe requis')
+        .describe('Mot de passe de l\'utilisateur')
 });
 
 const refreshTokenSchema = z.object({

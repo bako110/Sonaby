@@ -41,7 +41,8 @@ router.post('/register', authController.register);
  * @openapi
  * /api/v1/auth/login:
  *   post:
- *     summary: Login user
+ *     summary: Connexion utilisateur avec email ou téléphone
+ *     description: Permet de se connecter avec soit un email soit un numéro de téléphone
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -49,15 +50,26 @@ router.post('/register', authController.register);
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/LoginInput'
+ *           examples:
+ *             loginWithEmail:
+ *               summary: Connexion avec email
+ *               value:
+ *                 identifier: "user@example.com"
+ *                 password: "motdepasse123"
+ *             loginWithPhone:
+ *               summary: Connexion avec téléphone
+ *               value:
+ *                 identifier: "+225 XX XX XX XX"
+ *                 password: "motdepasse123"
  *     responses:
  *       200:
- *         description: Successful login
+ *         description: Connexion réussie
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AuthResponse'
  *       401:
- *         description: Invalid credentials
+ *         description: Identifiants invalides (email/téléphone ou mot de passe incorrect)
  */
 router.post('/login', authController.login);
 
