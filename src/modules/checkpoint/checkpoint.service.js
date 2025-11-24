@@ -70,14 +70,16 @@ class CheckpointService {
               select: {
                 id: true,
                 name: true,
-                location: true
+                address: true,
+                city: true,
+                country: true
               }
             },
-            agents: {
+            agent: {
               select: {
                 id: true,
-                firstname: true,
-                lastname: true,
+                firstName: true,
+                lastName: true,
                 email: true
               }
             },
@@ -115,11 +117,11 @@ class CheckpointService {
         where: { id },
         include: {
           site: true,
-          agents: {
+          agent: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               email: true,
               createdAt: true
             }
@@ -133,8 +135,8 @@ class CheckpointService {
               visitor: {
                 select: {
                   id: true,
-                  firstname: true,
-                  lastname: true
+                  firstName: true,
+                  lastName: true
                 }
               }
             }

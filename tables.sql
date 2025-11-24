@@ -3,9 +3,10 @@ USE `sonabhy-es-db`;
 -- =====================================================================================
 -- SYSTÈME DE GESTION DES VISITES MULTI-SITES - STRUCTURE COMPLÈTE
 -- =====================================================================================
--- Version: 2.0
+-- Version: 3.0
 -- Date: 2024-11-24
--- Description: Structure complète avec toutes les relations et contraintes
+-- Description: Structure complète adaptée au schéma Prisma actuel
+-- Correspondance exacte avec prisma/schema.prisma
 -- =====================================================================================
 
 -- =====================================================================================
@@ -26,9 +27,11 @@ CREATE TABLE IF NOT EXISTS id_types (
 );
 
 INSERT IGNORE INTO id_types (type_name) VALUES 
-('CNIB'), 
+('CNI'), 
 ('PASSEPORT'), 
-('PERMIS_CONDUITE');
+('PERMIS_CONDUITE'),
+('CARTE_SEJOUR'),
+('AUTRE');
 
 CREATE TABLE IF NOT EXISTS rendezvous_statuses (
     status_name VARCHAR(20) PRIMARY KEY
@@ -63,8 +66,7 @@ CREATE TABLE IF NOT EXISTS checkpoint_statuses (
 INSERT IGNORE INTO checkpoint_statuses (status_name) VALUES 
 ('active'), 
 ('inactive'), 
-('maintenance'), 
-('error');
+('maintenance');
 
 CREATE TABLE IF NOT EXISTS checkpoint_types (
     type_name VARCHAR(30) PRIMARY KEY
@@ -74,8 +76,7 @@ INSERT IGNORE INTO checkpoint_types (type_name) VALUES
 ('entry'), 
 ('exit'), 
 ('internal'), 
-('emergency'), 
-('patrol');
+('emergency');
 
 CREATE TABLE IF NOT EXISTS checkpoint_priorities (
     priority_name VARCHAR(20) PRIMARY KEY
@@ -95,8 +96,7 @@ INSERT IGNORE INTO control_frequencies (frequency_name) VALUES
 ('hourly'), 
 ('daily'), 
 ('weekly'), 
-('monthly'), 
-('on_demand');
+('monthly');
 
 CREATE TABLE IF NOT EXISTS activity_types (
     type_name VARCHAR(50) PRIMARY KEY
