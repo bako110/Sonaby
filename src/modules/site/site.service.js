@@ -24,7 +24,8 @@ class SiteService {
       const whereClause = search ? {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
-          { location: { contains: search, mode: 'insensitive' } }
+          { city: { contains: search, mode: 'insensitive' } },
+          { address: { contains: search, mode: 'insensitive' } }
         ]
       } : {};
 
@@ -42,7 +43,7 @@ class SiteService {
             }
           },
           orderBy: {
-            createdAt: 'desc'
+            creationDate: 'desc'
           }
         }),
         prisma.site.count({ where: whereClause })
@@ -68,15 +69,15 @@ class SiteService {
         where: { id },
         include: {
           checkpoints: {
-            include: {
-              agents: {
-                select: {
-                  id: true,
-                  firstname: true,
-                  lastname: true,
-                  email: true
-                }
-              }
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              sosId: true,
+              status: true,
+              checkpointType: true,
+              agentName: true,
+              agentEmail: true
             }
           }
         }

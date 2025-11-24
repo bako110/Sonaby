@@ -12,6 +12,7 @@ const appointmentRoutes = require('../modules/appointment/appointment.routes');
 const incidentRoutes = require('../modules/incident/incident.routes');
 const nonDesirableRoutes = require('../modules/nondesirable/nondesirable.routes');
 const sosRoutes = require('../modules/sos/sos.routes');
+const dashboardRoutes = require('./dashboard');
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.use('/appointments', appointmentRoutes);
 router.use('/incidents', incidentRoutes);
 router.use('/nondesirables', nonDesirableRoutes);
 router.use('/sos', sosRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 // Route de santé de l'API
 router.get('/health', (req, res) => {

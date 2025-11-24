@@ -230,6 +230,80 @@ const Site = {
   }
 };
 
+// Schéma de création de site
+const CreateSiteInput = {
+  type: "object",
+  properties: {
+    name: { type: "string", minLength: 1, maxLength: 255, description: "Nom du site", example: "Site Principal Paris" },
+    address: { type: "string", minLength: 1, description: "Adresse complète", example: "123 Avenue des Champs-Élysées" },
+    city: { type: "string", minLength: 1, maxLength: 100, description: "Ville", example: "Paris" },
+    postalCode: { type: "string", minLength: 1, maxLength: 20, description: "Code postal", example: "75008" },
+    country: { type: "string", minLength: 1, maxLength: 100, description: "Pays", example: "France" },
+    activityType: { 
+      type: "string", 
+      enum: ["OFFICE", "PRODUCTION", "WAREHOUSE", "RETAIL", "RESEARCH", "DATACENTER", "LOGISTICS", "MANUFACTURING", "HEADQUARTERS", "OTHER"],
+      description: "Type d'activité",
+      example: "OFFICE"
+    },
+    status: { 
+      type: "string", 
+      enum: ["ACTIVE", "INACTIVE", "UNDER_CONSTRUCTION", "MAINTENANCE", "CLOSED", "PLANNED", "SUSPENDED"],
+      description: "Statut du site",
+      example: "ACTIVE"
+    },
+    code: { type: "string", maxLength: 50, description: "Code unique du site", example: "PAR001" },
+    region: { type: "string", maxLength: 100, description: "Région", example: "Île-de-France" },
+    phone: { type: "string", maxLength: 20, description: "Téléphone", example: "+33 1 42 96 12 34" },
+    fax: { type: "string", maxLength: 20, description: "Fax", example: "+33 1 42 96 12 35" },
+    email: { type: "string", format: "email", description: "Email", example: "contact@site.com" },
+    website: { type: "string", format: "uri", description: "Site web", example: "https://www.site.com" },
+    manager: { type: "string", maxLength: 255, description: "Responsable", example: "Jean Dupont" },
+    managerEmail: { type: "string", format: "email", description: "Email responsable", example: "jean.dupont@entreprise.com" },
+    managerPhone: { type: "string", maxLength: 20, description: "Téléphone responsable", example: "+33 6 12 34 56 78" },
+    area: { type: "number", minimum: 0, description: "Surface totale (m²)", example: 1500.5 },
+    usableArea: { type: "number", minimum: 0, description: "Surface utile (m²)", example: 1200.0 },
+    employeeCount: { type: "integer", minimum: 0, description: "Nombre d'employés", example: 50 },
+    maxEmployeeCapacity: { type: "integer", minimum: 0, description: "Capacité max employés", example: 100 },
+    buildingCount: { type: "integer", minimum: 0, description: "Nombre de bâtiments", example: 2 },
+    openingDate: { type: "string", format: "date-time", description: "Date d'ouverture", example: "2024-01-15T09:00:00Z" },
+    closingDate: { type: "string", format: "date-time", description: "Date de fermeture", example: "2030-12-31T18:00:00Z" },
+    coordinates: {
+      type: "object",
+      properties: {
+        latitude: { type: "number", minimum: -90, maximum: 90, description: "Latitude", example: 48.8566 },
+        longitude: { type: "number", minimum: -180, maximum: 180, description: "Longitude", example: 2.3522 }
+      }
+    },
+    description: { type: "string", description: "Description", example: "Site principal de l'entreprise" },
+    comments: { type: "string", description: "Commentaires", example: "Accès métro ligne 1" },
+    monthlyCost: { type: "number", minimum: 0, description: "Coût mensuel (€)", example: 15000.00 },
+    annualBudget: { type: "number", minimum: 0, description: "Budget annuel (€)", example: 200000.00 },
+    certifications: { type: "array", items: { type: "string" }, description: "Certifications", example: ["ISO 9001", "ISO 14001"] },
+    lastInspection: { type: "string", format: "date-time", description: "Dernière inspection", example: "2024-10-15T14:30:00Z" },
+    nextInspection: { type: "string", format: "date-time", description: "Prochaine inspection", example: "2025-10-15T14:30:00Z" },
+    equipment: { type: "array", items: { type: "string" }, description: "Équipements", example: ["Climatisation", "Vidéosurveillance"] },
+    services: { type: "array", items: { type: "string" }, description: "Services", example: ["Restauration", "Parking"] },
+    wheelchairAccessible: { type: "boolean", description: "Accessible PMR", example: true },
+    parkingAvailable: { type: "boolean", description: "Parking disponible", example: true },
+    parkingSpaces: { type: "integer", minimum: 0, description: "Places de parking", example: 50 },
+    securitySystem: { type: "boolean", description: "Système de sécurité", example: true },
+    securityGuard: { type: "boolean", description: "Agent de sécurité", example: false },
+    environmentalCertification: { type: "string", maxLength: 255, description: "Certification environnementale", example: "HQE Excellent" },
+    energyConsumption: { type: "number", minimum: 0, description: "Consommation énergétique (kWh/mois)", example: 12500.5 },
+    createdBy: { type: "string", maxLength: 255, description: "Créé par", example: "admin@entreprise.com" },
+    version: { type: "integer", minimum: 1, description: "Version", example: 1 }
+  },
+  required: ["name", "address", "city", "postalCode", "country", "activityType", "status"]
+};
+
+// Schéma de mise à jour (tous les champs optionnels)
+const UpdateSiteInput = {
+  type: "object",
+  properties: {
+    ...CreateSiteInput.properties
+  }
+};
+
 const Checkpoint = {
   type: "object",
   properties: {
@@ -660,6 +734,10 @@ module.exports = {
   UpdateUserInput,
   UpdatePasswordInput,
   UpdateAuthSettingsInput,
+  
+  // Site
+  CreateSiteInput,
+  UpdateSiteInput,
   
   // Query Inputs
   SiteQueryInput,
