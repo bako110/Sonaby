@@ -98,6 +98,35 @@ INSERT IGNORE INTO control_frequencies (frequency_name) VALUES
 ('monthly'), 
 ('on_demand');
 
+CREATE TABLE IF NOT EXISTS activity_types (
+    type_name VARCHAR(50) PRIMARY KEY
+);
+
+INSERT IGNORE INTO activity_types (type_name) VALUES 
+('OFFICE'), 
+('PRODUCTION'), 
+('WAREHOUSE'), 
+('RETAIL'), 
+('RESEARCH'), 
+('DATACENTER'), 
+('LOGISTICS'), 
+('MANUFACTURING'), 
+('HEADQUARTERS'), 
+('OTHER');
+
+CREATE TABLE IF NOT EXISTS site_statuses (
+    status_name VARCHAR(50) PRIMARY KEY
+);
+
+INSERT IGNORE INTO site_statuses (status_name) VALUES 
+('ACTIVE'), 
+('INACTIVE'), 
+('UNDER_CONSTRUCTION'), 
+('MAINTENANCE'), 
+('CLOSED'), 
+('PLANNED'), 
+('SUSPENDED');
+
 -- =====================================================================================
 -- SECTION 2: TABLES PRINCIPALES - UTILISATEURS ET SITES
 -- =====================================================================================
@@ -120,46 +149,83 @@ CREATE TABLE IF NOT EXISTS users (
 -- 2.2 Table sites (chaque site de l'entreprise)
 CREATE TABLE IF NOT EXISTS sites (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    name VARCHAR(255),
-    code VARCHAR(50),
-    address TEXT,
-    city VARCHAR(100),
-    postal_code VARCHAR(20),
-    country VARCHAR(100),
+    
+    -- Basic information (required fields)
+    name VARCHAR(255) NOT NULL,
+    address TEXT NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    postal_code VARCHAR(20) NOT NULL,
+    country VARCHAR(100) NOT NULL,
+    activity_type VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    
+    -- Optional basic information
+    code VARCHAR(50) UNIQUE,
     region VARCHAR(100),
-    activity_type VARCHAR(100),
-    status VARCHAR(50),
-    description TEXT,
-    
-    email VARCHAR(255),
     phone VARCHAR(20),
+    fax VARCHAR(20),
+    email VARCHAR(255),
+    website VARCHAR(255),
     
+    -- Management
     manager VARCHAR(255),
     manager_email VARCHAR(255),
     manager_phone VARCHAR(20),
-    website VARCHAR(255),
     
-    handicap_accessibility BOOLEAN,
-    environmental_certification VARCHAR(255),
-    energy_consumption DECIMAL(10,2),
-    monthly_cost DECIMAL(15,2),
-    security_system VARCHAR(255),
-    guarding VARCHAR(255),
-    parking_available BOOLEAN,
+    -- Areas and capacity
+    area DECIMAL(10,2), -- in square meters
+    usable_area DECIMAL(10,2), -- Actual usable area
+    employee_count INT,
+    max_employee_capacity INT,
+    building_count INT,
     
-    annual_budget DECIMAL(15,2),
-    max_employees_capacity INT,
-    number_of_employees INT,
-    number_of_buildings INT,
-    number_of_parking_spaces INT,
-    surface_area DECIMAL(10,2),
-    useful_surface_area DECIMAL(10,2),
+    -- Dates
+    creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    modification_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    opening_date TIMESTAMP,
+    closing_date TIMESTAMP,
     
+    -- Coordinates (stored as JSON)
+    coordinates JSON,
+    
+    -- Descriptions
+    description TEXT,
     comments TEXT,
     
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    -- Financial information
+    monthly_cost DECIMAL(15,2),
+    annual_budget DECIMAL(15,2),
+    
+    -- Certifications and compliance (stored as JSON arrays)
+    certifications JSON, -- ISO, HACCP, etc.
+    last_inspection TIMESTAMP,
+    next_inspection TIMESTAMP,
+    
+    -- Equipment and services (stored as JSON arrays)
+    equipment JSON,
+    services JSON,
+    
+    -- Accessibility
+    wheelchair_accessible BOOLEAN,
+    parking_available BOOLEAN,
+    parking_spaces INT,
+    
+    -- Security
+    security_system BOOLEAN,
+    security_guard BOOLEAN,
+    
+    -- Environment
+    environmental_certification VARCHAR(255),
+    energy_consumption DECIMAL(10,2), -- kWh/month
+    
+    -- Metadata
+    created_by VARCHAR(255),
+    modified_by VARCHAR(255),
+    version INT DEFAULT 1,
+    
+    -- Foreign key constraints
+    FOREIGN KEY (activity_type) REFERENCES activity_types(type_name),
+    FOREIGN KEY (status) REFERENCES site_statuses(status_name)
 );
 
 -- =====================================================================================

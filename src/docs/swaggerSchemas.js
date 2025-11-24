@@ -128,49 +128,105 @@ const Site = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
-    name: { type: "string", nullable: true },
-    code: { type: "string", nullable: true },
-    address: { type: "string", nullable: true },
-    city: { type: "string", nullable: true },
-    postalCode: { type: "string", nullable: true },
-    country: { type: "string", nullable: true },
-    region: { type: "string", nullable: true },
-    activityType: { type: "string", nullable: true },
-    status: { type: "string", nullable: true },
-    description: { type: "string", nullable: true },
     
-    // Contact information
-    email: { type: "string", format: "email", nullable: true },
+    // Basic information (required fields)
+    name: { type: "string" },
+    address: { type: "string" },
+    city: { type: "string" },
+    postalCode: { type: "string" },
+    country: { type: "string" },
+    activityType: { 
+      type: "string", 
+      enum: ["OFFICE", "PRODUCTION", "WAREHOUSE", "RETAIL", "RESEARCH", "DATACENTER", "LOGISTICS", "MANUFACTURING", "HEADQUARTERS", "OTHER"]
+    },
+    status: { 
+      type: "string", 
+      enum: ["ACTIVE", "INACTIVE", "UNDER_CONSTRUCTION", "MAINTENANCE", "CLOSED", "PLANNED", "SUSPENDED"]
+    },
+    
+    // Optional basic information
+    code: { type: "string", nullable: true },
+    region: { type: "string", nullable: true },
     phone: { type: "string", nullable: true },
+    fax: { type: "string", nullable: true },
+    email: { type: "string", format: "email", nullable: true },
+    website: { type: "string", format: "uri", nullable: true },
     
     // Management
     manager: { type: "string", nullable: true },
     managerEmail: { type: "string", format: "email", nullable: true },
     managerPhone: { type: "string", nullable: true },
-    website: { type: "string", format: "uri", nullable: true },
     
-    // Facilities
-    handicapAccessibility: { type: "boolean", nullable: true },
-    environmentalCertification: { type: "string", nullable: true },
-    energyConsumption: { type: "number", nullable: true },
-    monthlyCost: { type: "number", nullable: true },
-    securitySystem: { type: "string", nullable: true },
-    guarding: { type: "string", nullable: true },
-    parkingAvailable: { type: "boolean", nullable: true },
+    // Areas and capacity
+    area: { type: "number", nullable: true, description: "Area in square meters" },
+    usableArea: { type: "number", nullable: true, description: "Actual usable area in square meters" },
+    employeeCount: { type: "integer", nullable: true },
+    maxEmployeeCapacity: { type: "integer", nullable: true },
+    buildingCount: { type: "integer", nullable: true },
     
-    // Capacity and metrics
-    annualBudget: { type: "number", nullable: true },
-    maxEmployeesCapacity: { type: "integer", nullable: true },
-    numberOfEmployees: { type: "integer", nullable: true },
-    numberOfBuildings: { type: "integer", nullable: true },
-    numberOfParkingSpaces: { type: "integer", nullable: true },
-    surfaceArea: { type: "number", nullable: true },
-    usefulSurfaceArea: { type: "number", nullable: true },
+    // Dates
+    creationDate: { type: "string", format: "date-time" },
+    modificationDate: { type: "string", format: "date-time", nullable: true },
+    openingDate: { type: "string", format: "date-time", nullable: true },
+    closingDate: { type: "string", format: "date-time", nullable: true },
     
+    // Coordinates
+    coordinates: {
+      type: "object",
+      nullable: true,
+      properties: {
+        latitude: { type: "number", minimum: -90, maximum: 90 },
+        longitude: { type: "number", minimum: -180, maximum: 180 }
+      }
+    },
+    
+    // Descriptions
+    description: { type: "string", nullable: true },
     comments: { type: "string", nullable: true },
-    isActive: { type: "boolean" },
-    createdAt: { type: "string", format: "date-time" },
-    updatedAt: { type: "string", format: "date-time" }
+    
+    // Financial information
+    monthlyCost: { type: "number", nullable: true },
+    annualBudget: { type: "number", nullable: true },
+    
+    // Certifications and compliance
+    certifications: { 
+      type: "array", 
+      items: { type: "string" }, 
+      nullable: true,
+      description: "ISO, HACCP, etc."
+    },
+    lastInspection: { type: "string", format: "date-time", nullable: true },
+    nextInspection: { type: "string", format: "date-time", nullable: true },
+    
+    // Equipment and services
+    equipment: { 
+      type: "array", 
+      items: { type: "string" }, 
+      nullable: true 
+    },
+    services: { 
+      type: "array", 
+      items: { type: "string" }, 
+      nullable: true 
+    },
+    
+    // Accessibility
+    wheelchairAccessible: { type: "boolean", nullable: true },
+    parkingAvailable: { type: "boolean", nullable: true },
+    parkingSpaces: { type: "integer", nullable: true },
+    
+    // Security
+    securitySystem: { type: "boolean", nullable: true },
+    securityGuard: { type: "boolean", nullable: true },
+    
+    // Environment
+    environmentalCertification: { type: "string", nullable: true },
+    energyConsumption: { type: "number", nullable: true, description: "kWh/month" },
+    
+    // Metadata
+    createdBy: { type: "string", nullable: true },
+    modifiedBy: { type: "string", nullable: true },
+    version: { type: "integer", nullable: true }
   }
 };
 
