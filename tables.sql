@@ -1,9 +1,16 @@
 USE `sonabhy-es-db`;
 
--- Script de création des tables pour le système de gestion des visites multi-sites
--- MySQL
+-- =====================================================================================
+-- SYSTÈME DE GESTION DES VISITES MULTI-SITES - STRUCTURE COMPLÈTE
+-- =====================================================================================
+-- Version: 2.0
+-- Date: 2024-11-24
+-- Description: Structure complète avec toutes les relations et contraintes
+-- =====================================================================================
 
--- 1. Création des tables pour les énumérations (simulées via ENUM ou tables de référence)
+-- =====================================================================================
+-- SECTION 1: TABLES D'ÉNUMÉRATION ET RÉFÉRENTIELS
+-- =====================================================================================
 CREATE TABLE IF NOT EXISTS user_roles (
     role_name VARCHAR(20) PRIMARY KEY
 );
@@ -19,11 +26,9 @@ CREATE TABLE IF NOT EXISTS id_types (
 );
 
 INSERT IGNORE INTO id_types (type_name) VALUES 
-('CNI'), 
+('CNIB'), 
 ('PASSEPORT'), 
-('PERMIS_CONDUITE'), 
-('CARTE_SEJOUR'), 
-('AUTRE');
+('PERMIS_CONDUITE');
 
 CREATE TABLE IF NOT EXISTS rendezvous_statuses (
     status_name VARCHAR(20) PRIMARY KEY
@@ -51,7 +56,53 @@ INSERT IGNORE INTO blacklist_actions (action_name) VALUES
 ('added'), 
 ('removed');
 
--- 2. Table users (tous les utilisateurs du système)
+CREATE TABLE IF NOT EXISTS checkpoint_statuses (
+    status_name VARCHAR(20) PRIMARY KEY
+);
+
+INSERT IGNORE INTO checkpoint_statuses (status_name) VALUES 
+('active'), 
+('inactive'), 
+('maintenance'), 
+('error');
+
+CREATE TABLE IF NOT EXISTS checkpoint_types (
+    type_name VARCHAR(30) PRIMARY KEY
+);
+
+INSERT IGNORE INTO checkpoint_types (type_name) VALUES 
+('entry'), 
+('exit'), 
+('internal'), 
+('emergency'), 
+('patrol');
+
+CREATE TABLE IF NOT EXISTS checkpoint_priorities (
+    priority_name VARCHAR(20) PRIMARY KEY
+);
+
+INSERT IGNORE INTO checkpoint_priorities (priority_name) VALUES 
+('low'), 
+('medium'), 
+('high'), 
+('critical');
+
+CREATE TABLE IF NOT EXISTS control_frequencies (
+    frequency_name VARCHAR(20) PRIMARY KEY
+);
+
+INSERT IGNORE INTO control_frequencies (frequency_name) VALUES 
+('hourly'), 
+('daily'), 
+('weekly'), 
+('monthly'), 
+('on_demand');
+
+-- =====================================================================================
+-- SECTION 2: TABLES PRINCIPALES - UTILISATEURS ET SITES
+-- =====================================================================================
+
+-- 2.1 Table users (tous les utilisateurs du système)
 CREATE TABLE IF NOT EXISTS users (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -66,31 +117,111 @@ CREATE TABLE IF NOT EXISTS users (
     FOREIGN KEY (role) REFERENCES user_roles(role_name)
 );
 
--- 3. Table sites (chaque site de l'entreprise)
+-- 2.2 Table sites (chaque site de l'entreprise)
 CREATE TABLE IF NOT EXISTS sites (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    name VARCHAR(255) NOT NULL,
-    address TEXT NOT NULL,
+    name VARCHAR(255),
+    code VARCHAR(50),
+    address TEXT,
+    city VARCHAR(100),
+    postal_code VARCHAR(20),
+    country VARCHAR(100),
+    region VARCHAR(100),
+    activity_type VARCHAR(100),
+    status VARCHAR(50),
+    description TEXT,
+    
+    email VARCHAR(255),
     phone VARCHAR(20),
+    
+    manager VARCHAR(255),
+    manager_email VARCHAR(255),
+    manager_phone VARCHAR(20),
+    website VARCHAR(255),
+    
+    handicap_accessibility BOOLEAN,
+    environmental_certification VARCHAR(255),
+    energy_consumption DECIMAL(10,2),
+    monthly_cost DECIMAL(15,2),
+    security_system VARCHAR(255),
+    guarding VARCHAR(255),
+    parking_available BOOLEAN,
+    
+    annual_budget DECIMAL(15,2),
+    max_employees_capacity INT,
+    number_of_employees INT,
+    number_of_buildings INT,
+    number_of_parking_spaces INT,
+    surface_area DECIMAL(10,2),
+    useful_surface_area DECIMAL(10,2),
+    
+    comments TEXT,
+    
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- 4. Table checkpoints (les postes de contrôle / tablettes)
+-- =====================================================================================
+-- SECTION 3: TABLES DE CONTRÔLE ET SÉCURITÉ
+-- =====================================================================================
+
+-- 3.1 Table checkpoints (les postes de contrôle / tablettes)
 CREATE TABLE IF NOT EXISTS checkpoints (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    site_id CHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    sos_code VARCHAR(100) UNIQUE NOT NULL,
-    location_description TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
+    description TEXT,
+    site_id CHAR(36) NOT NULL,
+    
+    -- Location
+    zone VARCHAR(100),
+    building VARCHAR(100),
+    floor VARCHAR(50),
+    coordinates_latitude DECIMAL(10,8),
+    coordinates_longitude DECIMAL(11,8),
+    
+    -- SOS Configuration
+    sos_id VARCHAR(100) UNIQUE NOT NULL,
+    sos_configuration JSON,
+    
+    -- Agent Assignment (dénormalisé pour performance)
+    agent_id CHAR(36),
+    agent_name VARCHAR(255),
+    agent_email VARCHAR(255),
+    agent_phone VARCHAR(20),
+    assignment_date TIMESTAMP,
+    
+    -- Status and State
+    status VARCHAR(20) DEFAULT 'active',
+    checkpoint_type VARCHAR(30) DEFAULT 'internal',
+    priority VARCHAR(20) DEFAULT 'medium',
+    
+    -- Scheduling
+    control_frequency VARCHAR(20),
+    next_control TIMESTAMP,
+    last_control TIMESTAMP,
+    
+    -- Equipment and Materials
+    equipment JSON,
+    required_material JSON,
+    special_instructions TEXT,
+    
+    -- Metadata
+    active BOOLEAN DEFAULT TRUE,
+    created_by VARCHAR(255),
+    modified_by VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+    
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+    FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (status) REFERENCES checkpoint_statuses(status_name),
+    FOREIGN KEY (checkpoint_type) REFERENCES checkpoint_types(type_name),
+    FOREIGN KEY (priority) REFERENCES checkpoint_priorities(priority_name),
+    FOREIGN KEY (control_frequency) REFERENCES control_frequencies(frequency_name)
 );
 
--- 5. Table agent_checkpoint_assignments (Affectation des agents)
+-- 3.2 Table agent_checkpoint_assignments (Affectation des agents)
 CREATE TABLE IF NOT EXISTS agent_checkpoint_assignments (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id CHAR(36) NOT NULL,
@@ -103,7 +234,27 @@ CREATE TABLE IF NOT EXISTS agent_checkpoint_assignments (
     FOREIGN KEY (checkpoint_id) REFERENCES checkpoints(id) ON DELETE CASCADE
 );
 
--- 6. Table visitors (identité du visiteur)
+-- 3.3 Table sos_alerts (gestion des alertes SOS)
+CREATE TABLE IF NOT EXISTS sos_alerts (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    checkpoint_id CHAR(36) NOT NULL,
+    triggered_by CHAR(36) NOT NULL,
+    triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    message TEXT,
+    is_resolved BOOLEAN DEFAULT FALSE,
+    resolved_at TIMESTAMP NULL,
+    resolved_by CHAR(36),
+    resolution_notes TEXT,
+    FOREIGN KEY (checkpoint_id) REFERENCES checkpoints(id) ON DELETE CASCADE,
+    FOREIGN KEY (triggered_by) REFERENCES users(id),
+    FOREIGN KEY (resolved_by) REFERENCES users(id)
+);
+
+-- =====================================================================================
+-- SECTION 4: TABLES VISITEURS ET SERVICES
+-- =====================================================================================
+
+-- 4.1 Table visitors (identité du visiteur)
 CREATE TABLE IF NOT EXISTS visitors (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     first_name VARCHAR(100) NOT NULL,
@@ -123,7 +274,7 @@ CREATE TABLE IF NOT EXISTS visitors (
     FOREIGN KEY (id_type) REFERENCES id_types(type_name)
 );
 
--- 7. Table services (départements visitables)
+-- 4.2 Table services (départements visitables)
 CREATE TABLE IF NOT EXISTS services (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     name VARCHAR(255) NOT NULL,
@@ -135,7 +286,11 @@ CREATE TABLE IF NOT EXISTS services (
     FOREIGN KEY (chef_id) REFERENCES users(id)
 );
 
--- 8. Table rendezvous (pré-enregistrement)
+-- =====================================================================================
+-- SECTION 5: TABLES DE GESTION DES VISITES
+-- =====================================================================================
+
+-- 5.1 Table rendezvous (pré-enregistrement)
 CREATE TABLE IF NOT EXISTS rendezvous (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     organizer_id CHAR(36) NOT NULL,
@@ -157,7 +312,7 @@ CREATE TABLE IF NOT EXISTS rendezvous (
     FOREIGN KEY (status) REFERENCES rendezvous_statuses(status_name)
 );
 
--- 9. Table visits (visite réelle)
+-- 5.2 Table visits (visite réelle)
 CREATE TABLE IF NOT EXISTS visits (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     visitor_id CHAR(36) NOT NULL,
@@ -182,7 +337,7 @@ CREATE TABLE IF NOT EXISTS visits (
     FOREIGN KEY (status) REFERENCES visit_statuses(status_name)
 );
 
--- 10. Table visit_incidents (déclarations incidents)
+-- 5.3 Table visit_incidents (déclarations incidents)
 CREATE TABLE IF NOT EXISTS visit_incidents (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     visit_id CHAR(36) NOT NULL,
@@ -198,36 +353,78 @@ CREATE TABLE IF NOT EXISTS visit_incidents (
     FOREIGN KEY (reported_by) REFERENCES users(id)
 );
 
--- 11. Table sos_alerts (gestion des SOS)
-CREATE TABLE IF NOT EXISTS sos_alerts (
+-- 5.4 Table visitor_groups (pour les visites de groupe)
+CREATE TABLE IF NOT EXISTS visitor_groups (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    checkpoint_id CHAR(36) NOT NULL,
-    triggered_by CHAR(36) NOT NULL,
-    triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    message TEXT,
-    is_resolved BOOLEAN DEFAULT FALSE,
-    resolved_at TIMESTAMP NULL,
-    resolved_by CHAR(36),
-    resolution_notes TEXT,
-    FOREIGN KEY (checkpoint_id) REFERENCES checkpoints(id),
-    FOREIGN KEY (triggered_by) REFERENCES users(id),
-    FOREIGN KEY (resolved_by) REFERENCES users(id)
+    group_code VARCHAR(100) UNIQUE NOT NULL,
+    organizer_id CHAR(36) NOT NULL,
+    service_id CHAR(36) NOT NULL,
+    reason TEXT NOT NULL,
+    visit_date DATE NOT NULL,
+    expected_count INT DEFAULT 1,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id)
 );
 
--- 12. Table blacklist_history (historique des indésirables)
+-- 5.5 Table group_visitors (liens groupe-visiteurs)
+CREATE TABLE IF NOT EXISTS group_visitors (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    group_id CHAR(36) NOT NULL,
+    visitor_id CHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_group_visitor (group_id, visitor_id),
+    FOREIGN KEY (group_id) REFERENCES visitor_groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE CASCADE
+);
+-- SECTION 6: TABLES DE SÉCURITÉ ET AUDIT
+-- =====================================================================================
+
+-- 6.1 Table blacklist_history (historique des indésirables - niveau national)
 CREATE TABLE IF NOT EXISTS blacklist_history (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    visitor_id CHAR(36) NOT NULL,
+    
+    -- Référence visiteur (optionnelle si déjà enregistré)
+    visitor_id CHAR(36),
+    
+    -- Informations d'identification (pour signalement national)
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    id_type VARCHAR(20),
+    id_number VARCHAR(255),
+    phone VARCHAR(20),
+    email VARCHAR(255),
+    nationality VARCHAR(100),
+    birth_date DATE,
+    birth_place VARCHAR(255),
+    
+    -- Informations du signalement
     action VARCHAR(20) NOT NULL,
     reason TEXT NOT NULL,
+    severity_level INT DEFAULT 1, -- 1: Low, 2: Medium, 3: High, 4: Critical
+    incident_date DATE,
+    incident_location VARCHAR(255),
+    
+    -- Métadonnées
     created_by CHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE CASCADE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    -- Contraintes
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE SET NULL,
     FOREIGN KEY (action) REFERENCES blacklist_actions(action_name),
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (id_type) REFERENCES id_types(type_name),
+    
+    -- Au moins une identification doit être fournie
+    CONSTRAINT chk_identification CHECK (
+        visitor_id IS NOT NULL OR 
+        (first_name IS NOT NULL AND last_name IS NOT NULL AND id_number IS NOT NULL)
+    )
 );
 
--- 13. Table audit_logs (sécurité + traçabilité RGPD)
+-- 6.2 Table audit_logs (sécurité + traçabilité RGPD)
 CREATE TABLE IF NOT EXISTS audit_logs (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     user_id CHAR(36),
@@ -242,37 +439,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- 14. Table visitor_groups (pour les visites de groupe)
-CREATE TABLE IF NOT EXISTS visitor_groups (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    group_code VARCHAR(100) UNIQUE NOT NULL,
-    organizer_id CHAR(36) NOT NULL,
-    service_id CHAR(36) NOT NULL,
-    reason TEXT NOT NULL,
-    visit_date DATE NOT NULL,
-    expected_count INT DEFAULT 1,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (organizer_id) REFERENCES users(id),
-    FOREIGN KEY (service_id) REFERENCES services(id)
-);
+-- =====================================================================================
+-- SECTION 7: INDEX ET OPTIMISATIONS
+-- =====================================================================================
 
--- 15. Table group_visitors (liens groupe-visiteurs)
-CREATE TABLE IF NOT EXISTS group_visitors (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    group_id CHAR(36) NOT NULL,
-    visitor_id CHAR(36) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_group_visitor (group_id, visitor_id),
-    FOREIGN KEY (group_id) REFERENCES visitor_groups(id) ON DELETE CASCADE,
-    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE CASCADE
-);
-
--- Index pour optimiser les performances
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_checkpoints_site_id ON checkpoints(site_id);
-CREATE INDEX IF NOT EXISTS idx_checkpoints_sos_code ON checkpoints(sos_code);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_sos_id ON checkpoints(sos_id);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_status ON checkpoints(status);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_type ON checkpoints(checkpoint_type);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_priority ON checkpoints(priority);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_agent_id ON checkpoints(agent_id);
+CREATE INDEX IF NOT EXISTS idx_checkpoints_next_control ON checkpoints(next_control);
 CREATE INDEX IF NOT EXISTS idx_agent_assignments_user_id ON agent_checkpoint_assignments(user_id);
 CREATE INDEX IF NOT EXISTS idx_agent_assignments_checkpoint_id ON agent_checkpoint_assignments(checkpoint_id);
 CREATE INDEX IF NOT EXISTS idx_visitors_blacklisted ON visitors(is_blacklisted);
@@ -287,6 +466,18 @@ CREATE INDEX IF NOT EXISTS idx_sos_alerts_checkpoint_id ON sos_alerts(checkpoint
 CREATE INDEX IF NOT EXISTS idx_sos_alerts_triggered_at ON sos_alerts(triggered_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity, entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_sites_code ON sites(code);
+CREATE INDEX IF NOT EXISTS idx_sites_status ON sites(status);
+CREATE INDEX IF NOT EXISTS idx_sites_city ON sites(city);
+CREATE INDEX IF NOT EXISTS idx_sites_activity_type ON sites(activity_type);
+CREATE INDEX IF NOT EXISTS idx_blacklist_visitor_id ON blacklist_history(visitor_id);
+CREATE INDEX IF NOT EXISTS idx_blacklist_id_number ON blacklist_history(id_number);
+CREATE INDEX IF NOT EXISTS idx_blacklist_severity ON blacklist_history(severity_level);
+CREATE INDEX IF NOT EXISTS idx_blacklist_incident_date ON blacklist_history(incident_date);
+
+-- =====================================================================================
+-- SECTION 8: FONCTIONS ET PROCÉDURES UTILES
+-- =====================================================================================
 
 -- Procédure pour générer un QR code unique
 DELIMITER //
@@ -307,38 +498,9 @@ BEGIN
 END//
 DELIMITER ;
 
--- Insertion des données de base
-INSERT IGNORE INTO users (email, password_hash, first_name, last_name, role) VALUES
-('admin@entreprise.com', '$2b$12$LQv3c1yqBWVHxkd0L6k0R.LCs.5rJdK7Q2c5Jv5Q5Jv5Q5Jv5Q5Jv', 'Admin', 'Système', 'ADMIN'),
-('chef.service1@entreprise.com', '$2b$12$LQv3c1yqBWVHxkd0L6k0R.LCs.5rJdK7Q2c5Jv5Q5Jv5Q5Jv5Q5Jv', 'Jean', 'Dupont', 'CHEF_SERVICE'),
-('agent.gestion1@entreprise.com', '$2b$12$LQv3c1yqBWVHxkd0L6k0R.LCs.5rJdK7Q2c5Jv5Q5Jv5Q5Jv5Q5Jv', 'Marie', 'Martin', 'AGENT_GESTION'),
-('agent.controle1@entreprise.com', '$2b$12$LQv3c1yqBWVHxkd0L6k0R.LCs.5rJdK7Q2c5Jv5Q5Jv5Q5Jv5Q5Jv', 'Pierre', 'Durand', 'AGENT_CONTROLE');
-
-INSERT IGNORE INTO sites (name, address) VALUES
-('Siège Social', '123 Avenue des Champs-Élysées, 75008 Paris'),
-('Site Production', '456 Rue de l''Industrie, 69000 Lyon'),
-('Centre R&D', '789 Boulevard de l''Innovation, 31000 Toulouse');
-
-INSERT IGNORE INTO services (name, description) VALUES
-('Direction Générale', 'Direction générale de l''entreprise'),
-('Ressources Humaines', 'Service des ressources humaines'),
-('Informatique', 'Service des technologies de l''information'),
-('Production', 'Service de production'),
-('Recherche & Développement', 'Service de recherche et développement');
-
--- Mise à jour des chefs de service
-UPDATE services SET chef_id = (SELECT id FROM users WHERE email = 'chef.service1@entreprise.com') WHERE name = 'Direction Générale';
-
-INSERT IGNORE INTO checkpoints (site_id, name, sos_code) VALUES
-((SELECT id FROM sites WHERE name = 'Siège Social'), 'Entrée Principale', 'SOS-PARIS-001'),
-((SELECT id FROM sites WHERE name = 'Siège Social'), 'Parking Sous-sol', 'SOS-PARIS-002'),
-((SELECT id FROM sites WHERE name = 'Site Production'), 'Portail Usine', 'SOS-LYON-001'),
-((SELECT id FROM sites WHERE name = 'Centre R&D'), 'Accueil R&D', 'SOS-TOULOUSE-001');
-
--- Assignation des agents aux checkpoints
-INSERT IGNORE INTO agent_checkpoint_assignments (user_id, checkpoint_id, start_date) VALUES
-((SELECT id FROM users WHERE email = 'agent.controle1@entreprise.com'), 
- (SELECT id FROM checkpoints WHERE sos_code = 'SOS-PARIS-001'), NOW());
+-- =====================================================================================
+-- SECTION 10: VUES ET RAPPORTS
+-- =====================================================================================
 
 -- Vues utiles pour les rapports
 CREATE OR REPLACE VIEW active_visits AS
@@ -365,8 +527,31 @@ SELECT
 FROM visits
 GROUP BY DATE(entry_time);
 
+-- Vue pour les checkpoints avec leurs informations complètes
+CREATE OR REPLACE VIEW checkpoint_details AS
+SELECT 
+    c.*,
+    s.name as site_name,
+    s.city as site_city,
+    CONCAT(u.first_name, ' ', u.last_name) as agent_full_name
+FROM checkpoints c
+LEFT JOIN sites s ON c.site_id = s.id
+LEFT JOIN users u ON c.agent_id = u.id;
+
+-- Vue pour les visiteurs avec statut blacklist
+CREATE OR REPLACE VIEW visitor_status AS
+SELECT 
+    v.*,
+    CASE WHEN v.is_blacklisted = TRUE THEN 'BLACKLISTED' ELSE 'ACTIVE' END as status_label,
+    (SELECT COUNT(*) FROM visits vis WHERE vis.visitor_id = v.id) as total_visits,
+    (SELECT MAX(entry_time) FROM visits vis WHERE vis.visitor_id = v.id) as last_visit
+FROM visitors v;
+
+-- =====================================================================================
+-- SECTION 11: MESSAGES DE CONFIRMATION
+-- =====================================================================================
+
 -- Message de confirmation
-SELECT '✅ Tables créées avec succès dans la base sonabhy-es-db!' as message;
+SELECT '✅ Structure de base de données créée avec succès!' as message;
 SELECT CONCAT('📊 ', COUNT(*), ' tables créées') as message FROM information_schema.tables WHERE table_schema = 'sonabhy-es-db';
-SELECT '👤 Utilisateurs créés: admin@entreprise.com / password123' as message;
-SELECT '🏢 Sites créés: 3 sites avec checkpoints' as message;
+SELECT '� Base prête pour l''initialisation des données' as message;

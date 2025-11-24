@@ -1,4 +1,11 @@
-// swaggerSchemas.js
+// =====================================================================================
+// SWAGGER SCHEMAS - SYSTÈME DE GESTION DES VISITES MULTI-SITES
+// =====================================================================================
+// Version: 2.0
+// Date: 2024-11-24
+// Description: Schémas Swagger adaptés à la nouvelle structure de base de données
+// =====================================================================================
+
 const { z } = require("zod");
 
 // Import des schémas d'authentification
@@ -7,164 +14,98 @@ const { registerSchema, loginSchema, refreshTokenSchema } = require("../modules/
 // Import des schémas utilisateurs
 const { updateUserSchema, createUserSchema, updatePasswordSchema, updateAuthSettingsSchema } = require("../modules/user/user.schema");
 
-// Import des schémas sites
-const { createSiteSchema, updateSiteSchema, siteIdSchema } = require("../modules/site/site.schema");
+// =====================================================================================
+// SCHÉMAS DE QUERY POUR SWAGGER
+// =====================================================================================
 
-// Import des schémas checkpoints
-const { createCheckpointSchema, updateCheckpointSchema, checkpointIdSchema } = require("../modules/checkpoint/checkpoint.schema");
-
-// Import des schémas agents
-const { createAgentSchema, updateAgentSchema, agentIdSchema } = require("../modules/agent/agent.schema");
-
-// Import des schémas services
-const { createServiceSchema, updateServiceSchema, serviceIdSchema } = require("../modules/service/service.schema");
-
-// Import des schémas visiteurs
-const { createVisitorSchema, updateVisitorSchema, visitorIdSchema, blacklistVisitorSchema } = require("../modules/visitor/visitor.schema");
-
-// Import des schémas visites
-const { createVisitSchema, updateVisitSchema, visitIdSchema, checkoutSchema } = require("../modules/visit/visit.schema");
-
-// Import des schémas rendez-vous
-const { createAppointmentSchema, updateAppointmentSchema, appointmentIdSchema } = require("../modules/appointment/appointment.schema");
-
-// Import des schémas incidents
-const { createIncidentSchema, incidentIdSchema } = require("../modules/incident/incident.schema");
-
-// Import des schémas indésirables
-const { createNonDesirableSchema, nonDesirableIdSchema } = require("../modules/nondesirable/nondesirable.schema");
-
-// Import des schémas SOS
-const { createSOSSchema, sosIdSchema } = require("../modules/sos/sos.schema");
-
-// Schémas de query simplifiés pour Swagger (sans transformations)
 const baseQuerySchema = z.object({
   page: z.string().optional().describe("Page number"),
   limit: z.string().optional().describe("Items per page"),
   search: z.string().optional().describe("Search term")
 });
 
-const siteQuerySwaggerSchema = baseQuerySchema;
-
-const checkpointQuerySwaggerSchema = baseQuerySchema.extend({
-  siteId: z.string().optional().describe("Site ID filter")
+const siteQuerySchema = baseQuerySchema.extend({
+  city: z.string().optional().describe("City filter"),
+  status: z.string().optional().describe("Status filter"),
+  activityType: z.string().optional().describe("Activity type filter")
 });
 
-const agentQuerySwaggerSchema = baseQuerySchema.extend({
-  checkpointId: z.string().optional().describe("Checkpoint ID filter")
+const checkpointQuerySchema = baseQuerySchema.extend({
+  siteId: z.string().optional().describe("Site ID filter"),
+  status: z.enum(['active', 'inactive', 'maintenance', 'error']).optional().describe("Status filter"),
+  checkpointType: z.enum(['entry', 'exit', 'internal', 'emergency', 'patrol']).optional().describe("Type filter"),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional().describe("Priority filter")
 });
 
-const serviceQuerySwaggerSchema = baseQuerySchema;
-
-const visitorQuerySwaggerSchema = baseQuerySchema.extend({
+const visitorQuerySchema = baseQuerySchema.extend({
   company: z.string().optional().describe("Company filter"),
   isBlacklisted: z.string().optional().describe("Blacklist status filter (true/false)"),
-  idType: z.enum(['CNI', 'PASSEPORT', 'PERMIS_CONDUITE', 'CARTE_SEJOUR', 'AUTRE']).optional().describe("ID type filter")
+  idType: z.enum(['CNIB', 'PASSEPORT', 'PERMIS_CONDUITE']).optional().describe("ID type filter")
 });
 
-const visitQuerySwaggerSchema = baseQuerySchema.extend({
+const blacklistQuerySchema = baseQuerySchema.extend({
+  severityLevel: z.string().optional().describe("Severity level filter (1-4)"),
+  nationality: z.string().optional().describe("Nationality filter"),
+  incidentDate: z.string().optional().describe("Incident date filter")
+});
+
+const visitQuerySchema = baseQuerySchema.extend({
   visitorId: z.string().optional().describe("Visitor ID filter"),
   checkpointId: z.string().optional().describe("Checkpoint ID filter"),
   serviceId: z.string().optional().describe("Service ID filter"),
   status: z.enum(['active', 'finished', 'refused']).optional().describe("Visit status filter")
 });
 
-const appointmentQuerySwaggerSchema = baseQuerySchema.extend({
+const rendezvousQuerySchema = baseQuerySchema.extend({
+  organizerId: z.string().optional().describe("Organizer ID filter"),
   visitorId: z.string().optional().describe("Visitor ID filter"),
   serviceId: z.string().optional().describe("Service ID filter"),
-  upcoming: z.string().optional().describe("Upcoming appointments filter (true/false)")
+  status: z.enum(['pending', 'validated', 'cancelled']).optional().describe("Status filter"),
+  visitDate: z.string().optional().describe("Visit date filter (YYYY-MM-DD)")
 });
 
-const incidentQuerySwaggerSchema = baseQuerySchema.extend({
-  visitorId: z.string().optional().describe("Visitor ID filter"),
-  serviceId: z.string().optional().describe("Service ID filter"),
-  resolved: z.string().optional().describe("Resolution status filter (true/false)")
+const incidentQuerySchema = baseQuerySchema.extend({
+  visitId: z.string().optional().describe("Visit ID filter"),
+  reportedBy: z.string().optional().describe("Reporter ID filter"),
+  severityLevel: z.string().optional().describe("Severity level filter (1-3)"),
+  isResolved: z.string().optional().describe("Resolution status filter (true/false)")
 });
 
-const nondesirableQuerySwaggerSchema = baseQuerySchema;
-
-const sosQuerySwaggerSchema = baseQuerySchema.extend({
+const sosQuerySchema = baseQuerySchema.extend({
   checkpointId: z.string().optional().describe("Checkpoint ID filter"),
-  active: z.string().optional().describe("Active status filter (true/false)")
+  triggeredBy: z.string().optional().describe("Triggered by user ID filter"),
+  isResolved: z.string().optional().describe("Resolution status filter (true/false)")
 });
 
-// Convertit Zod → JSON Schema
+// =====================================================================================
+// SCHÉMAS D'ENTRÉE CONVERTIS POUR SWAGGER
+// =====================================================================================
 
-// Schémas Auth
+// Auth
 const RegisterInput = z.toJSONSchema(registerSchema);
 const LoginInput = z.toJSONSchema(loginSchema);
 const RefreshTokenInput = z.toJSONSchema(refreshTokenSchema);
 
-// Schémas User
+// User
 const CreateUserInput = z.toJSONSchema(createUserSchema);
 const UpdateUserInput = z.toJSONSchema(updateUserSchema);
 const UpdatePasswordInput = z.toJSONSchema(updatePasswordSchema);
 const UpdateAuthSettingsInput = z.toJSONSchema(updateAuthSettingsSchema);
 
-// Schémas Site
-const CreateSiteInput = z.toJSONSchema(createSiteSchema);
-const UpdateSiteInput = z.toJSONSchema(updateSiteSchema);
-const SiteIdInput = z.toJSONSchema(siteIdSchema);
-const SiteQueryInput = z.toJSONSchema(siteQuerySwaggerSchema);
+// Query Inputs
+const SiteQueryInput = z.toJSONSchema(siteQuerySchema);
+const CheckpointQueryInput = z.toJSONSchema(checkpointQuerySchema);
+const VisitorQueryInput = z.toJSONSchema(visitorQuerySchema);
+const BlacklistQueryInput = z.toJSONSchema(blacklistQuerySchema);
+const VisitQueryInput = z.toJSONSchema(visitQuerySchema);
+const RendezvousQueryInput = z.toJSONSchema(rendezvousQuerySchema);
+const IncidentQueryInput = z.toJSONSchema(incidentQuerySchema);
+const SosQueryInput = z.toJSONSchema(sosQuerySchema);
 
-// Schémas Checkpoint
-const CreateCheckpointInput = z.toJSONSchema(createCheckpointSchema);
-const UpdateCheckpointInput = z.toJSONSchema(updateCheckpointSchema);
-const CheckpointIdInput = z.toJSONSchema(checkpointIdSchema);
-const CheckpointQueryInput = z.toJSONSchema(checkpointQuerySwaggerSchema);
+// =====================================================================================
+// MODÈLES DE RÉPONSE SWAGGER - NOUVELLE STRUCTURE
+// =====================================================================================
 
-// Schémas Agent
-const CreateAgentInput = z.toJSONSchema(createAgentSchema);
-const UpdateAgentInput = z.toJSONSchema(updateAgentSchema);
-const AgentIdInput = z.toJSONSchema(agentIdSchema);
-const AgentQueryInput = z.toJSONSchema(agentQuerySwaggerSchema);
-
-// Schémas Service
-const CreateServiceInput = z.toJSONSchema(createServiceSchema);
-const UpdateServiceInput = z.toJSONSchema(updateServiceSchema);
-const ServiceIdInput = z.toJSONSchema(serviceIdSchema);
-const ServiceQueryInput = z.toJSONSchema(serviceQuerySwaggerSchema);
-
-// Schémas Visitor
-const CreateVisitorInput = z.toJSONSchema(createVisitorSchema);
-const UpdateVisitorInput = z.toJSONSchema(updateVisitorSchema);
-const VisitorIdInput = z.toJSONSchema(visitorIdSchema);
-const VisitorQueryInput = z.toJSONSchema(visitorQuerySwaggerSchema);
-const BlacklistVisitorInput = z.toJSONSchema(blacklistVisitorSchema);
-
-// Schémas Visit
-const CreateVisitInput = z.toJSONSchema(createVisitSchema);
-const UpdateVisitInput = z.toJSONSchema(updateVisitSchema);
-const VisitIdInput = z.toJSONSchema(visitIdSchema);
-const VisitQueryInput = z.toJSONSchema(visitQuerySwaggerSchema);
-// Schéma de checkout simplifié pour Swagger
-const checkoutSwaggerSchema = z.object({
-  endAt: z.string().optional().describe("End time (ISO datetime)")
-});
-const CheckoutVisitInput = z.toJSONSchema(checkoutSwaggerSchema);
-
-// Schémas Appointment (Rendez-vous)
-const CreateAppointmentInput = z.toJSONSchema(createAppointmentSchema);
-const UpdateAppointmentInput = z.toJSONSchema(updateAppointmentSchema);
-const AppointmentIdInput = z.toJSONSchema(appointmentIdSchema);
-const AppointmentQueryInput = z.toJSONSchema(appointmentQuerySwaggerSchema);
-
-// Schémas Incident
-const CreateIncidentInput = z.toJSONSchema(createIncidentSchema);
-const IncidentIdInput = z.toJSONSchema(incidentIdSchema);
-const IncidentQueryInput = z.toJSONSchema(incidentQuerySwaggerSchema);
-
-// Schémas Nondesirable
-const CreateNondesirableInput = z.toJSONSchema(createNonDesirableSchema);
-const NondesirableIdInput = z.toJSONSchema(nonDesirableIdSchema);
-const NondesirableQueryInput = z.toJSONSchema(nondesirableQuerySwaggerSchema);
-
-// Schémas SOS
-const CreateSosInput = z.toJSONSchema(createSOSSchema);
-const SosIdInput = z.toJSONSchema(sosIdSchema);
-const SosQueryInput = z.toJSONSchema(sosQuerySwaggerSchema);
-
-// Schémas de réponse (modèles de données)
 const User = {
   type: "object",
   properties: {
@@ -187,9 +128,46 @@ const Site = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
-    name: { type: "string" },
-    address: { type: "string" },
+    name: { type: "string", nullable: true },
+    code: { type: "string", nullable: true },
+    address: { type: "string", nullable: true },
+    city: { type: "string", nullable: true },
+    postalCode: { type: "string", nullable: true },
+    country: { type: "string", nullable: true },
+    region: { type: "string", nullable: true },
+    activityType: { type: "string", nullable: true },
+    status: { type: "string", nullable: true },
+    description: { type: "string", nullable: true },
+    
+    // Contact information
+    email: { type: "string", format: "email", nullable: true },
     phone: { type: "string", nullable: true },
+    
+    // Management
+    manager: { type: "string", nullable: true },
+    managerEmail: { type: "string", format: "email", nullable: true },
+    managerPhone: { type: "string", nullable: true },
+    website: { type: "string", format: "uri", nullable: true },
+    
+    // Facilities
+    handicapAccessibility: { type: "boolean", nullable: true },
+    environmentalCertification: { type: "string", nullable: true },
+    energyConsumption: { type: "number", nullable: true },
+    monthlyCost: { type: "number", nullable: true },
+    securitySystem: { type: "string", nullable: true },
+    guarding: { type: "string", nullable: true },
+    parkingAvailable: { type: "boolean", nullable: true },
+    
+    // Capacity and metrics
+    annualBudget: { type: "number", nullable: true },
+    maxEmployeesCapacity: { type: "integer", nullable: true },
+    numberOfEmployees: { type: "integer", nullable: true },
+    numberOfBuildings: { type: "integer", nullable: true },
+    numberOfParkingSpaces: { type: "integer", nullable: true },
+    surfaceArea: { type: "number", nullable: true },
+    usefulSurfaceArea: { type: "number", nullable: true },
+    
+    comments: { type: "string", nullable: true },
     isActive: { type: "boolean" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" }
@@ -200,36 +178,63 @@ const Checkpoint = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
-    siteId: { type: "string", format: "uuid" },
-    name: { type: "string" },
-    sosCode: { type: "string" },
-    locationDescription: { type: "string", nullable: true },
-    isActive: { type: "boolean" },
-    createdAt: { type: "string", format: "date-time" },
-    updatedAt: { type: "string", format: "date-time" }
-  }
-};
-
-const Agent = {
-  type: "object",
-  properties: {
-    id: { type: "string", format: "uuid" },
-    firstname: { type: "string" },
-    lastname: { type: "string" },
-    email: { type: "string", format: "email" },
-    createdAt: { type: "string", format: "date-time" },
-    updatedAt: { type: "string", format: "date-time" }
-  }
-};
-
-const Service = {
-  type: "object",
-  properties: {
-    id: { type: "string", format: "uuid" },
     name: { type: "string" },
     description: { type: "string", nullable: true },
-    chefId: { type: "string", format: "uuid", nullable: true },
-    isActive: { type: "boolean" },
+    siteId: { type: "string", format: "uuid" },
+    
+    // Location
+    zone: { type: "string", nullable: true },
+    building: { type: "string", nullable: true },
+    floor: { type: "string", nullable: true },
+    coordinatesLatitude: { type: "number", nullable: true },
+    coordinatesLongitude: { type: "number", nullable: true },
+    
+    // SOS Configuration
+    sosId: { type: "string" },
+    sosConfiguration: { type: "object", nullable: true },
+    
+    // Agent Assignment
+    agentId: { type: "string", format: "uuid", nullable: true },
+    agentName: { type: "string", nullable: true },
+    agentEmail: { type: "string", format: "email", nullable: true },
+    agentPhone: { type: "string", nullable: true },
+    assignmentDate: { type: "string", format: "date-time", nullable: true },
+    
+    // Status and State
+    status: { 
+      type: "string", 
+      enum: ["active", "inactive", "maintenance", "error"],
+      default: "active"
+    },
+    checkpointType: { 
+      type: "string", 
+      enum: ["entry", "exit", "internal", "emergency", "patrol"],
+      default: "internal"
+    },
+    priority: { 
+      type: "string", 
+      enum: ["low", "medium", "high", "critical"],
+      default: "medium"
+    },
+    
+    // Scheduling
+    controlFrequency: { 
+      type: "string", 
+      enum: ["hourly", "daily", "weekly", "monthly", "on_demand"],
+      nullable: true
+    },
+    nextControl: { type: "string", format: "date-time", nullable: true },
+    lastControl: { type: "string", format: "date-time", nullable: true },
+    
+    // Equipment and Materials
+    equipment: { type: "array", items: { type: "string" }, nullable: true },
+    requiredMaterial: { type: "array", items: { type: "string" }, nullable: true },
+    specialInstructions: { type: "string", nullable: true },
+    
+    // Metadata
+    active: { type: "boolean", default: true },
+    createdBy: { type: "string", nullable: true },
+    modifiedBy: { type: "string", nullable: true },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" }
   }
@@ -245,14 +250,60 @@ const Visitor = {
     email: { type: "string", format: "email", nullable: true },
     idType: { 
       type: "string", 
-      enum: ["CNI", "PASSEPORT", "PERMIS_CONDUITE", "CARTE_SEJOUR", "AUTRE"] 
+      enum: ["CNIB", "PASSEPORT", "PERMIS_CONDUITE"] 
     },
     idNumber: { type: "string" },
     idScanUrl: { type: "string", nullable: true },
     photoUrl: { type: "string", nullable: true },
-    isBlacklisted: { type: "boolean" },
+    isBlacklisted: { type: "boolean", default: false },
     blacklistReason: { type: "string", nullable: true },
     company: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" }
+  }
+};
+
+const BlacklistHistory = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    
+    // Référence visiteur (optionnelle)
+    visitorId: { type: "string", format: "uuid", nullable: true },
+    
+    // Informations d'identification (pour signalement national)
+    firstName: { type: "string", nullable: true },
+    lastName: { type: "string", nullable: true },
+    idType: { 
+      type: "string", 
+      enum: ["CNIB", "PASSEPORT", "PERMIS_CONDUITE"],
+      nullable: true 
+    },
+    idNumber: { type: "string", nullable: true },
+    phone: { type: "string", nullable: true },
+    email: { type: "string", format: "email", nullable: true },
+    nationality: { type: "string", nullable: true },
+    birthDate: { type: "string", format: "date", nullable: true },
+    birthPlace: { type: "string", nullable: true },
+    
+    // Informations du signalement
+    action: { 
+      type: "string", 
+      enum: ["added", "removed"] 
+    },
+    reason: { type: "string" },
+    severityLevel: { 
+      type: "integer", 
+      minimum: 1, 
+      maximum: 4, 
+      default: 1,
+      description: "1: Low, 2: Medium, 3: High, 4: Critical"
+    },
+    incidentDate: { type: "string", format: "date", nullable: true },
+    incidentLocation: { type: "string", nullable: true },
+    
+    // Métadonnées
+    createdBy: { type: "string", format: "uuid" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" }
   }
@@ -267,14 +318,15 @@ const Visit = {
     serviceId: { type: "string", format: "uuid" },
     reason: { type: "string" },
     plannedId: { type: "string", format: "uuid", nullable: true },
-    isGroup: { type: "boolean" },
+    isGroup: { type: "boolean", default: false },
     groupCode: { type: "string", nullable: true },
     entryTime: { type: "string", format: "date-time" },
     exitTime: { type: "string", format: "date-time", nullable: true },
     createdBy: { type: "string", format: "uuid" },
     status: { 
       type: "string", 
-      enum: ["active", "finished", "refused"] 
+      enum: ["active", "finished", "refused"],
+      default: "active"
     },
     signatureUrl: { type: "string", nullable: true },
     notes: { type: "string", nullable: true },
@@ -282,7 +334,35 @@ const Visit = {
   }
 };
 
-const Appointment = {
+const Service = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    name: { type: "string" },
+    description: { type: "string", nullable: true },
+    chefId: { type: "string", format: "uuid", nullable: true },
+    isActive: { type: "boolean", default: true },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" }
+  }
+};
+
+const SosAlert = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    checkpointId: { type: "string", format: "uuid" },
+    triggeredBy: { type: "string", format: "uuid" },
+    triggeredAt: { type: "string", format: "date-time" },
+    message: { type: "string", nullable: true },
+    isResolved: { type: "boolean", default: false },
+    resolvedAt: { type: "string", format: "date-time", nullable: true },
+    resolvedBy: { type: "string", format: "uuid", nullable: true },
+    resolutionNotes: { type: "string", nullable: true }
+  }
+};
+
+const Rendezvous = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
@@ -297,7 +377,8 @@ const Appointment = {
     qrCode: { type: "string" },
     status: { 
       type: "string", 
-      enum: ["pending", "validated", "cancelled"] 
+      enum: ["pending", "validated", "cancelled"],
+      default: "pending"
     },
     notes: { type: "string", nullable: true },
     createdAt: { type: "string", format: "date-time" },
@@ -305,7 +386,7 @@ const Appointment = {
   }
 };
 
-const Incident = {
+const VisitIncident = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
@@ -313,40 +394,145 @@ const Incident = {
     reportedBy: { type: "string", format: "uuid" },
     title: { type: "string" },
     description: { type: "string" },
-    severityLevel: { type: "integer" },
-    isResolved: { type: "boolean" },
+    severityLevel: { 
+      type: "integer", 
+      minimum: 1, 
+      maximum: 3, 
+      default: 1,
+      description: "1: Low, 2: Medium, 3: High"
+    },
+    isResolved: { type: "boolean", default: false },
     resolvedAt: { type: "string", format: "date-time", nullable: true },
-    resolvedBy: { type: "string", format: "uuid", nullable: true },
     resolutionNotes: { type: "string", nullable: true },
     createdAt: { type: "string", format: "date-time" }
   }
 };
 
-const Nondesirable = {
+const AgentCheckpointAssignment = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
-    visitorId: { type: "string", format: "uuid" },
-    reason: { type: "string" },
-    addedBy: { type: "string", format: "uuid" },
-    isActive: { type: "boolean" },
-    createdAt: { type: "string", format: "date-time" },
-    updatedAt: { type: "string", format: "date-time" }
+    userId: { type: "string", format: "uuid" },
+    checkpointId: { type: "string", format: "uuid" },
+    startDate: { type: "string", format: "date-time" },
+    endDate: { type: "string", format: "date-time", nullable: true },
+    createdAt: { type: "string", format: "date-time" }
   }
 };
 
-const SosAlert = {
+const VisitorGroup = {
   type: "object",
   properties: {
     id: { type: "string", format: "uuid" },
-    checkpointId: { type: "string", format: "uuid" },
-    triggeredBy: { type: "string", format: "uuid" },
-    triggeredAt: { type: "string", format: "date-time" },
-    message: { type: "string", nullable: true },
-    isResolved: { type: "boolean" },
-    resolvedAt: { type: "string", format: "date-time", nullable: true },
-    resolvedBy: { type: "string", format: "uuid", nullable: true },
-    resolutionNotes: { type: "string", nullable: true }
+    groupCode: { type: "string" },
+    organizerId: { type: "string", format: "uuid" },
+    serviceId: { type: "string", format: "uuid" },
+    reason: { type: "string" },
+    visitDate: { type: "string", format: "date" },
+    expectedCount: { type: "integer", default: 1 },
+    notes: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" }
+  }
+};
+
+const GroupVisitor = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    groupId: { type: "string", format: "uuid" },
+    visitorId: { type: "string", format: "uuid" },
+    createdAt: { type: "string", format: "date-time" }
+  }
+};
+
+const AuditLog = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    userId: { type: "string", format: "uuid", nullable: true },
+    action: { type: "string" },
+    entity: { type: "string" },
+    entityId: { type: "string", format: "uuid", nullable: true },
+    oldValues: { type: "object", nullable: true },
+    newValues: { type: "object", nullable: true },
+    ipAddress: { type: "string", nullable: true },
+    userAgent: { type: "string", nullable: true },
+    createdAt: { type: "string", format: "date-time" }
+  }
+};
+
+const RefreshToken = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    token: { type: "string" },
+    userId: { type: "string", format: "uuid" },
+    expiresAt: { type: "string", format: "date-time" },
+    createdAt: { type: "string", format: "date-time" }
+  }
+};
+
+// =====================================================================================
+// MODÈLES D'ÉNUMÉRATION
+// =====================================================================================
+
+const UserRole = {
+  type: "object",
+  properties: {
+    roleName: { 
+      type: "string", 
+      enum: ["ADMIN", "AGENT_GESTION", "AGENT_CONTROLE", "CHEF_SERVICE"] 
+    }
+  }
+};
+
+const IdType = {
+  type: "object",
+  properties: {
+    typeName: { 
+      type: "string", 
+      enum: ["CNIB", "PASSEPORT", "PERMIS_CONDUITE"] 
+    }
+  }
+};
+
+const CheckpointStatus = {
+  type: "object",
+  properties: {
+    statusName: { 
+      type: "string", 
+      enum: ["active", "inactive", "maintenance", "error"] 
+    }
+  }
+};
+
+const CheckpointType = {
+  type: "object",
+  properties: {
+    typeName: { 
+      type: "string", 
+      enum: ["entry", "exit", "internal", "emergency", "patrol"] 
+    }
+  }
+};
+
+const CheckpointPriority = {
+  type: "object",
+  properties: {
+    priorityName: { 
+      type: "string", 
+      enum: ["low", "medium", "high", "critical"] 
+    }
+  }
+};
+
+const ControlFrequency = {
+  type: "object",
+  properties: {
+    frequencyName: { 
+      type: "string", 
+      enum: ["hourly", "daily", "weekly", "monthly", "on_demand"] 
+    }
   }
 };
 
@@ -401,7 +587,13 @@ const PaginatedResponse = {
   }
 };
 
+// =====================================================================================
+// EXPORTS - SCHÉMAS SWAGGER ADAPTÉS
+// =====================================================================================
+
 module.exports = {
+  // ===== SCHÉMAS D'ENTRÉE =====
+  
   // Auth
   RegisterInput,
   LoginInput,
@@ -413,79 +605,50 @@ module.exports = {
   UpdatePasswordInput,
   UpdateAuthSettingsInput,
   
-  // Site
-  CreateSiteInput,
-  UpdateSiteInput,
-  SiteIdInput,
+  // Query Inputs
   SiteQueryInput,
-  
-  // Checkpoint
-  CreateCheckpointInput,
-  UpdateCheckpointInput,
-  CheckpointIdInput,
   CheckpointQueryInput,
-  
-  // Agent
-  CreateAgentInput,
-  UpdateAgentInput,
-  AgentIdInput,
-  AgentQueryInput,
-  
-  // Service
-  CreateServiceInput,
-  UpdateServiceInput,
-  ServiceIdInput,
-  ServiceQueryInput,
-  
-  // Visitor
-  CreateVisitorInput,
-  UpdateVisitorInput,
-  VisitorIdInput,
   VisitorQueryInput,
-  BlacklistVisitorInput,
-  
-  // Visit
-  CreateVisitInput,
-  UpdateVisitInput,
-  VisitIdInput,
+  BlacklistQueryInput,
   VisitQueryInput,
-  CheckoutVisitInput,
-  
-  // Appointment
-  CreateAppointmentInput,
-  UpdateAppointmentInput,
-  AppointmentIdInput,
-  AppointmentQueryInput,
-  
-  // Incident
-  CreateIncidentInput,
-  IncidentIdInput,
+  RendezvousQueryInput,
   IncidentQueryInput,
-  
-  // Nondesirable
-  CreateNondesirableInput,
-  NondesirableIdInput,
-  NondesirableQueryInput,
-  
-  // SOS
-  CreateSosInput,
-  SosIdInput,
   SosQueryInput,
 
-  // Response Models
+  // ===== MODÈLES DE RÉPONSE PRINCIPAUX =====
+  
+  // Core Models
   User,
   Site,
   Checkpoint,
-  Agent,
-  Service,
   Visitor,
+  Service,
   Visit,
-  Appointment,
-  Incident,
-  Nondesirable,
+  Rendezvous,
+  
+  // Management & Assignment
+  AgentCheckpointAssignment,
+  VisitorGroup,
+  GroupVisitor,
+  
+  // Security & Incidents
+  BlacklistHistory,
   SosAlert,
+  VisitIncident,
+  
+  // System & Audit
+  AuditLog,
+  RefreshToken,
 
-  // API Response Types
+  // ===== MODÈLES D'ÉNUMÉRATION =====
+  UserRole,
+  IdType,
+  CheckpointStatus,
+  CheckpointType,
+  CheckpointPriority,
+  ControlFrequency,
+
+  // ===== TYPES DE RÉPONSE API =====
   ApiResponse,
   ApiError,
   ErrorResponse,

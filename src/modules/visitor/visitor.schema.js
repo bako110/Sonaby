@@ -1,8 +1,8 @@
 const { z } = require('zod');
 const { optionalEmailValidation } = require('../../utils/validation');
 
-// Enum pour les types d'identité
-const idTypeEnum = z.enum(['CNI', 'PASSEPORT', 'PERMIS_CONDUITE', 'CARTE_SEJOUR', 'AUTRE']);
+// Enum pour les types d'identité (selon la nouvelle structure)
+const idTypeEnum = z.enum(['CNIB', 'PASSEPORT', 'PERMIS_CONDUITE']);
 
 const createVisitorSchema = z.object({
     firstName: z.string().min(1, 'Le prénom est requis'),

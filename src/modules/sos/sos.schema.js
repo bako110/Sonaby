@@ -1,28 +1,37 @@
 const { z } = require('zod');
 
+// Schéma pour créer une alerte SOS
 const createSOSSchema = z.object({
-  checkpointId: z.string().cuid('ID de checkpoint invalide'),
-  message: z.string().optional()
+  checkpointId: z.string().uuid('ID de checkpoint invalide'),
+  triggeredBy: z.string().uuid('ID de l\'utilisateur invalide'),
+  message: z.string().optional(),
+  triggeredAt: z.string().datetime('Date de déclenchement invalide').optional()
+});
+
+// Schéma pour résoudre une alerte SOS
+const resolveSOSSchema = z.object({
+  isResolved: z.literal(true),
+  resolvedAt: z.string().datetime('Date de résolution invalide').optional(),
+  resolvedBy: z.string().uuid('ID du résolveur invalide'),
+  resolutionNotes: z.string().optional()
 });
 
 const sosIdSchema = z.object({
-  id: z.string().cuid('ID de SOS invalide')
+  id: z.string().uuid('ID de SOS invalide')
 });
 
 const sosQuerySchema = z.object({
   page: z.string().optional().transform(val => val ? parseInt(val) : 1),
   limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
-  checkpointId: z.string().cuid().optional(),
-  active: z.string().optional().transform(val => val === 'true')
-});
-
-const deactivateSOSSchema = z.object({
-  isActive: z.boolean().optional().default(false)
+  search: z.string().optional(),
+  checkpointId: z.string().uuid().optional(),
+  triggeredBy: z.string().uuid().optional(),
+  isResolved: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
 });
 
 module.exports = {
   createSOSSchema,
+  resolveSOSSchema,
   sosIdSchema,
-  sosQuerySchema,
-  deactivateSOSSchema
+  sosQuerySchema
 };
