@@ -60,18 +60,81 @@ router.use(authenticateToken);
  *           maxLength: 50
  *     UpdateCheckpointRequest:
  *       type: object
+ *       description: Données pour mettre à jour un checkpoint
  *       properties:
  *         name:
  *           type: string
- *           description: Nom du checkpoint
+ *           description: Nouveau nom du checkpoint
  *           maxLength: 100
+ *           example: "Checkpoint Entrée Principale - Rénové"
  *         siteId:
  *           type: string
- *           description: ID du site associé
- *         sosIdentifier:
+ *           format: uuid
+ *           description: ID du nouveau site associé
+ *           example: "550e8400-e29b-41d4-a716-446655440001"
+ *         sosId:
  *           type: string
- *           description: Identifiant unique pour les alertes SOS
- *           maxLength: 50
+ *           description: Nouvel identifiant unique pour les alertes SOS
+ *           maxLength: 100
+ *           example: "SOS-ENT-001-V2"
+ *         description:
+ *           type: string
+ *           description: Description du checkpoint
+ *           example: "Point de contrôle principal après rénovation"
+ *         zone:
+ *           type: string
+ *           description: Zone du checkpoint
+ *           example: "Entrée principale"
+ *         building:
+ *           type: string
+ *           description: Bâtiment où se trouve le checkpoint
+ *           example: "Bâtiment A"
+ *         floor:
+ *           type: string
+ *           description: Étage du checkpoint
+ *           example: "Rez-de-chaussée"
+ *         status:
+ *           type: string
+ *           enum: ["active", "inactive", "maintenance"]
+ *           description: Statut du checkpoint
+ *           example: "active"
+ *         checkpointType:
+ *           type: string
+ *           enum: ["entry", "exit", "internal", "emergency"]
+ *           description: Type de checkpoint
+ *           example: "entry"
+ *         priority:
+ *           type: string
+ *           enum: ["low", "medium", "high", "critical"]
+ *           description: Priorité du checkpoint
+ *           example: "high"
+ *         controlFrequency:
+ *           type: string
+ *           enum: ["hourly", "daily", "weekly", "monthly"]
+ *           description: Fréquence de contrôle
+ *           example: "daily"
+ *         specialInstructions:
+ *           type: string
+ *           description: Instructions spéciales pour ce checkpoint
+ *           example: "Vérifier les badges visiteurs"
+ *         active:
+ *           type: boolean
+ *           description: Le checkpoint est-il actif ?
+ *           example: true
+ *       example:
+ *         name: "Checkpoint Entrée Principale - Rénové"
+ *         siteId: "550e8400-e29b-41d4-a716-446655440001"
+ *         sosId: "SOS-ENT-001-V2"
+ *         description: "Point de contrôle principal après rénovation"
+ *         zone: "Entrée principale"
+ *         building: "Bâtiment A"
+ *         floor: "Rez-de-chaussée"
+ *         status: "active"
+ *         checkpointType: "entry"
+ *         priority: "high"
+ *         controlFrequency: "daily"
+ *         specialInstructions: "Vérifier les badges visiteurs"
+ *         active: true
  *     AssignAgentRequest:
  *       type: object
  *       required:
@@ -223,7 +286,16 @@ router.get('/:id', checkpointController.getCheckpointById);
  * @swagger
  * /api/checkpoints/{id}:
  *   put:
- *     summary: Mettre à jour un checkpoint
+ *     summary: 🔧 Mettre à jour un checkpoint
+ *     description: |
+ *       Met à jour les informations d'un checkpoint existant.
+ *       
+ *       **Permissions requises :** ADMIN ou AGENT_GESTION
+ *       
+ *       **Champs modifiables :**
+ *       - Nom du checkpoint
+ *       - Site associé
+ *       - Identifiant SOS (doit être unique)
  *     tags: [Checkpoints]
  *     security:
  *       - bearerAuth: []
@@ -233,22 +305,110 @@ router.get('/:id', checkpointController.getCheckpointById);
  *         required: true
  *         schema:
  *           type: string
- *         description: ID du checkpoint
+ *           format: uuid
+ *         description: ID unique du checkpoint à modifier
+ *         example: "770e8400-e29b-41d4-a716-446655440001"
  *     requestBody:
  *       required: true
+ *       description: Données de mise à jour du checkpoint
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateCheckpointRequest'
+ *           examples:
+ *             update_name:
+ *               summary: Modifier le nom
+ *               value:
+ *                 name: "Nouveau nom du checkpoint"
+ *             update_site:
+ *               summary: Changer de site
+ *               value:
+ *                 siteId: "550e8400-e29b-41d4-a716-446655440002"
+ *             update_sos:
+ *               summary: Modifier l'identifiant SOS
+ *               value:
+ *                 sosId: "SOS-NEW-001"
+ *             complete_update:
+ *               summary: Mise à jour complète
+ *               value:
+ *                 name: "Checkpoint Entrée Principale - Rénové"
+ *                 siteId: "550e8400-e29b-41d4-a716-446655440001"
+ *                 sosId: "SOS-ENT-001-V2"
  *     responses:
  *       200:
- *         description: Checkpoint mis à jour avec succès
- *       403:
- *         description: Accès refusé - ADMIN ou AGENT_GESTION requis
- *       404:
- *         description: Checkpoint non trouvé
+ *         description: ✅ Checkpoint mis à jour avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Checkpoint mis à jour avec succès"
+ *                 data:
+ *                   $ref: '#/components/schemas/Checkpoint'
+ *             example:
+ *               success: true
+ *               message: "Checkpoint mis à jour avec succès"
+ *               data:
+ *                 id: "770e8400-e29b-41d4-a716-446655440001"
+ *                 name: "Checkpoint Entrée Principale - Rénové"
+ *                 siteId: "550e8400-e29b-41d4-a716-446655440001"
+ *                 sosId: "SOS-ENT-001-V2"
+ *                 createdAt: "2024-11-24T08:00:00Z"
+ *                 updatedAt: "2024-11-24T15:30:00Z"
  *       400:
- *         description: Identifiant SOS déjà utilisé
+ *         description: ❌ Données invalides
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *             examples:
+ *               sos_exists:
+ *                 summary: Identifiant SOS déjà utilisé
+ *                 value:
+ *                   success: false
+ *                   message: "Identifiant SOS déjà utilisé par un autre checkpoint"
+ *               invalid_site:
+ *                 summary: Site inexistant
+ *                 value:
+ *                   success: false
+ *                   message: "Site non trouvé"
+ *       403:
+ *         description: ❌ Accès refusé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Accès refusé. Seuls les administrateurs et agents de gestion peuvent modifier les checkpoints."
+ *       404:
+ *         description: ❌ Checkpoint non trouvé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Checkpoint non trouvé"
  */
 router.put('/:id', checkpointController.updateCheckpoint);
 

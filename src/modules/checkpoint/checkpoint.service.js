@@ -144,10 +144,10 @@ class CheckpointService {
           sosAlerts: {
             take: 5,
             orderBy: {
-              createdAt: 'desc'
+              triggeredAt: 'desc'
             },
             include: {
-              sender: {
+              triggerer: {
                 select: {
                   id: true,
                   firstName: true,

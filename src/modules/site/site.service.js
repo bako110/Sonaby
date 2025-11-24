@@ -5,6 +5,37 @@ const prisma = new PrismaClient();
 class SiteService {
   async createSite(siteData) {
     try {
+      // Générer un code unique si aucun n'est fourni
+      if (!siteData.code) {
+        const cityPrefix = siteData.city.substring(0, 3).toUpperCase();
+        const existingCodes = await prisma.site.findMany({
+          where: {
+            code: {
+              startsWith: cityPrefix
+            }
+          },
+          select: { code: true }
+        });
+        
+        let counter = 1;
+        let newCode;
+        do {
+          newCode = `${cityPrefix}${counter.toString().padStart(3, '0')}`;
+          counter++;
+        } while (existingCodes.some(site => site.code === newCode));
+        
+        siteData.code = newCode;
+      } else {
+        // Vérifier si le code existe déjà
+        const existingSite = await prisma.site.findUnique({
+          where: { code: siteData.code }
+        });
+        
+        if (existingSite) {
+          throw new Error(`Un site avec le code "${siteData.code}" existe déjà`);
+        }
+      }
+
       const site = await prisma.site.create({
         data: siteData,
         include: {
@@ -14,6 +45,17 @@ class SiteService {
       return site;
     } catch (error) {
       throw new Error(`Erreur lors de la création du site: ${error.message}`);
+    }
+  }
+
+  async checkCodeAvailability(code) {
+    try {
+      const existingSite = await prisma.site.findUnique({
+        where: { code }
+      });
+      return !existingSite;
+    } catch (error) {
+      throw new Error(`Erreur lors de la vérification du code: ${error.message}`);
     }
   }
 

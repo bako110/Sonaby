@@ -43,8 +43,8 @@ class VisitorService {
       
       if (search) {
         whereClause.OR = [
-          { firstname: { contains: search, mode: 'insensitive' } },
-          { lastname: { contains: search, mode: 'insensitive' } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search, mode: 'insensitive' } }
         ];
@@ -421,8 +421,8 @@ class VisitorService {
       return {
         visitor: {
           id: visitor.id,
-          firstname: visitor.firstname,
-          lastname: visitor.lastname,
+          firstName: visitor.firstName,
+          lastName: visitor.lastName,
           company: visitor.company
         },
         period: {

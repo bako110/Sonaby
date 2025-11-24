@@ -480,15 +480,132 @@ const Service = {
 const SosAlert = {
   type: "object",
   properties: {
-    id: { type: "string", format: "uuid" },
-    checkpointId: { type: "string", format: "uuid" },
-    triggeredBy: { type: "string", format: "uuid" },
-    triggeredAt: { type: "string", format: "date-time" },
-    message: { type: "string", nullable: true },
-    isResolved: { type: "boolean", default: false },
-    resolvedAt: { type: "string", format: "date-time", nullable: true },
-    resolvedBy: { type: "string", format: "uuid", nullable: true },
-    resolutionNotes: { type: "string", nullable: true }
+    id: { 
+      type: "string", 
+      format: "uuid",
+      description: "Identifiant unique de l'alerte SOS",
+      example: "cc0e8400-e29b-41d4-a716-446655440001"
+    },
+    checkpointId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du checkpoint d'où provient l'alerte",
+      example: "770e8400-e29b-41d4-a716-446655440002"
+    },
+    triggeredBy: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID de l'utilisateur qui a déclenché l'alerte",
+      example: "a8969b03-c8e6-11f0-aa39-0242ac140013"
+    },
+    triggeredAt: { 
+      type: "string", 
+      format: "date-time",
+      description: "Date et heure de déclenchement de l'alerte",
+      example: "2024-11-23T16:45:00Z"
+    },
+    message: { 
+      type: "string", 
+      nullable: true,
+      description: "Message décrivant la situation d'urgence",
+      example: "Tentative d'effraction véhicule dans le parking"
+    },
+    isResolved: { 
+      type: "boolean", 
+      default: false,
+      description: "L'alerte est-elle résolue ?",
+      example: true
+    },
+    resolvedAt: { 
+      type: "string", 
+      format: "date-time", 
+      nullable: true,
+      description: "Date et heure de résolution de l'alerte",
+      example: "2024-11-23T17:15:00Z"
+    },
+    resolvedBy: { 
+      type: "string", 
+      format: "uuid", 
+      nullable: true,
+      description: "ID de l'utilisateur qui a résolu l'alerte",
+      example: "6985b877-c56b-11f0-aa39-0242ac140013"
+    },
+    resolutionNotes: { 
+      type: "string", 
+      nullable: true,
+      description: "Notes sur la résolution de l'alerte",
+      example: "Fausse alerte - Propriétaire qui avait perdu ses clés"
+    }
+  },
+  example: {
+    id: "cc0e8400-e29b-41d4-a716-446655440001",
+    checkpointId: "770e8400-e29b-41d4-a716-446655440002",
+    triggeredBy: "a8969b03-c8e6-11f0-aa39-0242ac140013",
+    triggeredAt: "2024-11-23T16:45:00Z",
+    message: "Tentative d'effraction véhicule dans le parking",
+    isResolved: true,
+    resolvedAt: "2024-11-23T17:15:00Z",
+    resolvedBy: "6985b877-c56b-11f0-aa39-0242ac140013",
+    resolutionNotes: "Fausse alerte - Propriétaire qui avait perdu ses clés"
+  }
+};
+
+const CreateIncidentInput = {
+  type: "object",
+  required: ["visitId", "title", "description"],
+  properties: {
+    visitId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID de la visite concernée",
+      example: "aa0e8400-e29b-41d4-a716-446655440001"
+    },
+    title: { 
+      type: "string",
+      description: "Titre court de l'incident",
+      example: "Badge visiteur défaillant"
+    },
+    description: { 
+      type: "string",
+      description: "Description détaillée de l'incident",
+      example: "Le badge temporaire du visiteur ne fonctionnait pas sur les lecteurs du 2ème étage"
+    },
+    severityLevel: { 
+      type: "integer", 
+      minimum: 1, 
+      maximum: 3, 
+      default: 1,
+      description: "Niveau de gravité: 1=Faible, 2=Moyen, 3=Élevé",
+      example: 1
+    }
+  },
+  example: {
+    visitId: "aa0e8400-e29b-41d4-a716-446655440001",
+    title: "Badge visiteur défaillant",
+    description: "Le badge temporaire du visiteur ne fonctionnait pas sur les lecteurs du 2ème étage",
+    severityLevel: 1
+  }
+};
+
+const CreateSosInput = {
+  type: "object",
+  required: ["checkpointId", "message"],
+  properties: {
+    checkpointId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du checkpoint d'où provient l'alerte",
+      example: "770e8400-e29b-41d4-a716-446655440002"
+    },
+    message: { 
+      type: "string",
+      description: "Message décrivant la situation d'urgence",
+      example: "Tentative d'effraction véhicule dans le parking"
+    }
+  },
+  example: {
+    checkpointId: "770e8400-e29b-41d4-a716-446655440002",
+    message: "Tentative d'effraction véhicule dans le parking"
   }
 };
 
@@ -516,25 +633,82 @@ const Rendezvous = {
   }
 };
 
-const VisitIncident = {
+const Incident = {
   type: "object",
   properties: {
-    id: { type: "string", format: "uuid" },
-    visitId: { type: "string", format: "uuid" },
-    reportedBy: { type: "string", format: "uuid" },
-    title: { type: "string" },
-    description: { type: "string" },
+    id: { 
+      type: "string", 
+      format: "uuid",
+      description: "Identifiant unique de l'incident",
+      example: "bb0e8400-e29b-41d4-a716-446655440001"
+    },
+    visitId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID de la visite concernée",
+      example: "aa0e8400-e29b-41d4-a716-446655440001"
+    },
+    reportedBy: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID de l'agent qui a signalé l'incident",
+      example: "e5c397cd-c586-11f0-aa39-0242ac140013"
+    },
+    title: { 
+      type: "string",
+      description: "Titre court de l'incident",
+      example: "Badge visiteur défaillant"
+    },
+    description: { 
+      type: "string",
+      description: "Description détaillée de l'incident",
+      example: "Le badge temporaire du visiteur ne fonctionnait pas sur les lecteurs du 2ème étage"
+    },
     severityLevel: { 
       type: "integer", 
       minimum: 1, 
       maximum: 3, 
       default: 1,
-      description: "1: Low, 2: Medium, 3: High"
+      description: "Niveau de gravité: 1=Faible, 2=Moyen, 3=Élevé",
+      example: 1
     },
-    isResolved: { type: "boolean", default: false },
-    resolvedAt: { type: "string", format: "date-time", nullable: true },
-    resolutionNotes: { type: "string", nullable: true },
-    createdAt: { type: "string", format: "date-time" }
+    isResolved: { 
+      type: "boolean", 
+      default: false,
+      description: "L'incident est-il résolu ?",
+      example: true
+    },
+    resolvedAt: { 
+      type: "string", 
+      format: "date-time", 
+      nullable: true,
+      description: "Date et heure de résolution",
+      example: "2024-11-24T10:30:00Z"
+    },
+    resolutionNotes: { 
+      type: "string", 
+      nullable: true,
+      description: "Notes sur la résolution de l'incident",
+      example: "Badge remplacé, problème résolu"
+    },
+    createdAt: { 
+      type: "string", 
+      format: "date-time",
+      description: "Date de création de l'incident",
+      example: "2024-11-24T09:15:00Z"
+    }
+  },
+  example: {
+    id: "bb0e8400-e29b-41d4-a716-446655440001",
+    visitId: "aa0e8400-e29b-41d4-a716-446655440001",
+    reportedBy: "e5c397cd-c586-11f0-aa39-0242ac140013",
+    title: "Badge visiteur défaillant",
+    description: "Le badge temporaire du visiteur ne fonctionnait pas sur les lecteurs du 2ème étage",
+    severityLevel: 1,
+    isResolved: true,
+    resolvedAt: "2024-11-24T10:30:00Z",
+    resolutionNotes: "Badge remplacé, problème résolu",
+    createdAt: "2024-11-24T09:15:00Z"
   }
 };
 
@@ -768,7 +942,9 @@ module.exports = {
   // Security & Incidents
   BlacklistHistory,
   SosAlert,
-  VisitIncident,
+  CreateSosInput,
+  Incident,
+  CreateIncidentInput,
   
   // System & Audit
   AuditLog,

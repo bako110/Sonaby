@@ -13,7 +13,9 @@ class SOSService {
             select: {
               id: true,
               name: true,
-              location: true
+              address: true,
+                    city: true,
+                    country: true
             }
           }
         }
@@ -24,7 +26,7 @@ class SOSService {
       }
 
       // Vérifier s'il y a déjà un SOS actif pour ce checkpoint
-      const activeSOS = await prisma.sOS.findFirst({
+      const activeSOS = await prisma.sosAlert.findFirst({
         where: {
           checkpointId: sosData.checkpointId,
           isActive: true
@@ -35,7 +37,7 @@ class SOSService {
         throw new Error('Un SOS est déjà actif pour ce checkpoint');
       }
 
-      const sos = await prisma.sOS.create({
+      const sos = await prisma.sosAlert.create({
         data: {
           ...sosData,
           sentBy,
@@ -48,12 +50,14 @@ class SOSService {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  address: true,
+                    city: true,
+                    country: true
                 }
               }
             }
           },
-          sender: {
+          triggerer: {
             select: {
               id: true,
               firstName: true,
@@ -109,7 +113,7 @@ class SOSService {
       }
 
       const [sosAlerts, total] = await Promise.all([
-        prisma.sOS.findMany({
+        prisma.sosAlert.findMany({
           where: whereClause,
           skip,
           take: limit,
@@ -120,12 +124,14 @@ class SOSService {
                   select: {
                     id: true,
                     name: true,
-                    location: true
+                    address: true,
+                    city: true,
+                    country: true
                   }
                 }
               }
             },
-            sender: {
+            triggerer: {
               select: {
                 id: true,
                 firstName: true,
@@ -135,10 +141,10 @@ class SOSService {
             }
           },
           orderBy: {
-            createdAt: 'desc'
+            triggeredAt: 'desc'
           }
         }),
-        prisma.sOS.count({ where: whereClause })
+        prisma.sosAlert.count({ where: whereClause })
       ]);
 
       return {
@@ -157,7 +163,7 @@ class SOSService {
 
   async getSOSById(id) {
     try {
-      const sos = await prisma.sOS.findUnique({
+      const sos = await prisma.sosAlert.findUnique({
         where: { id },
         include: {
           checkpoint: {
@@ -166,12 +172,14 @@ class SOSService {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  address: true,
+                    city: true,
+                    country: true
                 }
               }
             }
           },
-          sender: {
+          triggerer: {
             select: {
               id: true,
               firstName: true,
@@ -201,7 +209,7 @@ class SOSService {
         throw new Error('Ce SOS est déjà désactivé');
       }
 
-      const updatedSOS = await prisma.sOS.update({
+      const updatedSOS = await prisma.sosAlert.update({
         where: { id },
         data: { isActive: false },
         include: {
@@ -211,12 +219,14 @@ class SOSService {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  address: true,
+                    city: true,
+                    country: true
                 }
               }
             }
           },
-          sender: {
+          triggerer: {
             select: {
               id: true,
               firstName: true,
@@ -234,7 +244,7 @@ class SOSService {
 
   async getActiveSOS() {
     try {
-      const activeSOS = await prisma.sOS.findMany({
+      const activeSOS = await prisma.sosAlert.findMany({
         where: {
           isActive: true
         },
@@ -245,12 +255,14 @@ class SOSService {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  address: true,
+                    city: true,
+                    country: true
                 }
               }
             }
           },
-          sender: {
+          triggerer: {
             select: {
               id: true,
               firstName: true,
@@ -259,7 +271,7 @@ class SOSService {
           }
         },
         orderBy: {
-          createdAt: 'desc'
+          triggeredAt: 'desc'
         }
       });
 
@@ -271,19 +283,19 @@ class SOSService {
 
   async getSOSStats() {
     try {
-      const stats = await prisma.sOS.aggregate({
+      const stats = await prisma.sosAlert.aggregate({
         _count: {
           id: true
         }
       });
 
-      const activeSOS = await prisma.sOS.count({
+      const activeSOS = await prisma.sosAlert.count({
         where: {
           isActive: true
         }
       });
 
-      const sosPerCheckpoint = await prisma.sOS.groupBy({
+      const sosPerCheckpoint = await prisma.sosAlert.groupBy({
         by: ['checkpointId'],
         _count: {
           id: true
@@ -294,20 +306,20 @@ class SOSService {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      const recentSOS = await prisma.sOS.findMany({
+      const recentSOS = await prisma.sosAlert.findMany({
         where: {
-          createdAt: {
+          triggeredAt: {
             gte: sevenDaysAgo
           }
         },
         select: {
-          createdAt: true
+          triggeredAt: true
         }
       });
 
       const sosByDay = {};
       recentSOS.forEach(sos => {
-        const day = sos.createdAt.toISOString().split('T')[0];
+        const day = sos.triggeredAt.toISOString().split('T')[0];
         sosByDay[day] = (sosByDay[day] || 0) + 1;
       });
 

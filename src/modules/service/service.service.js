@@ -71,8 +71,8 @@ class ServiceService {
               visitor: {
                 select: {
                   id: true,
-                  firstname: true,
-                  lastname: true
+                  firstName: true,
+                  lastName: true
                 }
               },
               checkpoint: {
@@ -92,8 +92,8 @@ class ServiceService {
               visitor: {
                 select: {
                   id: true,
-                  firstname: true,
-                  lastname: true
+                  firstName: true,
+                  lastName: true
                 }
               }
             }
@@ -107,8 +107,8 @@ class ServiceService {
               visitor: {
                 select: {
                   id: true,
-                  firstname: true,
-                  lastname: true
+                  firstName: true,
+                  lastName: true
                 }
               },
               reporter: {

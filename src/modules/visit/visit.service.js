@@ -123,8 +123,8 @@ class VisitService {
           { personVisited: { contains: search, mode: 'insensitive' } },
           { visitor: { 
             OR: [
-              { firstname: { contains: search, mode: 'insensitive' } },
-              { lastname: { contains: search, mode: 'insensitive' } }
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } }
             ]
           }}
         ];
@@ -157,8 +157,8 @@ class VisitService {
             visitor: {
               select: {
                 id: true,
-                firstname: true,
-                lastname: true,
+                firstName: true,
+                lastName: true,
                 company: true
               }
             },
@@ -170,7 +170,9 @@ class VisitService {
                   select: {
                     id: true,
                     name: true,
-                    location: true
+                    address: true,
+                    city: true,
+                    country: true
                   }
                 }
               }
