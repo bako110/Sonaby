@@ -83,7 +83,7 @@ const swaggerPathsExtended = {
   '/api/v1/agents': {
     get: {
       tags: ['Agents'],
-      summary: 'Lister tous les agents',
+      summary: 'Lister tous les agents de contrôle',
       security: [{ bearerAuth: [] }],
       parameters: [
         { name: 'page', in: 'query', schema: { type: 'string' } },

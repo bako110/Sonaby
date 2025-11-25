@@ -1,5 +1,5 @@
 const nonDesirableService = require('./nondesirable.service');
-const { createNonDesirableSchema, nonDesirableIdSchema, nonDesirableQuerySchema } = require('./nondesirable.schema');
+const { createNonDesirableSchema, createUnknownNonDesirableSchema, nonDesirableIdSchema, nonDesirableQuerySchema } = require('./nondesirable.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class NonDesirableController {
@@ -14,7 +14,7 @@ class NonDesirableController {
     const validated = createNonDesirableSchema.parse(req.body);
     
     try {
-      const nonDesirable = await nonDesirableService.createNonDesirable(validated, req.user.id);
+      const nonDesirable = await nonDesirableService.createNonDesirable(validated, req.user.userId);
       res.status(201).json({
         success: true,
         message: 'Visiteur marqué comme indésirable avec succès',
@@ -63,6 +63,37 @@ class NonDesirableController {
     }
   });
 
+  removeNonDesirable = asyncHandler(async (req, res) => {
+    if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Permissions insuffisantes.'
+      });
+    }
+
+    const { visitorId } = req.params;
+    
+    try {
+      const result = await nonDesirableService.removeNonDesirable(visitorId, req.user.id);
+      res.json({
+        success: true,
+        message: 'Visiteur retiré de la liste des indésirables avec succès',
+        data: result
+      });
+    } catch (error) {
+      if (error.message.includes('non trouvé') || error.message.includes('pas blacklisté')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
   deleteNonDesirable = asyncHandler(async (req, res) => {
     if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
       return res.status(403).json({
@@ -83,6 +114,38 @@ class NonDesirableController {
     } catch (error) {
       if (error.message.includes('non trouvée')) {
         return res.status(404).json({
+          success: false,
+          message: error.message
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
+  createUnknownNonDesirable = asyncHandler(async (req, res) => {
+    // Seuls les ADMIN peuvent créer des indésirables inconnus
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Seuls les administrateurs peuvent créer des indésirables inconnus.'
+      });
+    }
+
+    const validated = createUnknownNonDesirableSchema.parse(req.body);
+    
+    try {
+      const unknownNonDesirable = await nonDesirableService.createUnknownNonDesirable(validated, req.user.userId);
+      res.status(201).json({
+        success: true,
+        message: 'Indésirable inconnu ajouté à la liste avec succès',
+        data: unknownNonDesirable
+      });
+    } catch (error) {
+      if (error.message.includes('déjà dans la liste')) {
+        return res.status(400).json({
           success: false,
           message: error.message
         });

@@ -1,10 +1,7 @@
 const { z } = require('zod');
 
-// Énumérations pour les types d'activité et statuts
-const activityTypeEnum = z.enum([
-  'OFFICE', 'PRODUCTION', 'WAREHOUSE', 'RETAIL', 'RESEARCH', 
-  'DATACENTER', 'LOGISTICS', 'MANUFACTURING', 'HEADQUARTERS', 'OTHER'
-]);
+// Énumérations pour les statuts
+// Note: activityType est géré par le frontend, pas de validation enum côté backend
 
 const siteStatusEnum = z.enum([
   'ACTIVE', 'INACTIVE', 'UNDER_CONSTRUCTION', 'MAINTENANCE', 
@@ -17,83 +14,102 @@ const coordinatesSchema = z.object({
   longitude: z.number().min(-180).max(180, 'Longitude invalide')
 }).optional();
 
-// Schéma de création d'un site selon l'interface TypeScript
-const createSiteSchema = z.object({
-  // Informations de base (obligatoires)
+// Préprocesseur pour nettoyer les valeurs vides
+const preprocessSiteData = (data) => {
+  const cleaned = { ...data };
+  
+  // Convertir les chaînes vides en null
+  Object.keys(cleaned).forEach(key => {
+    if (cleaned[key] === '' || cleaned[key] === undefined) {
+      cleaned[key] = null;
+    }
+  });
+  
+  return cleaned;
+};
+
+// Schéma de base pour un site
+const baseSiteSchema = z.object({
+  // Informations de base (SEULS CHAMPS OBLIGATOIRES)
   name: z.string().min(1, 'Le nom du site est requis').max(255, 'Le nom ne peut pas dépasser 255 caractères'),
   address: z.string().min(1, 'L\'adresse est requise'),
   city: z.string().min(1, 'La ville est requise').max(100, 'La ville ne peut pas dépasser 100 caractères'),
-  postalCode: z.string().min(1, 'Le code postal est requis').max(20, 'Le code postal ne peut pas dépasser 20 caractères'),
-  country: z.string().min(1, 'Le pays est requis').max(100, 'Le pays ne peut pas dépasser 100 caractères'),
-  activityType: activityTypeEnum,
-  status: siteStatusEnum,
   
-  // Informations optionnelles
-  code: z.string().max(50, 'Le code ne peut pas dépasser 50 caractères').optional(),
-  region: z.string().max(100, 'La région ne peut pas dépasser 100 caractères').optional(),
-  phone: z.string().max(20, 'Le téléphone ne peut pas dépasser 20 caractères').optional(),
-  fax: z.string().max(20, 'Le fax ne peut pas dépasser 20 caractères').optional(),
-  email: z.string().email('Email invalide').optional(),
-  website: z.string().url('URL du site web invalide').optional(),
+  // Tous les autres champs sont optionnels
+  postalCode: z.string().max(20, 'Le code postal ne peut pas dépasser 20 caractères').optional().nullable(),
+  country: z.string().max(100, 'Le pays ne peut pas dépasser 100 caractères').optional().nullable(),
+  activityType: z.string().max(50, 'Le type d\'activité ne peut pas dépasser 50 caractères').optional().nullable(),
+  status: siteStatusEnum.optional().nullable(),
+  
+  // Informations optionnelles (peuvent être null ou vides)
+  code: z.string().max(50, 'Le code ne peut pas dépasser 50 caractères').optional().nullable(),
+  region: z.string().max(100, 'La région ne peut pas dépasser 100 caractères').optional().nullable(),
+  phone: z.string().max(20, 'Le téléphone ne peut pas dépasser 20 caractères').optional().nullable(),
+  fax: z.string().max(20, 'Le fax ne peut pas dépasser 20 caractères').optional().nullable(),
+  email: z.string().email('Email invalide').optional().nullable(),
+  website: z.string().url('URL du site web invalide').optional().nullable(),
   
   // Management
-  manager: z.string().max(255, 'Le nom du manager ne peut pas dépasser 255 caractères').optional(),
-  managerEmail: z.string().email('Email du manager invalide').optional(),
-  managerPhone: z.string().max(20, 'Le téléphone du manager ne peut pas dépasser 20 caractères').optional(),
+  manager: z.string().max(255, 'Le nom du manager ne peut pas dépasser 255 caractères').optional().nullable(),
+  managerEmail: z.string().email('Email du manager invalide').optional().nullable(),
+  managerPhone: z.string().max(20, 'Le téléphone du manager ne peut pas dépasser 20 caractères').optional().nullable(),
   
-  // Surfaces et capacités
-  area: z.number().min(0, 'La surface doit être positive').optional(),
-  usableArea: z.number().min(0, 'La surface utile doit être positive').optional(),
-  employeeCount: z.number().int().min(0, 'Le nombre d\'employés doit être un entier positif').optional(),
-  maxEmployeeCapacity: z.number().int().min(0, 'La capacité maximale doit être un entier positif').optional(),
-  buildingCount: z.number().int().min(0, 'Le nombre de bâtiments doit être un entier positif').optional(),
+  // Surfaces et capacités (peuvent être null ou vides)
+  area: z.number().min(0, 'La surface doit être positive').optional().nullable(),
+  usableArea: z.number().min(0, 'La surface utile doit être positive').optional().nullable(),
+  employeeCount: z.number().int().min(0, 'Le nombre d\'employés doit être un entier positif').optional().nullable(),
+  maxEmployeeCapacity: z.number().int().min(0, 'La capacité maximale doit être un entier positif').optional().nullable(),
+  buildingCount: z.number().int().min(0, 'Le nombre de bâtiments doit être un entier positif').optional().nullable(),
   
   // Dates
-  creationDate: z.string().datetime('Date de création invalide').optional(),
-  openingDate: z.string().datetime('Date d\'ouverture invalide').optional(),
-  closingDate: z.string().datetime('Date de fermeture invalide').optional(),
+  creationDate: z.string().datetime('Date de création invalide').optional().nullable(),
+  openingDate: z.string().datetime('Date d\'ouverture invalide').optional().nullable(),
+  closingDate: z.string().datetime('Date de fermeture invalide').optional().nullable(),
   
   // Localisation
-  coordinates: coordinatesSchema,
+  coordinates: coordinatesSchema.nullable(),
   
   // Descriptions
-  description: z.string().optional(),
-  comments: z.string().optional(),
+  description: z.string().optional().nullable(),
+  comments: z.string().optional().nullable(),
   
   // Informations financières
-  monthlyCost: z.number().min(0, 'Le coût mensuel doit être positif').optional(),
-  annualBudget: z.number().min(0, 'Le budget annuel doit être positif').optional(),
+  monthlyCost: z.number().min(0, 'Le coût mensuel doit être positif').optional().nullable(),
+  annualBudget: z.number().min(0, 'Le budget annuel doit être positif').optional().nullable(),
   
   // Certifications et conformité
-  certifications: z.array(z.string()).optional(),
-  lastInspection: z.string().datetime('Date de dernière inspection invalide').optional(),
-  nextInspection: z.string().datetime('Date de prochaine inspection invalide').optional(),
+  certifications: z.array(z.string()).optional().nullable(),
+  lastInspection: z.string().datetime('Date de dernière inspection invalide').optional().nullable(),
+  nextInspection: z.string().datetime('Date de prochaine inspection invalide').optional().nullable(),
   
   // Équipements et services
-  equipment: z.array(z.string()).optional(),
-  services: z.array(z.string()).optional(),
+  equipment: z.array(z.string()).optional().nullable(),
+  services: z.array(z.string()).optional().nullable(),
   
   // Accessibilité
-  wheelchairAccessible: z.boolean().optional(),
-  parkingAvailable: z.boolean().optional(),
-  parkingSpaces: z.number().int().min(0, 'Le nombre de places de parking doit être un entier positif').optional(),
+  wheelchairAccessible: z.boolean().optional().nullable(),
+  parkingAvailable: z.boolean().optional().nullable(),
+  parkingSpaces: z.number().int().min(0, 'Le nombre de places de parking doit être un entier positif').optional().nullable(),
   
   // Sécurité
-  securitySystem: z.boolean().optional(),
-  securityGuard: z.boolean().optional(),
+  securitySystem: z.boolean().optional().nullable(),
+  securityGuard: z.boolean().optional().nullable(),
   
   // Environnement
-  environmentalCertification: z.string().max(255, 'La certification environnementale ne peut pas dépasser 255 caractères').optional(),
-  energyConsumption: z.number().min(0, 'La consommation d\'énergie doit être positive').optional(),
+  environmentalCertification: z.string().max(255, 'La certification environnementale ne peut pas dépasser 255 caractères').optional().nullable(),
+  energyConsumption: z.number().min(0, 'La consommation d\'énergie doit être positive').optional().nullable(),
   
   // Métadonnées
-  createdBy: z.string().max(255, 'Le créateur ne peut pas dépasser 255 caractères').optional(),
-  modifiedBy: z.string().max(255, 'Le modificateur ne peut pas dépasser 255 caractères').optional(),
-  version: z.number().int().min(1, 'La version doit être un entier positif').optional()
+  createdBy: z.string().max(255, 'Le créateur ne peut pas dépasser 255 caractères').optional().nullable(),
+  modifiedBy: z.string().max(255, 'Le modificateur ne peut pas dépasser 255 caractères').optional().nullable(),
+  version: z.number().int().min(1, 'La version doit être un entier positif').optional().nullable()
 });
 
+// Schéma de création avec préprocesseur
+const createSiteSchema = z.preprocess(preprocessSiteData, baseSiteSchema);
+
 // Schéma de mise à jour (tous les champs optionnels)
-const updateSiteSchema = createSiteSchema.partial();
+const updateSiteSchema = baseSiteSchema.partial();
 
 // Schéma pour l'ID du site
 const siteIdSchema = z.object({
@@ -107,7 +123,7 @@ const siteQuerySchema = z.object({
   search: z.string().optional(),
   city: z.string().optional(),
   status: siteStatusEnum.optional(),
-  activityType: activityTypeEnum.optional(),
+  activityType: z.string().optional(),
   country: z.string().optional(),
   region: z.string().optional(),
   manager: z.string().optional(),
@@ -119,12 +135,12 @@ const siteQuerySchema = z.object({
 });
 
 module.exports = {
+  baseSiteSchema,
   createSiteSchema,
   updateSiteSchema,
   siteIdSchema,
   siteQuerySchema,
   // Export des énumérations pour réutilisation
-  activityTypeEnum,
   siteStatusEnum,
   coordinatesSchema
 };

@@ -14,29 +14,72 @@ class CheckpointService {
         throw new Error('Site non trouvé');
       }
 
-      // Vérifier l'unicité de l'identifiant SOS
-      const existingSOS = await prisma.checkpoint.findUnique({
-        where: { sosIdentifier: checkpointData.sosIdentifier }
-      });
+      // Extraire la configuration SOS
+      const { sosConfiguration, ...checkpointFields } = checkpointData;
+      
+      // Vérifier l'unicité de l'identifiant SOS si fourni
+      if (sosConfiguration?.sosId) {
+        const existingSOS = await prisma.checkpoint.findFirst({
+          where: { sosId: sosConfiguration.sosId }
+        });
 
-      if (existingSOS) {
-        throw new Error('Cet identifiant SOS est déjà utilisé');
+        if (existingSOS) {
+          throw new Error('Cet identifiant SOS est déjà utilisé');
+        }
       }
 
+      // Si un agent est assigné, récupérer ses infos pour les champs dénormalisés
+      let agentInfo = {};
+      if (checkpointData.agentId) {
+        const agent = await prisma.user.findUnique({
+          where: { id: checkpointData.agentId }
+        });
+        
+        if (!agent) {
+           throw new Error('Agent non trouvé');
+        }
+
+        // Remplir les champs dénormalisés
+        agentInfo = {
+          agentName: `${agent.firstName} ${agent.lastName}`,
+          agentEmail: agent.email,
+          agentPhone: agent.phone,
+          assignmentDate: new Date()
+        };
+      }
+
+      // Préparer les données pour la création
+      const createData = {
+        ...checkpointFields,
+        ...agentInfo,
+        sosId: sosConfiguration?.sosId || null,
+        sosConfiguration: sosConfiguration ? JSON.stringify(sosConfiguration) : null
+      };
+
       const checkpoint = await prisma.checkpoint.create({
-        data: checkpointData,
+        data: createData,
         include: {
           site: true,
-          agents: {
+          agent: { // Changé de 'agents' à 'agent'
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true, // Changé de 'firstname' à 'firstName' pour correspondre au modèle User
+              lastName: true,  // Changé de 'lastname' à 'lastName' pour correspondre au modèle User
               email: true
             }
           }
         }
       });
+      
+      // Parser la configuration SOS pour le retour
+      if (checkpoint.sosConfiguration) {
+        try {
+          checkpoint.sosConfiguration = JSON.parse(checkpoint.sosConfiguration);
+        } catch (e) {
+          checkpoint.sosConfiguration = null;
+        }
+      }
+      
       return checkpoint;
     } catch (error) {
       throw new Error(`Erreur lors de la création du checkpoint: ${error.message}`);
@@ -52,7 +95,7 @@ class CheckpointService {
       if (search) {
         whereClause.OR = [
           { name: { contains: search, mode: 'insensitive' } },
-          { sosIdentifier: { contains: search, mode: 'insensitive' } }
+          { sosId: { contains: search, mode: 'insensitive' } }
         ];
       }
 
@@ -97,8 +140,20 @@ class CheckpointService {
         prisma.checkpoint.count({ where: whereClause })
       ]);
 
+      // Parser la configuration SOS pour tous les checkpoints
+      const checkpointsWithParsedSOS = checkpoints.map(checkpoint => {
+        if (checkpoint.sosConfiguration) {
+          try {
+            checkpoint.sosConfiguration = JSON.parse(checkpoint.sosConfiguration);
+          } catch (e) {
+            checkpoint.sosConfiguration = null;
+          }
+        }
+        return checkpoint;
+      });
+
       return {
-        checkpoints,
+        checkpoints: checkpointsWithParsedSOS,
         pagination: {
           page,
           limit,
@@ -140,21 +195,6 @@ class CheckpointService {
                 }
               }
             }
-          },
-          sosAlerts: {
-            take: 5,
-            orderBy: {
-              triggeredAt: 'desc'
-            },
-            include: {
-              triggerer: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              }
-            }
           }
         }
       });
@@ -162,7 +202,16 @@ class CheckpointService {
       if (!checkpoint) {
         throw new Error('Checkpoint non trouvé');
       }
-
+      
+      // Parser la configuration SOS
+      if (checkpoint.sosConfiguration) {
+        try {
+          checkpoint.sosConfiguration = JSON.parse(checkpoint.sosConfiguration);
+        } catch (e) {
+          checkpoint.sosConfiguration = null;
+        }
+      }
+      
       return checkpoint;
     } catch (error) {
       throw new Error(`Erreur lors de la récupération du checkpoint: ${error.message}`);
@@ -173,10 +222,13 @@ class CheckpointService {
     try {
       const existingCheckpoint = await this.getCheckpointById(id);
       
+      // Extraire la configuration SOS si présente
+      const { sosConfiguration, ...otherUpdateData } = updateData;
+      
       // Si on change l'identifiant SOS, vérifier l'unicité
-      if (updateData.sosIdentifier && updateData.sosIdentifier !== existingCheckpoint.sosIdentifier) {
-        const existingSOS = await prisma.checkpoint.findUnique({
-          where: { sosIdentifier: updateData.sosIdentifier }
+      if (sosConfiguration?.sosId && sosConfiguration.sosId !== existingCheckpoint.sosId) {
+        const existingSOS = await prisma.checkpoint.findFirst({
+          where: { sosId: sosConfiguration.sosId }
         });
 
         if (existingSOS) {
@@ -185,9 +237,9 @@ class CheckpointService {
       }
 
       // Si on change le site, vérifier qu'il existe
-      if (updateData.siteId) {
+      if (otherUpdateData.siteId) {
         const site = await prisma.site.findUnique({
-          where: { id: updateData.siteId }
+          where: { id: otherUpdateData.siteId }
         });
 
         if (!site) {
@@ -195,21 +247,39 @@ class CheckpointService {
         }
       }
 
+      // Préparer les données de mise à jour
+      const finalUpdateData = {
+        ...otherUpdateData,
+        ...(sosConfiguration && {
+          sosId: sosConfiguration.sosId,
+          sosConfiguration: JSON.stringify(sosConfiguration)
+        })
+      };
+
       const updatedCheckpoint = await prisma.checkpoint.update({
         where: { id },
-        data: updateData,
+        data: finalUpdateData,
         include: {
           site: true,
-          agents: {
+          agent: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               email: true
             }
           }
         }
       });
+
+      // Parser la configuration SOS pour le retour
+      if (updatedCheckpoint.sosConfiguration) {
+        try {
+          updatedCheckpoint.sosConfiguration = JSON.parse(updatedCheckpoint.sosConfiguration);
+        } catch (e) {
+          updatedCheckpoint.sosConfiguration = null;
+        }
+      }
 
       return updatedCheckpoint;
     } catch (error) {

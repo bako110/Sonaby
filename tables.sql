@@ -3,15 +3,17 @@ USE `sonabhy-es-db`;
 -- =====================================================================================
 -- SYSTÈME DE GESTION DES VISITES MULTI-SITES - STRUCTURE COMPLÈTE
 -- =====================================================================================
--- Version: 3.0
--- Date: 2024-11-24
--- Description: Structure complète adaptée au schéma Prisma actuel
+-- Version: 4.0
+-- Date: 2024-11-25
+-- Description: Structure complète mise à jour selon tous les schémas Prisma actuels
 -- Correspondance exacte avec prisma/schema.prisma
 -- =====================================================================================
 
 -- =====================================================================================
 -- SECTION 1: TABLES D'ÉNUMÉRATION ET RÉFÉRENTIELS
 -- =====================================================================================
+
+-- Table des rôles utilisateurs
 CREATE TABLE IF NOT EXISTS user_roles (
     role_name VARCHAR(20) PRIMARY KEY
 );
@@ -22,6 +24,7 @@ INSERT IGNORE INTO user_roles (role_name) VALUES
 ('AGENT_CONTROLE'), 
 ('CHEF_SERVICE');
 
+-- Table des types d'identité
 CREATE TABLE IF NOT EXISTS id_types (
     type_name VARCHAR(20) PRIMARY KEY
 );
@@ -29,10 +32,9 @@ CREATE TABLE IF NOT EXISTS id_types (
 INSERT IGNORE INTO id_types (type_name) VALUES 
 ('CNI'), 
 ('PASSEPORT'), 
-('PERMIS_CONDUITE'),
-('CARTE_SEJOUR'),
-('AUTRE');
+('PERMIS_CONDUITE');
 
+-- Table des statuts de rendez-vous
 CREATE TABLE IF NOT EXISTS rendezvous_statuses (
     status_name VARCHAR(20) PRIMARY KEY
 );
@@ -42,6 +44,7 @@ INSERT IGNORE INTO rendezvous_statuses (status_name) VALUES
 ('validated'), 
 ('cancelled');
 
+-- Table des statuts de visite
 CREATE TABLE IF NOT EXISTS visit_statuses (
     status_name VARCHAR(20) PRIMARY KEY
 );
@@ -56,8 +59,8 @@ CREATE TABLE IF NOT EXISTS blacklist_actions (
 );
 
 INSERT IGNORE INTO blacklist_actions (action_name) VALUES 
-('added'), 
-('removed');
+('BLACKLIST'), 
+('UNBLACKLIST');
 
 CREATE TABLE IF NOT EXISTS checkpoint_statuses (
     status_name VARCHAR(20) PRIMARY KEY
@@ -76,7 +79,9 @@ INSERT IGNORE INTO checkpoint_types (type_name) VALUES
 ('entry'), 
 ('exit'), 
 ('internal'), 
-('emergency');
+('external'),
+('emergency'),
+('patrol');
 
 CREATE TABLE IF NOT EXISTS checkpoint_priorities (
     priority_name VARCHAR(20) PRIMARY KEY
@@ -150,14 +155,16 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sites (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     
-    -- Basic information (required fields)
+    -- Basic information (SEULS CHAMPS OBLIGATOIRES)
     name VARCHAR(255) NOT NULL,
     address TEXT NOT NULL,
     city VARCHAR(100) NOT NULL,
-    postal_code VARCHAR(20) NOT NULL,
-    country VARCHAR(100) NOT NULL,
-    activity_type VARCHAR(50) NOT NULL,
-    status VARCHAR(50) NOT NULL,
+    
+    -- Tous les autres champs sont optionnels
+    postal_code VARCHAR(20),
+    country VARCHAR(100),
+    activity_type VARCHAR(50),
+    status VARCHAR(50),
     
     -- Optional basic information
     code VARCHAR(50) UNIQUE,
@@ -223,9 +230,12 @@ CREATE TABLE IF NOT EXISTS sites (
     modified_by VARCHAR(255),
     version INT DEFAULT 1,
     
-    -- Foreign key constraints
-    FOREIGN KEY (activity_type) REFERENCES activity_types(type_name),
-    FOREIGN KEY (status) REFERENCES site_statuses(status_name)
+    -- Index pour les performances
+    INDEX idx_sites_name (name),
+    INDEX idx_sites_city (city),
+    INDEX idx_sites_code (code),
+    INDEX idx_sites_status (status),
+    INDEX idx_sites_activity_type (activity_type)
 );
 
 -- =====================================================================================
@@ -320,11 +330,20 @@ CREATE TABLE IF NOT EXISTS sos_alerts (
 -- SECTION 4: TABLES VISITEURS ET SERVICES
 -- =====================================================================================
 
--- 4.1 Table visitors (identité du visiteur)
+-- 4.1 Table visitors (identité du visiteur) - MISE À JOUR COMPLÈTE
 CREATE TABLE IF NOT EXISTS visitors (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
+    
+    -- Nouveaux champs ajoutés pour correspondre au modèle Flutter
+    birth_date VARCHAR(20),
+    birth_place VARCHAR(255),
+    sexe VARCHAR(10),
+    giving_date VARCHAR(20),
+    expiration_date VARCHAR(20),
+    
+    -- Champs existants
     phone VARCHAR(20),
     email VARCHAR(255),
     id_type VARCHAR(20) NOT NULL,
@@ -334,10 +353,14 @@ CREATE TABLE IF NOT EXISTS visitors (
     is_blacklisted BOOLEAN DEFAULT FALSE,
     blacklist_reason TEXT,
     company VARCHAR(255),
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
     UNIQUE KEY unique_identity (id_type, id_number),
-    FOREIGN KEY (id_type) REFERENCES id_types(type_name)
+    INDEX idx_visitors_blacklisted (is_blacklisted),
+    INDEX idx_visitors_id_number (id_number),
+    FOREIGN KEY (id_type) REFERENCES id_types(type_name) ON DELETE RESTRICT
 );
 
 -- 4.2 Table services (départements visitables)
@@ -345,11 +368,41 @@ CREATE TABLE IF NOT EXISTS services (
     id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    site_id CHAR(36) NOT NULL,
     chef_id CHAR(36),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (chef_id) REFERENCES users(id)
+    FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+    FOREIGN KEY (chef_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_services_site_id (site_id),
+    INDEX idx_services_chef_id (chef_id)
+);
+
+-- 4.3 Table non_desirables (Liste des indésirables)
+CREATE TABLE IF NOT EXISTS non_desirables (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    visitor_id CHAR(36) NULL, -- NULL pour les indésirables inconnus
+    reason TEXT NOT NULL,
+    reported_by CHAR(36) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE CASCADE,
+    FOREIGN KEY (reported_by) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_non_desirables_visitor_id (visitor_id),
+    INDEX idx_non_desirables_reported_by (reported_by)
+);
+
+-- 4.4 Table refresh_tokens (Tokens de rafraîchissement)
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
+    token TEXT NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_refresh_tokens_user_id (user_id),
+    INDEX idx_refresh_tokens_expires_at (expires_at)
 );
 
 -- =====================================================================================

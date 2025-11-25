@@ -16,51 +16,183 @@ router.use(authenticateToken);
  *       properties:
  *         id:
  *           type: string
+ *           format: uuid
  *           description: ID unique du checkpoint
+ *           example: "770e8400-e29b-41d4-a716-446655440001"
  *         name:
  *           type: string
  *           description: Nom du checkpoint
+ *           example: "Checkpoint Entrée Principale"
  *         siteId:
  *           type: string
+ *           format: uuid
  *           description: ID du site associé
- *         sosIdentifier:
+ *           example: "550e8400-e29b-41d4-a716-446655440001"
+ *         sosId:
  *           type: string
  *           description: Identifiant unique pour les alertes SOS
+ *           example: "SOS-ENT-001"
+ *         description:
+ *           type: string
+ *           description: Description du checkpoint
+ *           example: "Point de contrôle principal à l'entrée du site"
+ *         zone:
+ *           type: string
+ *           description: Zone du checkpoint
+ *           example: "Entrée principale"
+ *         building:
+ *           type: string
+ *           description: Bâtiment où se trouve le checkpoint
+ *           example: "Bâtiment A"
+ *         floor:
+ *           type: string
+ *           description: Étage du checkpoint
+ *           example: "Rez-de-chaussée"
+ *         status:
+ *           type: string
+ *           enum: ["active", "inactive", "maintenance"]
+ *           description: Statut du checkpoint
+ *           example: "active"
+ *         checkpointType:
+ *           type: string
+ *           enum: ["entry", "exit", "internal", "emergency"]
+ *           description: Type de checkpoint
+ *           example: "entry"
+ *         priority:
+ *           type: string
+ *           enum: ["low", "medium", "high", "critical"]
+ *           description: Priorité du checkpoint
+ *           example: "high"
+ *         controlFrequency:
+ *           type: string
+ *           enum: ["hourly", "daily", "weekly", "monthly"]
+ *           description: Fréquence de contrôle
+ *           example: "daily"
+ *         specialInstructions:
+ *           type: string
+ *           description: Instructions spéciales pour ce checkpoint
+ *           example: "Vérifier les badges visiteurs"
+ *         active:
+ *           type: boolean
+ *           description: Le checkpoint est-il actif ?
+ *           example: true
  *         createdAt:
  *           type: string
  *           format: date-time
  *           description: Date de création
+ *           example: "2024-01-15T08:00:00.000Z"
  *         updatedAt:
  *           type: string
  *           format: date-time
  *           description: Date de mise à jour
+ *           example: "2024-11-24T15:30:00.000Z"
  *         site:
  *           $ref: '#/components/schemas/Site'
- *         agents:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/AgentControle'
+ *         agent:
+ *           type: object
+ *           description: Agent assigné au checkpoint
+ *           properties:
+ *             id:
+ *               type: string
+ *               format: uuid
+ *               example: "990e8400-e29b-41d4-a716-446655440001"
+ *             firstName:
+ *               type: string
+ *               example: "Amadou"
+ *             lastName:
+ *               type: string
+ *               example: "TRAORE"
+ *             email:
+ *               type: string
+ *               format: email
+ *               example: "amadou.traore@sonabhy.bf"
  *     CreateCheckpointRequest:
  *       type: object
  *       required:
  *         - name
  *         - siteId
- *         - sosIdentifier
+ *         - sosId
  *       properties:
  *         name:
  *           type: string
  *           description: Nom du checkpoint
  *           maxLength: 100
+ *           example: "Checkpoint Entrée Principale"
  *         siteId:
  *           type: string
+ *           format: uuid
  *           description: ID du site associé
- *         sosIdentifier:
+ *           example: "550e8400-e29b-41d4-a716-446655440001"
+ *         sosId:
  *           type: string
  *           description: Identifiant unique pour les alertes SOS
+ *           maxLength: 100
+ *           example: "SOS-ENT-001"
+ *         description:
+ *           type: string
+ *           description: Description du checkpoint
+ *           example: "Point de contrôle principal à l'entrée du site"
+ *         zone:
+ *           type: string
+ *           description: Zone du checkpoint
+ *           maxLength: 100
+ *           example: "Entrée principale"
+ *         building:
+ *           type: string
+ *           description: Bâtiment où se trouve le checkpoint
+ *           maxLength: 100
+ *           example: "Bâtiment A"
+ *         floor:
+ *           type: string
+ *           description: Étage du checkpoint
  *           maxLength: 50
+ *           example: "Rez-de-chaussée"
+ *         status:
+ *           type: string
+ *           enum: ["active", "inactive", "maintenance"]
+ *           description: Statut du checkpoint
+ *           example: "active"
+ *         checkpointType:
+ *           type: string
+ *           enum: ["entry", "exit", "internal", "emergency"]
+ *           description: Type de checkpoint
+ *           example: "entry"
+ *         priority:
+ *           type: string
+ *           enum: ["low", "medium", "high", "critical"]
+ *           description: Priorité du checkpoint
+ *           example: "high"
+ *         controlFrequency:
+ *           type: string
+ *           enum: ["hourly", "daily", "weekly", "monthly"]
+ *           description: Fréquence de contrôle
+ *           example: "daily"
+ *         specialInstructions:
+ *           type: string
+ *           description: Instructions spéciales pour ce checkpoint
+ *           example: "Vérifier les badges visiteurs"
+ *         active:
+ *           type: boolean
+ *           description: Le checkpoint est-il actif ?
+ *           example: true
+ *       example:
+ *         name: "Checkpoint Entrée Principale"
+ *         siteId: "550e8400-e29b-41d4-a716-446655440001"
+ *         sosId: "SOS-ENT-001"
+ *         description: "Point de contrôle principal à l'entrée du site"
+ *         zone: "Entrée principale"
+ *         building: "Bâtiment A"
+ *         floor: "Rez-de-chaussée"
+ *         status: "active"
+ *         checkpointType: "entry"
+ *         priority: "high"
+ *         controlFrequency: "daily"
+ *         specialInstructions: "Vérifier les badges visiteurs"
+ *         active: true
  *     UpdateCheckpointRequest:
  *       type: object
- *       description: Données pour mettre à jour un checkpoint
+ *       description: Données pour mettre à jour un checkpoint (tous les champs sont optionnels)
+ *       additionalProperties: false
  *       properties:
  *         name:
  *           type: string
@@ -328,6 +460,14 @@ router.get('/:id', checkpointController.getCheckpointById);
  *               summary: Modifier l'identifiant SOS
  *               value:
  *                 sosId: "SOS-NEW-001"
+ *             update_status:
+ *               summary: Changer le statut uniquement
+ *               value:
+ *                 status: "maintenance"
+ *             update_active:
+ *               summary: Activer/Désactiver le checkpoint
+ *               value:
+ *                 active: false
  *             complete_update:
  *               summary: Mise à jour complète
  *               value:

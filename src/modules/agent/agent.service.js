@@ -7,7 +7,7 @@ class AgentService {
   async createAgent(agentData) {
     try {
       // Vérifier l'unicité de l'email
-      const existingAgent = await prisma.agentControle.findUnique({
+      const existingAgent = await prisma.user.findUnique({
         where: { email: agentData.email }
       });
 
@@ -29,24 +29,22 @@ class AgentService {
       // Hasher le mot de passe
       const passwordHash = await bcrypt.hash(agentData.password, 12);
 
-      const agent = await prisma.agentControle.create({
+      const agent = await prisma.user.create({
         data: {
           ...agentData,
+          role: 'AGENT_CONTROLE', // Forcer le rôle à AGENT_CONTROLE
           passwordHash,
           password: undefined // Supprimer le mot de passe en clair
         },
-        include: {
-          checkpoint: {
-            include: {
-              site: {
-                select: {
-                  id: true,
-                  name: true,
-                  location: true
-                }
-              }
-            }
-          }
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          phone: true,
+          isActive: true,
+          createdAt: true
         }
       });
 
@@ -66,8 +64,8 @@ class AgentService {
       
       if (search) {
         whereClause.OR = [
-          { firstname: { contains: search, mode: 'insensitive' } },
-          { lastname: { contains: search, mode: 'insensitive' } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } }
         ];
       }
@@ -76,26 +74,33 @@ class AgentService {
         whereClause.checkpointId = checkpointId;
       }
 
+      // Filtrer uniquement les agents de contrôle
+      whereClause.role = 'AGENT_CONTROLE';
+
       const [agents, total] = await Promise.all([
-        prisma.agentControle.findMany({
+        prisma.user.findMany({
           where: whereClause,
           skip,
           take: limit,
           select: {
             id: true,
-            firstname: true,
-            lastname: true,
+            firstName: true,
+            lastName: true,
             email: true,
-            checkpointId: true,
+            role: true,
+            phone: true,
+            isActive: true,
             createdAt: true,
             updatedAt: true,
-            checkpoint: {
-              include: {
+            assignedCheckpoints: {
+              select: {
+                id: true,
+                name: true,
                 site: {
                   select: {
                     id: true,
                     name: true,
-                    location: true
+                    city: true
                   }
                 }
               }
@@ -105,7 +110,7 @@ class AgentService {
             createdAt: 'desc'
           }
         }),
-        prisma.agentControle.count({ where: whereClause })
+        prisma.user.count({ where: whereClause })
       ]);
 
       return {

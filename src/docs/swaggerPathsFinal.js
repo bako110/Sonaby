@@ -555,6 +555,288 @@ const swaggerPathsFinal = {
         }
       }
     }
+  },
+
+  // ==================== NONDESIRABLES ENDPOINTS ====================
+  '/api/v1/nondesirables': {
+    get: {
+      tags: ['Nondesirables'],
+      summary: 'Lister tous les visiteurs indésirables',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
+        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Terme de recherche' }
+      ],
+      responses: {
+        200: {
+          description: 'Liste des visiteurs indésirables',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      nondesirables: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/Nondesirable' }
+                      },
+                      pagination: { type: 'object' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    post: {
+      tags: ['Nondesirables'],
+      summary: 'Ajouter un visiteur à la liste des indésirables',
+      description: 'Ajouter un visiteur existant à la liste des indésirables. Cette action va automatiquement activer isBlacklisted=true sur le visiteur, ajouter la raison dans blacklistReason, créer un historique dans BlacklistHistory et une entrée dans NonDesirable.',
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CreateNondesirableInput' },
+            example: {
+              visitorId: '880e8400-e29b-41d4-a716-446655440001',
+              reason: 'Comportement inapproprié lors de la dernière visite'
+            }
+          }
+        }
+      },
+      responses: {
+        201: {
+          description: 'Visiteur ajouté à la liste des indésirables avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  message: { type: 'string' },
+                  data: { $ref: '#/components/schemas/Nondesirable' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Erreur de validation ou visiteur déjà dans la liste' },
+        404: { description: 'Visiteur non trouvé' }
+      }
+    }
+  },
+
+  '/api/v1/nondesirables/unknown': {
+    post: {
+      tags: ['Nondesirables'],
+      summary: 'Ajouter un indésirable inconnu (ADMIN seulement)',
+      description: 'Permet à l\'administrateur d\'ajouter une personne à la liste des indésirables même si elle n\'est pas enregistrée comme visiteur dans le système. Cette action crée directement un historique dans BlacklistHistory sans créer de visiteur.',
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CreateUnknownNondesirableInput' },
+            example: {
+              firstName: 'Jean',
+              lastName: 'SUSPECT',
+              birthDate: '15/06/1980',
+              birthPlace: 'Ouagadougou',
+              sexe: 'M',
+              givingDate: '01/01/2020',
+              expirationDate: '01/01/2030',
+              phone: '+226 70 11 22 33',
+              email: 'suspect@example.com',
+              idType: 'CNI',
+              idNumber: 'B1234567890',
+              idScanUrl: 'https://example.com/scans/suspect123.jpg',
+              photoUrl: 'https://example.com/photos/suspect123.jpg',
+              company: 'Entreprise Suspecte SARL',
+              nationality: 'Burkinabé',
+              reason: 'Comportement suspect signalé par les autorités',
+              incidentDate: '2024-11-20',
+              incidentLocation: 'Entrée principale',
+              severityLevel: 3
+            }
+          }
+        }
+      },
+      responses: {
+        201: {
+          description: 'Indésirable inconnu ajouté avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  message: { type: 'string' },
+                  data: { $ref: '#/components/schemas/UnknownNondesirable' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Personne déjà dans la liste' },
+        403: { description: 'Accès refusé - ADMIN requis' }
+      }
+    }
+  },
+
+  '/api/v1/nondesirables/visitor/{visitorId}': {
+    delete: {
+      tags: ['Nondesirables'],
+      summary: 'Retirer un visiteur de la liste des indésirables (recommandé)',
+      description: 'Retire complètement un visiteur de la liste des indésirables. Cette action va automatiquement désactiver isBlacklisted=false sur le visiteur, supprimer blacklistReason, créer un historique UNBLACKLIST dans BlacklistHistory et supprimer l\'entrée NonDesirable.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'visitorId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID du visiteur à retirer de la blacklist' }
+      ],
+      responses: {
+        200: {
+          description: 'Visiteur retiré de la liste des indésirables avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  message: { type: 'string' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Visiteur non trouvé ou pas blacklisté' }
+      }
+    }
+  },
+
+  // ==================== DASHBOARD ENDPOINTS ====================
+  '/api/v1/dashboard/stats': {
+    get: {
+      tags: ['Dashboard'],
+      summary: '📊 Statistiques du Dashboard SONABHY - Gestion des flux',
+      description: 'Récupère toutes les statistiques en temps réel du dashboard comme affiché dans l\'application mobile : visiteurs enregistrés, visites en cours, visites terminées, incidents signalés, liste détaillée des visiteurs présents sur site',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: '✅ Statistiques du dashboard récupérées avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      visitorsRegistered: { type: 'integer', example: 8 },
+                      visitsInProgress: { type: 'integer', example: 3 },
+                      visitsCompleted: { type: 'integer', example: 5 },
+                      incidentsReported: { type: 'integer', example: 1 },
+                      visitorsPresent: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string', example: '880e8400-e29b-41d4-a716-446655440001' },
+                            name: { type: 'string', example: 'Marie KABORE' },
+                            company: { type: 'string', example: 'Entreprise KABORE & Fils' },
+                            phone: { type: 'string', example: '+226 70 11 22 33' },
+                            service: { type: 'string', example: 'Direction Générale' },
+                            entryTime: { type: 'string', format: 'date-time', example: '2024-11-24T08:45:00.000Z' },
+                            reason: { type: 'string', example: 'Réunion direction générale' }
+                          }
+                        }
+                      },
+                      summary: {
+                        type: 'object',
+                        properties: {
+                          totalVisitorsToday: { type: 'integer', example: 8 },
+                          hasVisitorsPresent: { type: 'boolean', example: true },
+                          presentCount: { type: 'integer', example: 3 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        500: { $ref: '#/components/responses/InternalServerError' }
+      }
+    }
+  },
+
+  '/api/v1/dashboard/visitors-present': {
+    get: {
+      tags: ['Dashboard'],
+      summary: '👥 Visiteurs Présents - Détails complets',
+      description: 'Récupère la liste détaillée de tous les visiteurs actuellement présents sur site. Correspond à la section "Visiteurs présents" de l\'application mobile.',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: '✅ Liste des visiteurs présents récupérée avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      count: { type: 'integer', example: 2 },
+                      visitors: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            visitId: { type: 'string', example: 'aa0e8400-e29b-41d4-a716-446655440001' },
+                            visitor: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'string', example: '880e8400-e29b-41d4-a716-446655440001' },
+                                name: { type: 'string', example: 'Marie KABORE' },
+                                company: { type: 'string', example: 'Entreprise KABORE & Fils' },
+                                phone: { type: 'string', example: '+226 70 11 22 33' },
+                                email: { type: 'string', example: 'marie.kabore@email.com' }
+                              }
+                            },
+                            visit: {
+                              type: 'object',
+                              properties: {
+                                entryTime: { type: 'string', format: 'date-time', example: '2024-11-24T08:45:00.000Z' },
+                                reason: { type: 'string', example: 'Réunion direction générale' },
+                                service: { type: 'string', example: 'Direction Générale' },
+                                checkpoint: { type: 'string', example: 'Entrée Principale Ouaga' },
+                                site: { type: 'string', example: 'Site Principal Ouagadougou' }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        500: { $ref: '#/components/responses/InternalServerError' }
+      }
+    }
   }
 };
 

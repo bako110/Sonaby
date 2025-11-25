@@ -14,15 +14,42 @@ class VisitController {
 
     const validated = createVisitSchema.parse(req.body);
     
+    // Ajouter l'ID du créateur
+    const visitData = {
+      ...validated,
+      createdBy: req.user.userId
+    };
+    
     try {
-      const visit = await visitService.createVisit(validated);
+      const result = await visitService.createVisit(visitData);
+      
+      // Si la personne est blacklistée
+      if (result.isBlacklisted) {
+        return res.status(403).json({
+          success: false,
+          isBlacklisted: true,
+          blacklistType: result.blacklistType,
+          message: result.message,
+          blacklistDetails: result.blacklistDetails,
+          visitorInfo: result.visitorInfo,
+          alert: {
+            type: 'SECURITY_ALERT',
+            level: 'HIGH',
+            action: 'DENY_ACCESS',
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+      
+      // Succès - visite créée
       res.status(201).json({
         success: true,
-        message: 'Visite créée avec succès',
-        data: visit
+        isBlacklisted: false,
+        message: result.message,
+        data: result.data
       });
     } catch (error) {
-      if (error.message.includes('non trouvé') || error.message.includes('indésirable') || error.message.includes('en cours')) {
+      if (error.message.includes('non trouvé') || error.message.includes('en cours') || error.message.includes('requis')) {
         return res.status(400).json({
           success: false,
           message: error.message

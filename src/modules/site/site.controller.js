@@ -12,16 +12,37 @@ class SiteController {
       });
     }
 
-    const validated = createSiteSchema.parse(req.body);
-    
     try {
+      const validated = createSiteSchema.parse(req.body);
       const site = await siteService.createSite(validated);
+      
       res.status(201).json({
         success: true,
         message: 'Site créé avec succès',
         data: site
       });
     } catch (error) {
+      // Erreur de validation Zod
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Erreur de validation des données',
+          errors: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            received: err.received
+          }))
+        });
+      }
+      
+      // Autres erreurs (service, base de données, etc.)
+      if (error.message.includes('existe déjà') || error.message.includes('non trouvé')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+      
       res.status(500).json({
         success: false,
         message: error.message
@@ -148,6 +169,39 @@ class SiteController {
         data: stats
       });
     } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
+  // Endpoint de test pour valider les données de site
+  validateSiteData = asyncHandler(async (req, res) => {
+    try {
+      const validated = createSiteSchema.parse(req.body);
+      res.json({
+        success: true,
+        message: 'Données valides',
+        data: {
+          original: req.body,
+          validated: validated
+        }
+      });
+    } catch (error) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({
+          success: false,
+          message: 'Erreur de validation des données',
+          errors: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            received: err.received,
+            expected: err.expected
+          }))
+        });
+      }
+      
       res.status(500).json({
         success: false,
         message: error.message

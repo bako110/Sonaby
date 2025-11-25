@@ -1,27 +1,126 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const { prisma } = require('../../config/prisma');
+const blacklistService = require('../blacklist/blacklist.service');
 
 class VisitService {
   async createVisit(visitData) {
     try {
-      // Vérifier que le visiteur existe et n'est pas indésirable
-      const visitor = await prisma.visitor.findUnique({
-        where: { id: visitData.visitorId },
-        include: {
-          nonDesirables: true
+      let visitor = null;
+      let isNewVisitor = false;
+
+      // 1. ÉTAPE 1: Résoudre le visiteur (existant ou nouveau)
+      if (visitData.visitorId) {
+        // Cas 1: ID fourni - chercher le visiteur existant
+        visitor = await prisma.visitor.findUnique({
+          where: { id: visitData.visitorId }
+        });
+        
+        if (!visitor) {
+          throw new Error('Visiteur non trouvé avec cet ID');
         }
-      });
+      } else if (visitData.visitorData) {
+        // Cas 2: Données scannées - workflow complet
+        const { idType, idNumber } = visitData.visitorData;
+        
+        if (!idType || !idNumber) {
+          throw new Error('Le type et numéro de pièce d\'identité sont requis');
+        }
 
-      if (!visitor) {
-        throw new Error('Visiteur non trouvé');
+        // 1.1 Chercher dans la table visitors (visiteur connu)
+        visitor = await prisma.visitor.findFirst({
+          where: {
+            idType: idType,
+            idNumber: idNumber
+          }
+        });
+
+        if (!visitor) {
+          // 1.2 Pas trouvé dans visitors - vérifier blacklist_history (indésirable inconnu)
+          const blacklistEntry = await prisma.blacklistHistory.findFirst({
+            where: {
+              idType: idType,
+              idNumber: idNumber,
+              action: 'added' // Blacklisté
+            },
+            include: {
+              creator: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  role: true
+                }
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            }
+          });
+
+          if (blacklistEntry) {
+            // 🚨 PERSONNE BLACKLISTÉE DÉTECTÉE
+            return {
+              success: false,
+              isBlacklisted: true,
+              blacklistType: 'INCONNU_BLACKLISTE',
+              message: `⚠️ ALERTE SÉCURITÉ: Cette personne est blacklistée`,
+              blacklistDetails: {
+                reason: blacklistEntry.reason,
+                severityLevel: blacklistEntry.severityLevel,
+                incidentDate: blacklistEntry.incidentDate,
+                incidentLocation: blacklistEntry.incidentLocation,
+                blacklistedBy: blacklistEntry.creator,
+                blacklistedAt: blacklistEntry.createdAt
+              },
+              visitorInfo: {
+                firstName: blacklistEntry.firstName,
+                lastName: blacklistEntry.lastName,
+                idType: blacklistEntry.idType,
+                idNumber: blacklistEntry.idNumber
+              }
+            };
+          }
+
+          // 1.3 Pas blacklisté - créer le nouveau visiteur
+          visitor = await prisma.visitor.create({
+            data: visitData.visitorData
+          });
+          isNewVisitor = true;
+        }
+      } else {
+        throw new Error('Vous devez fournir un visitorId ou les données du visiteur (visitorData)');
       }
 
-      if (visitor.nonDesirables.length > 0) {
-        throw new Error('Ce visiteur est marqué comme indésirable et ne peut pas effectuer de visite');
+      // 2. ÉTAPE 2: Vérifier blacklist pour visiteur existant
+      if (!isNewVisitor) {
+        const blacklistStatus = await blacklistService.checkVisitorBlacklist(visitor.id);
+        
+        if (blacklistStatus.isBlacklisted) {
+          const blacklistType = blacklistStatus.blacklistType === 'SYSTEM' ? 'SYSTÈME' : 'AGENT';
+          const reason = blacklistStatus.blacklistType === 'SYSTEM' 
+            ? blacklistStatus.systemBlacklist.reason 
+            : blacklistStatus.agentBlacklist.reason;
+          
+          // 🚨 VISITEUR CONNU MAIS BLACKLISTÉ
+          return {
+            success: false,
+            isBlacklisted: true,
+            blacklistType: blacklistType,
+            message: `⚠️ ALERTE SÉCURITÉ: Ce visiteur est blacklisté (${blacklistType.toLowerCase()})`,
+            blacklistDetails: blacklistStatus,
+            visitorInfo: {
+              id: visitor.id,
+              firstName: visitor.firstName,
+              lastName: visitor.lastName,
+              company: visitor.company,
+              idType: visitor.idType,
+              idNumber: visitor.idNumber
+            }
+          };
+        }
       }
 
-      // Vérifier que le checkpoint existe
+      // 3. ÉTAPE 3: Validations avant création de visite
+      
+      // 3.1 Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
         where: { id: visitData.checkpointId }
       });
@@ -30,7 +129,7 @@ class VisitService {
         throw new Error('Checkpoint non trouvé');
       }
 
-      // Vérifier que le service existe
+      // 3.2 Vérifier que le service existe
       const service = await prisma.service.findUnique({
         where: { id: visitData.serviceId }
       });
@@ -39,22 +138,16 @@ class VisitService {
         throw new Error('Service non trouvé');
       }
 
-      // Si c'est une visite de groupe, vérifier le représentant
-      if (visitData.groupRepresentativeId) {
-        const representative = await prisma.visitor.findUnique({
-          where: { id: visitData.groupRepresentativeId }
-        });
-
-        if (!representative) {
-          throw new Error('Représentant de groupe non trouvé');
-        }
+      // 3.3 Vérifier les visites de groupe
+      if (visitData.isGroup && !visitData.groupCode) {
+        throw new Error('Le code de groupe est requis pour une visite de groupe');
       }
 
-      // Vérifier s'il y a déjà une visite active pour ce visiteur
+      // 3.4 Vérifier s'il y a déjà une visite active
       const activeVisit = await prisma.visit.findFirst({
         where: {
-          visitorId: visitData.visitorId,
-          endAt: null
+          visitorId: visitor.id,
+          exitTime: null
         }
       });
 
@@ -62,17 +155,21 @@ class VisitService {
         throw new Error('Ce visiteur a déjà une visite en cours');
       }
 
+      // 4. ÉTAPE 4: Créer la visite (tout est OK)
+      const { visitorData, ...createData } = visitData;
+
       const visit = await prisma.visit.create({
         data: {
-          ...visitData,
-          startAt: new Date()
+          ...createData,
+          visitorId: visitor.id,
+          entryTime: new Date()
         },
         include: {
           visitor: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               company: true
             }
           },
@@ -84,7 +181,7 @@ class VisitService {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  city: true
                 }
               }
             }
@@ -95,18 +192,53 @@ class VisitService {
               name: true
             }
           },
-          groupRepresentative: {
+          creator: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true
+              firstName: true,
+              lastName: true
             }
           }
         }
       });
 
-      return visit;
+      // 5. ÉTAPE 5: Retourner le succès avec toutes les infos
+      return {
+        success: true,
+        isBlacklisted: false,
+        message: isNewVisitor 
+          ? 'Nouveau visiteur créé et visite enregistrée avec succès' 
+          : 'Visite enregistrée avec succès',
+        data: {
+          visit: visit,
+          visitor: {
+            id: visitor.id,
+            firstName: visitor.firstName,
+            lastName: visitor.lastName,
+            birthDate: visitor.birthDate,
+            birthPlace: visitor.birthPlace,
+            sexe: visitor.sexe,
+            givingDate: visitor.givingDate,
+            expirationDate: visitor.expirationDate,
+            phone: visitor.phone,
+            idType: visitor.idType,
+            idNumber: visitor.idNumber,
+            idScanUrl: visitor.idScanUrl,
+            photoUrl: visitor.photoUrl,
+            isBlacklisted: visitor.isBlacklisted || false,
+            blacklistReason: visitor.blacklistReason || '',
+            company: visitor.company,
+            createdAt: visitor.createdAt,
+            updatedAt: visitor.updatedAt
+          },
+          isNewVisitor: isNewVisitor
+        }
+      };
     } catch (error) {
+      // Si c'est une erreur de blacklist, on la propage
+      if (error.message.includes('blacklisté')) {
+        throw error;
+      }
       throw new Error(`Erreur lors de la création de la visite: ${error.message}`);
     }
   }
@@ -143,9 +275,9 @@ class VisitService {
       }
 
       if (status === 'active') {
-        whereClause.endAt = null;
+        whereClause.exitTime = null;
       } else if (status === 'completed') {
-        whereClause.endAt = { not: null };
+        whereClause.exitTime = { not: null };
       }
 
       const [visits, total] = await Promise.all([
@@ -183,11 +315,18 @@ class VisitService {
                 name: true
               }
             },
-            groupRepresentative: {
+            creator: {
               select: {
                 id: true,
-                firstname: true,
-                lastname: true
+                firstName: true,
+                lastName: true
+              }
+            },
+            planned: {
+              select: {
+                id: true,
+                reason: true,
+                visitDate: true
               }
             }
           },
@@ -220,8 +359,8 @@ class VisitService {
           visitor: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               email: true,
               phone: true,
               company: true
@@ -235,7 +374,7 @@ class VisitService {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  city: true
                 }
               }
             }
@@ -246,12 +385,18 @@ class VisitService {
               name: true
             }
           },
-          groupRepresentative: {
+          creator: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
-              company: true
+              firstName: true,
+              lastName: true
+            }
+          },
+          planned: {
+            select: {
+              id: true,
+              reason: true,
+              visitDate: true
             }
           }
         }
@@ -267,25 +412,25 @@ class VisitService {
     }
   }
 
-  async checkoutVisit(id, endAt = null) {
+  async checkoutVisit(id, exitTime = null) {
     try {
       const existingVisit = await this.getVisitById(id);
       
-      if (existingVisit.endAt) {
+      if (existingVisit.exitTime) {
         throw new Error('Cette visite est déjà terminée');
       }
 
       const updatedVisit = await prisma.visit.update({
         where: { id },
         data: {
-          endAt: endAt ? new Date(endAt) : new Date()
+          exitTime: exitTime ? new Date(exitTime) : new Date()
         },
         include: {
           visitor: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               company: true
             }
           },
@@ -340,13 +485,13 @@ class VisitService {
 
       const activeVisits = await prisma.visit.count({
         where: {
-          endAt: null
+          exitTime: null
         }
       });
 
       const completedVisits = await prisma.visit.count({
         where: {
-          endAt: { not: null }
+          exitTime: { not: null }
         }
       });
 
@@ -402,14 +547,14 @@ class VisitService {
     try {
       const activeVisits = await prisma.visit.findMany({
         where: {
-          endAt: null
+          exitTime: null
         },
         include: {
           visitor: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               company: true
             }
           },

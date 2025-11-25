@@ -225,7 +225,8 @@ const options = {
       { name: "SOS", description: "Gestion des alertes SOS et urgences" },
       { name: "Files", description: "Upload et gestion des fichiers (photos, scans)" },
       { name: "System", description: "Santé du système et monitoring" },
-      { name: "Reports", description: "Rapports et statistiques" }
+      { name: "Reports", description: "Rapports et statistiques" },
+      { name: "Dashboard", description: "Statistiques et tableaux de bord" }
     ],
 
     // Sécurité globale - JWT requis par défaut
@@ -236,14 +237,8 @@ const options = {
     ]
   },
   
-  // Chemins vers les fichiers contenant les annotations Swagger
-  apis: [
-    "./src/modules/**/*.js", 
-    "./src/routes/**/*.js",
-    "./src/controllers/**/*.js",
-    "./src/server.js",
-    "./src/app.js"
-  ]
+  // Désactivé - utilisation des fichiers centralisés uniquement pour éviter les doublons
+  apis: []
 };
 
 const swaggerSpec = swaggerJsdoc(options);

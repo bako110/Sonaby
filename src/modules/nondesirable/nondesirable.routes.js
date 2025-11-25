@@ -5,8 +5,221 @@ const { authenticateToken } = require('../../middleware/authMiddleware');
 const router = express.Router();
 router.use(authenticateToken);
 
+/**
+ * @swagger
+ * /api/nondesirables:
+ *   get:
+ *     summary: Lister tous les visiteurs indésirables
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Nombre d'éléments par page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Terme de recherche
+ *     responses:
+ *       200:
+ *         description: Liste des visiteurs indésirables
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     nondesirables:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Nondesirable'
+ *                     pagination:
+ *                       type: object
+ */
 router.get('/', nonDesirableController.getAllNonDesirables);
+
+/**
+ * @swagger
+ * /api/nondesirables:
+ *   post:
+ *     summary: Ajouter un visiteur à la liste des indésirables
+ *     description: |
+ *       Ajouter un visiteur existant à la liste des indésirables.
+ *       Cette action va automatiquement:
+ *       - Activer `isBlacklisted = true` sur le visiteur
+ *       - Ajouter la raison dans `blacklistReason`
+ *       - Créer un historique dans BlacklistHistory
+ *       - Créer une entrée dans NonDesirable
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateNondesirableInput'
+ *           example:
+ *             visitorId: "880e8400-e29b-41d4-a716-446655440001"
+ *             reason: "Comportement inapproprié lors de la dernière visite"
+ *     responses:
+ *       201:
+ *         description: Visiteur ajouté à la liste des indésirables avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/Nondesirable'
+ *       400:
+ *         description: Erreur de validation ou visiteur déjà dans la liste
+ *       404:
+ *         description: Visiteur non trouvé (si visitorId fourni)
+ */
 router.post('/', nonDesirableController.createNonDesirable);
+
+/**
+ * @swagger
+ * /api/nondesirables/unknown:
+ *   post:
+ *     summary: Ajouter un indésirable inconnu (ADMIN seulement)
+ *     description: |
+ *       Permet à l'administrateur d'ajouter une personne à la liste des indésirables
+ *       même si elle n'est pas enregistrée comme visiteur dans le système.
+ *       Cette action crée directement un historique dans BlacklistHistory sans créer de visiteur.
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateUnknownNondesirableInput'
+ *           example:
+ *             firstName: "Jean"
+ *             lastName: "SUSPECT"
+ *             birthDate: "15/06/1980"
+ *             birthPlace: "Ouagadougou"
+ *             sexe: "M"
+ *             givingDate: "01/01/2020"
+ *             expirationDate: "01/01/2030"
+ *             phone: "+226 70 11 22 33"
+ *             email: "suspect@example.com"
+ *             idType: "CNI"
+ *             idNumber: "B1234567890"
+ *             idScanUrl: "https://example.com/scans/suspect123.jpg"
+ *             photoUrl: "https://example.com/photos/suspect123.jpg"
+ *             company: "Entreprise Suspecte SARL"
+ *             nationality: "Burkinabé"
+ *             reason: "Comportement suspect signalé par les autorités"
+ *             incidentDate: "2024-11-20"
+ *             incidentLocation: "Entrée principale"
+ *             severityLevel: 3
+ *     responses:
+ *       201:
+ *         description: Indésirable inconnu ajouté avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   $ref: '#/components/schemas/UnknownNondesirable'
+ *       400:
+ *         description: Personne déjà dans la liste
+ *       403:
+ *         description: Accès refusé - ADMIN requis
+ */
+router.post('/unknown', nonDesirableController.createUnknownNonDesirable);
+
+/**
+ * @swagger
+ * /api/nondesirables/visitor/{visitorId}:
+ *   delete:
+ *     summary: Retirer un visiteur de la liste des indésirables (recommandé)
+ *     description: |
+ *       Retire complètement un visiteur de la liste des indésirables.
+ *       Cette action va automatiquement:
+ *       - Désactiver `isBlacklisted = false` sur le visiteur
+ *       - Supprimer `blacklistReason`
+ *       - Créer un historique UNBLACKLIST dans BlacklistHistory
+ *       - Supprimer l'entrée NonDesirable
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: visitorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID du visiteur à retirer de la blacklist
+ *     responses:
+ *       200:
+ *         description: Visiteur retiré de la liste des indésirables avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Visiteur non trouvé ou pas blacklisté
+ */
+router.delete('/visitor/:visitorId', nonDesirableController.removeNonDesirable);
+
+/**
+ * @swagger
+ * /api/nondesirables/{id}:
+ *   delete:
+ *     summary: Supprimer une entrée indésirable (sans déblacklister)
+ *     description: Supprime seulement l'entrée NonDesirable sans modifier le statut du visiteur
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID de l'entrée indésirable à supprimer
+ *     responses:
+ *       200:
+ *         description: Entrée supprimée avec succès
+ *       404:
+ *         description: Entrée indésirable non trouvée
+ */
 router.delete('/:id', nonDesirableController.deleteNonDesirable);
 
 module.exports = router;

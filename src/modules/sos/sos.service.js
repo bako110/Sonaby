@@ -25,11 +25,11 @@ class SOSService {
         throw new Error('Checkpoint non trouvé');
       }
 
-      // Vérifier s'il y a déjà un SOS actif pour ce checkpoint
+      // Vérifier s'il y a déjà un SOS actif (non résolu) pour ce checkpoint
       const activeSOS = await prisma.sosAlert.findFirst({
         where: {
           checkpointId: sosData.checkpointId,
-          isActive: true
+          isResolved: false
         }
       });
 
@@ -40,8 +40,8 @@ class SOSService {
       const sos = await prisma.sosAlert.create({
         data: {
           ...sosData,
-          sentBy,
-          isActive: true
+          triggeredBy: sentBy,
+          isResolved: false
         },
         include: {
           checkpoint: {
@@ -51,8 +51,8 @@ class SOSService {
                   id: true,
                   name: true,
                   address: true,
-                    city: true,
-                    country: true
+                  city: true,
+                  country: true
                 }
               }
             }
@@ -82,10 +82,10 @@ class SOSService {
       // Mock des notifications - à implémenter avec un vrai service
       console.log(`🚨 SOS ALERT 🚨`);
       console.log(`Checkpoint: ${sos.checkpoint.name}`);
-      console.log(`Site: ${sos.checkpoint.site.name} (${sos.checkpoint.site.location})`);
-      console.log(`Envoyé par: ${sos.sender.firstName} ${sos.sender.lastName}`);
+      console.log(`Site: ${sos.checkpoint.site.name} (${sos.checkpoint.site.city})`);
+      console.log(`Envoyé par: ${sos.triggerer.firstName} ${sos.triggerer.lastName}`);
       console.log(`Message: ${sos.message || 'Aucun message'}`);
-      console.log(`Heure: ${sos.createdAt}`);
+      console.log(`Heure: ${sos.triggeredAt}`);
       
       // TODO: Implémenter l'envoi d'emails et SMS
       // await emailService.sendSOSAlert(sos);
@@ -109,7 +109,8 @@ class SOSService {
       }
 
       if (active !== null) {
-        whereClause.isActive = active;
+        // active=true signifie isResolved=false
+        whereClause.isResolved = !active;
       }
 
       const [sosAlerts, total] = await Promise.all([
@@ -173,8 +174,8 @@ class SOSService {
                   id: true,
                   name: true,
                   address: true,
-                    city: true,
-                    country: true
+                  city: true,
+                  country: true
                 }
               }
             }
@@ -201,17 +202,22 @@ class SOSService {
     }
   }
 
-  async deactivateSOS(id) {
+  async resolveSOS(id, resolvedBy, notes) {
     try {
       const existingSOS = await this.getSOSById(id);
       
-      if (!existingSOS.isActive) {
-        throw new Error('Ce SOS est déjà désactivé');
+      if (existingSOS.isResolved) {
+        throw new Error('Ce SOS est déjà résolu');
       }
 
       const updatedSOS = await prisma.sosAlert.update({
         where: { id },
-        data: { isActive: false },
+        data: { 
+          isResolved: true,
+          resolvedBy,
+          resolvedAt: new Date(),
+          resolutionNotes: notes
+        },
         include: {
           checkpoint: {
             include: {
@@ -220,13 +226,20 @@ class SOSService {
                   id: true,
                   name: true,
                   address: true,
-                    city: true,
-                    country: true
+                  city: true,
+                  country: true
                 }
               }
             }
           },
           triggerer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          resolver: {
             select: {
               id: true,
               firstName: true,
@@ -238,7 +251,7 @@ class SOSService {
 
       return updatedSOS;
     } catch (error) {
-      throw new Error(`Erreur lors de la désactivation du SOS: ${error.message}`);
+      throw new Error(`Erreur lors de la résolution du SOS: ${error.message}`);
     }
   }
 
@@ -246,7 +259,7 @@ class SOSService {
     try {
       const activeSOS = await prisma.sosAlert.findMany({
         where: {
-          isActive: true
+          isResolved: false
         },
         include: {
           checkpoint: {
@@ -291,7 +304,7 @@ class SOSService {
 
       const activeSOS = await prisma.sosAlert.count({
         where: {
-          isActive: true
+          isResolved: false
         }
       });
 

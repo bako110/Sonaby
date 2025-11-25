@@ -939,6 +939,106 @@ module.exports = {
   VisitorGroup,
   GroupVisitor,
   
+  // Agent Schemas
+  Agent: {
+    type: "object",
+    properties: {
+      id: { type: "string", format: "uuid", description: "ID unique de l'agent", example: "990e8400-e29b-41d4-a716-446655440001" },
+      firstName: { type: "string", description: "Prénom de l'agent", example: "Amadou" },
+      lastName: { type: "string", description: "Nom de l'agent", example: "TRAORE" },
+      email: { type: "string", format: "email", description: "Email de l'agent", example: "amadou.traore@sonabhy.bf" },
+      phone: { type: "string", description: "Téléphone de l'agent", example: "+226 70 11 22 33" },
+      role: { type: "string", enum: ["AGENT_CONTROLE"], description: "Rôle de l'agent (toujours AGENT_CONTROLE)", example: "AGENT_CONTROLE" },
+      isActive: { type: "boolean", description: "Agent actif", example: true },
+      assignedCheckpoints: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+            site: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                name: { type: "string" },
+                city: { type: "string" }
+              }
+            }
+          }
+        },
+        description: "Checkpoints assignés à l'agent"
+      },
+      createdAt: { type: "string", format: "date-time", description: "Date de création", example: "2024-01-15T08:00:00.000Z" },
+      updatedAt: { type: "string", format: "date-time", description: "Date de mise à jour", example: "2024-11-24T17:20:00.000Z" }
+    }
+  },
+  
+  CreateAgentInput: {
+    type: "object",
+    required: ["firstName", "lastName", "email", "password", "role"],
+    properties: {
+      firstName: { type: "string", maxLength: 100, description: "Prénom de l'agent", example: "Amadou" },
+      lastName: { type: "string", maxLength: 100, description: "Nom de l'agent", example: "TRAORE" },
+      email: { type: "string", format: "email", maxLength: 255, description: "Email de l'agent", example: "amadou.traore@sonabhy.bf" },
+      password: { type: "string", minLength: 8, description: "Mot de passe de l'agent", example: "MotDePasse123!" },
+      phone: { type: "string", maxLength: 20, description: "Téléphone de l'agent", example: "+226 70 11 22 33" },
+      role: { type: "string", enum: ["AGENT_CONTROLE"], description: "Rôle de l'agent (automatiquement défini à AGENT_CONTROLE)", example: "AGENT_CONTROLE" },
+      isActive: { type: "boolean", description: "Agent actif", example: true }
+    },
+    example: {
+      firstName: "Amadou",
+      lastName: "TRAORE",
+      email: "amadou.traore@sonabhy.bf",
+      password: "MotDePasse123!",
+      phone: "+226 70 11 22 33",
+      role: "AGENT_CONTROLE",
+      isActive: true
+    }
+  },
+  
+  UpdateAgentInput: {
+    type: "object",
+    description: "Données pour mettre à jour un agent (tous les champs sont optionnels)",
+    properties: {
+      firstName: { type: "string", maxLength: 100, description: "Prénom de l'agent", example: "Amadou" },
+      lastName: { type: "string", maxLength: 100, description: "Nom de l'agent", example: "TRAORE" },
+      email: { type: "string", format: "email", maxLength: 255, description: "Email de l'agent", example: "amadou.traore@sonabhy.bf" },
+      phone: { type: "string", maxLength: 20, description: "Téléphone de l'agent", example: "+226 70 11 22 33" },
+      isActive: { type: "boolean", description: "Agent actif", example: false }
+    },
+    example: {
+      firstName: "Amadou",
+      phone: "+226 70 11 22 44",
+      isActive: false
+    }
+  },
+  
+  CreateServiceInput: {
+    type: "object",
+    required: ["name", "description"],
+    properties: {
+      name: { type: "string", maxLength: 100, description: "Nom du service", example: "Ressources Humaines" },
+      description: { type: "string", maxLength: 500, description: "Description du service", example: "Gestion du personnel et des ressources humaines" },
+      manager: { type: "string", maxLength: 255, description: "Responsable du service", example: "Marie OUEDRAOGO" },
+      managerEmail: { type: "string", format: "email", maxLength: 255, description: "Email du responsable", example: "marie.ouedraogo@sonabhy.bf" },
+      phone: { type: "string", maxLength: 20, description: "Téléphone du service", example: "+226 25 30 40 60" },
+      email: { type: "string", format: "email", maxLength: 255, description: "Email du service", example: "rh@sonabhy.bf" },
+      location: { type: "string", maxLength: 255, description: "Localisation du service", example: "Bâtiment A, 2ème étage" },
+      isActive: { type: "boolean", description: "Service actif", example: true }
+    },
+    example: {
+      name: "Ressources Humaines",
+      description: "Gestion du personnel et des ressources humaines",
+      manager: "Marie OUEDRAOGO",
+      managerEmail: "marie.ouedraogo@sonabhy.bf",
+      phone: "+226 25 30 40 60",
+      email: "rh@sonabhy.bf",
+      location: "Bâtiment A, 2ème étage",
+      isActive: true
+    }
+  },
+  
   // Security & Incidents
   BlacklistHistory,
   SosAlert,
@@ -957,6 +1057,606 @@ module.exports = {
   CheckpointType,
   CheckpointPriority,
   ControlFrequency,
+
+  // ===== NONDESIRABLE SCHEMAS =====
+  CreateNondesirableInput: {
+    type: "object",
+    required: ["visitorId", "reason"],
+    properties: {
+      visitorId: {
+        type: "string",
+        format: "uuid",
+        description: "ID du visiteur à ajouter à la liste des indésirables",
+        example: "880e8400-e29b-41d4-a716-446655440001"
+      },
+      reason: {
+        type: "string",
+        minLength: 1,
+        maxLength: 500,
+        description: "Raison de l'ajout à la liste des indésirables",
+        example: "Comportement inapproprié lors de la dernière visite"
+      }
+    },
+    description: "Cette action va automatiquement activer isBlacklisted=true sur le visiteur, ajouter la raison dans blacklistReason, créer un historique dans BlacklistHistory et une entrée dans NonDesirable."
+  },
+
+  CreateUnknownNondesirableInput: {
+    type: "object",
+    required: ["firstName", "lastName", "idType", "idNumber", "reason"],
+    properties: {
+      firstName: {
+        type: "string",
+        minLength: 1,
+        maxLength: 100,
+        description: "Prénom de la personne",
+        example: "Inconnu"
+      },
+      lastName: {
+        type: "string",
+        minLength: 1,
+        maxLength: 100,
+        description: "Nom de la personne",
+        example: "SUSPECT"
+      },
+      idType: {
+        type: "string",
+        enum: ["CNI", "PASSEPORT", "PERMIS_CONDUITE"],
+        description: "Type de pièce d'identité",
+        example: "CNI"
+      },
+      idNumber: {
+        type: "string",
+        minLength: 1,
+        maxLength: 255,
+        description: "Numéro de la pièce d'identité",
+        example: "X9999999999"
+      },
+      birthDate: {
+        type: "string",
+        description: "Date de naissance (format libre)",
+        example: "15/06/1980"
+      },
+      birthPlace: {
+        type: "string",
+        maxLength: 255,
+        description: "Lieu de naissance",
+        example: "Ouagadougou"
+      },
+      sexe: {
+        type: "string",
+        enum: ["M", "F", "HOMME", "FEMME"],
+        description: "Sexe de la personne",
+        example: "M"
+      },
+      givingDate: {
+        type: "string",
+        description: "Date de délivrance du document (format libre)",
+        example: "01/01/2020"
+      },
+      expirationDate: {
+        type: "string",
+        description: "Date d'expiration du document (format libre)",
+        example: "01/01/2030"
+      },
+      phone: {
+        type: "string",
+        maxLength: 20,
+        description: "Numéro de téléphone",
+        example: "+226 70 11 22 33"
+      },
+      email: {
+        type: "string",
+        format: "email",
+        description: "Adresse email",
+        example: "inconnu@example.com"
+      },
+      company: {
+        type: "string",
+        maxLength: 255,
+        description: "Entreprise",
+        example: "Entreprise Suspecte SARL"
+      },
+      nationality: {
+        type: "string",
+        maxLength: 100,
+        description: "Nationalité",
+        example: "Burkinabé"
+      },
+      idScanUrl: {
+        type: "string",
+        format: "uri",
+        description: "URL du scan de la pièce d'identité",
+        example: "https://example.com/scans/suspect123.jpg"
+      },
+      photoUrl: {
+        type: "string",
+        format: "uri",
+        description: "URL de la photo de la personne",
+        example: "https://example.com/photos/suspect123.jpg"
+      },
+      reason: {
+        type: "string",
+        minLength: 1,
+        maxLength: 500,
+        description: "Raison de l'ajout à la liste des indésirables",
+        example: "Signalement des autorités - comportement suspect"
+      },
+      incidentDate: {
+        type: "string",
+        format: "date",
+        description: "Date de l'incident",
+        example: "2024-11-20"
+      },
+      incidentLocation: {
+        type: "string",
+        maxLength: 255,
+        description: "Lieu de l'incident",
+        example: "Entrée principale"
+      },
+      severityLevel: {
+        type: "integer",
+        minimum: 1,
+        maximum: 4,
+        description: "Niveau de gravité (1=Faible, 2=Moyen, 3=Élevé, 4=Critique)",
+        example: 3
+      }
+    },
+    description: "Créer un indésirable sans visiteur existant. Seuls les administrateurs peuvent utiliser cette fonctionnalité."
+  },
+
+  UnknownNondesirable: {
+    type: "object",
+    properties: {
+      id: {
+        type: "string",
+        format: "uuid",
+        description: "Identifiant unique de l'entrée",
+        example: "550e8400-e29b-41d4-a716-446655440001"
+      },
+      firstName: {
+        type: "string",
+        example: "Inconnu"
+      },
+      lastName: {
+        type: "string",
+        example: "SUSPECT"
+      },
+      idType: {
+        type: "string",
+        example: "CNI"
+      },
+      idNumber: {
+        type: "string",
+        example: "X9999999999"
+      },
+      phone: {
+        type: "string",
+        example: "+226 XX XX XX XX"
+      },
+      email: {
+        type: "string",
+        format: "email",
+        example: "inconnu@example.com"
+      },
+      nationality: {
+        type: "string",
+        example: "Burkinabé"
+      },
+      birthDate: {
+        type: "string",
+        example: "15/06/1980"
+      },
+      birthPlace: {
+        type: "string",
+        example: "Ouagadougou"
+      },
+      sexe: {
+        type: "string",
+        example: "M"
+      },
+      givingDate: {
+        type: "string",
+        example: "01/01/2020"
+      },
+      expirationDate: {
+        type: "string",
+        example: "01/01/2030"
+      },
+      company: {
+        type: "string",
+        example: "Entreprise Suspecte SARL"
+      },
+      idScanUrl: {
+        type: "string",
+        format: "uri",
+        example: "https://example.com/scans/suspect123.jpg"
+      },
+      photoUrl: {
+        type: "string",
+        format: "uri",
+        example: "https://example.com/photos/suspect123.jpg"
+      },
+      isBlacklisted: {
+        type: "boolean",
+        description: "Toujours true pour un indésirable",
+        example: true
+      },
+      blacklistReason: {
+        type: "string",
+        description: "Raison de la blacklist (même que reason)",
+        example: "Signalement des autorités - comportement suspect"
+      },
+      reason: {
+        type: "string",
+        example: "Signalement des autorités - comportement suspect"
+      },
+      severityLevel: {
+        type: "integer",
+        example: 3
+      },
+      incidentDate: {
+        type: "string",
+        format: "date",
+        example: "2024-11-20"
+      },
+      incidentLocation: {
+        type: "string",
+        example: "Entrée principale"
+      },
+      createdAt: {
+        type: "string",
+        format: "date-time",
+        description: "Date de création",
+        example: "2024-11-24T10:30:00.000Z"
+      },
+      updatedAt: {
+        type: "string",
+        format: "date-time",
+        description: "Date de mise à jour",
+        example: "2024-11-24T10:30:00.000Z"
+      },
+      reporter: {
+        type: "object",
+        description: "Administrateur qui a ajouté l'indésirable",
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid"
+          },
+          firstName: {
+            type: "string"
+          },
+          lastName: {
+            type: "string"
+          },
+          email: {
+            type: "string",
+            format: "email"
+          }
+        }
+      }
+    }
+  },
+  
+  Nondesirable: {
+    type: "object",
+    properties: {
+      id: {
+        type: "string",
+        format: "uuid",
+        description: "Identifiant unique de l'entrée indésirable",
+        example: "550e8400-e29b-41d4-a716-446655440001"
+      },
+      visitorId: {
+        type: "string",
+        format: "uuid",
+        description: "ID du visiteur indésirable",
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      },
+      reason: {
+        type: "string",
+        description: "Raison de l'ajout à la liste noire",
+        example: "Comportement inapproprié lors de la dernière visite"
+      },
+      createdAt: {
+        type: "string",
+        format: "date-time",
+        description: "Date de création de l'entrée",
+        example: "2024-11-24T10:30:00.000Z"
+      },
+      updatedAt: {
+        type: "string",
+        format: "date-time",
+        description: "Date de dernière mise à jour",
+        example: "2024-11-24T10:30:00.000Z"
+      },
+      visitor: {
+        type: "object",
+        description: "Informations du visiteur indésirable",
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            example: "880e8400-e29b-41d4-a716-446655440001"
+          },
+          firstName: {
+            type: "string",
+            example: "Marie"
+          },
+          lastName: {
+            type: "string",
+            example: "KABORE"
+          },
+          phone: {
+            type: "string",
+            example: "+226 70 11 22 33"
+          },
+          email: {
+            type: "string",
+            format: "email",
+            example: "marie.kabore@email.com"
+          },
+          company: {
+            type: "string",
+            example: "Entreprise KABORE & Fils"
+          },
+          idType: {
+            type: "string",
+            example: "CNI"
+          },
+          idNumber: {
+            type: "string",
+            example: "B1234567890"
+          },
+          isBlacklisted: {
+            type: "boolean",
+            description: "Statut blacklist du visiteur (automatiquement mis à true)",
+            example: true
+          },
+          blacklistReason: {
+            type: "string",
+            description: "Raison de la blacklist (automatiquement ajoutée)",
+            example: "Comportement inapproprié lors de la dernière visite"
+          }
+        }
+      },
+      reporter: {
+        type: "object",
+        description: "Informations de l'utilisateur qui a ajouté l'indésirable",
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            example: "6985b877-c56b-11f0-aa39-0242ac140013"
+          },
+          firstName: {
+            type: "string",
+            example: "Admin"
+          },
+          lastName: {
+            type: "string",
+            example: "System"
+          },
+          email: {
+            type: "string",
+            format: "email",
+            example: "admin@sonabhy.bf"
+          }
+        }
+      }
+    }
+  },
+
+  // ===== VISITOR SCHEMAS =====
+  Visitor: {
+    type: "object",
+    properties: {
+      id: {
+        type: "string",
+        format: "uuid",
+        description: "Identifiant unique du visiteur",
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      },
+      firstName: {
+        type: "string",
+        description: "Prénom du visiteur",
+        example: "Jean"
+      },
+      lastName: {
+        type: "string",
+        description: "Nom du visiteur",
+        example: "Dupont"
+      },
+      birthDate: {
+        type: "string",
+        description: "Date de naissance",
+        example: "1985-06-15"
+      },
+      birthPlace: {
+        type: "string",
+        description: "Lieu de naissance",
+        example: "Ouagadougou"
+      },
+      sexe: {
+        type: "string",
+        enum: ["M", "F", "HOMME", "FEMME"],
+        description: "Sexe du visiteur",
+        example: "M"
+      },
+      givingDate: {
+        type: "string",
+        description: "Date de délivrance du document",
+        example: "2020-01-15"
+      },
+      expirationDate: {
+        type: "string",
+        description: "Date d'expiration du document",
+        example: "2030-01-15"
+      },
+      phone: {
+        type: "string",
+        description: "Numéro de téléphone",
+        example: "+226 70 11 22 33"
+      },
+      email: {
+        type: "string",
+        format: "email",
+        description: "Adresse email",
+        example: "jean.dupont@email.com"
+      },
+      idType: {
+        type: "string",
+        description: "Type de document d'identité",
+        example: "CNI"
+      },
+      idNumber: {
+        type: "string",
+        description: "Numéro du document d'identité",
+        example: "B1234567890"
+      },
+      idScanUrl: {
+        type: "string",
+        format: "uri",
+        description: "URL du scan du document",
+        example: "https://example.com/scan.jpg"
+      },
+      photoUrl: {
+        type: "string",
+        format: "uri",
+        description: "URL de la photo du visiteur",
+        example: "https://example.com/photo.jpg"
+      },
+      isBlacklisted: {
+        type: "boolean",
+        description: "Indique si le visiteur est blacklisté",
+        example: false
+      },
+      blacklistReason: {
+        type: "string",
+        description: "Raison de la blacklist (si applicable)",
+        example: null
+      },
+      company: {
+        type: "string",
+        description: "Entreprise du visiteur",
+        example: "Entreprise ABC"
+      },
+      createdAt: {
+        type: "string",
+        format: "date-time",
+        description: "Date de création",
+        example: "2024-11-24T10:30:00.000Z"
+      },
+      updatedAt: {
+        type: "string",
+        format: "date-time",
+        description: "Date de dernière mise à jour",
+        example: "2024-11-24T10:30:00.000Z"
+      }
+    }
+  },
+
+  CreateVisitorInput: {
+    type: "object",
+    required: ["firstName", "lastName", "idType", "idNumber"],
+    properties: {
+      firstName: {
+        type: "string",
+        minLength: 1,
+        maxLength: 100,
+        description: "Prénom du visiteur",
+        example: "Jean"
+      },
+      lastName: {
+        type: "string",
+        minLength: 1,
+        maxLength: 100,
+        description: "Nom du visiteur",
+        example: "Dupont"
+      },
+      birthDate: {
+        type: "string",
+        description: "Date de naissance",
+        example: "1985-06-15"
+      },
+      birthPlace: {
+        type: "string",
+        maxLength: 255,
+        description: "Lieu de naissance",
+        example: "Ouagadougou"
+      },
+      sexe: {
+        type: "string",
+        enum: ["M", "F", "HOMME", "FEMME"],
+        description: "Sexe du visiteur",
+        example: "M"
+      },
+      givingDate: {
+        type: "string",
+        description: "Date de délivrance du document",
+        example: "2020-01-15"
+      },
+      expirationDate: {
+        type: "string",
+        description: "Date d'expiration du document",
+        example: "2030-01-15"
+      },
+      phone: {
+        type: "string",
+        maxLength: 20,
+        description: "Numéro de téléphone",
+        example: "+226 70 11 22 33"
+      },
+      email: {
+        type: "string",
+        format: "email",
+        description: "Adresse email",
+        example: "jean.dupont@email.com"
+      },
+      idType: {
+        type: "string",
+        enum: ["CNI", "PASSEPORT", "PERMIS_CONDUITE"],
+        description: "Type de document d'identité",
+        example: "CNI"
+      },
+      idNumber: {
+        type: "string",
+        minLength: 1,
+        maxLength: 255,
+        description: "Numéro du document d'identité",
+        example: "B1234567890"
+      },
+      idScanUrl: {
+        type: "string",
+        format: "uri",
+        description: "URL du scan du document",
+        example: "https://example.com/scan.jpg"
+      },
+      photoUrl: {
+        type: "string",
+        format: "uri",
+        description: "URL de la photo du visiteur",
+        example: "https://example.com/photo.jpg"
+      },
+      isBlacklisted: {
+        type: "boolean",
+        default: false,
+        description: "Indique si le visiteur est blacklisté",
+        example: false
+      },
+      blacklistReason: {
+        type: "string",
+        description: "Raison de la blacklist (si applicable)",
+        example: null
+      },
+      company: {
+        type: "string",
+        maxLength: 255,
+        description: "Entreprise du visiteur",
+        example: "Entreprise ABC"
+      }
+    }
+  },
 
   // ===== TYPES DE RÉPONSE API =====
   ApiResponse,

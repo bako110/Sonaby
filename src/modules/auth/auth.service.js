@@ -137,11 +137,11 @@ class AuthService {
     
     // Générer les tokens JWT
     async generateTokens(userId, role) {
-        // Access Token (15 minutes)
+        // Access Token (24 heures)
         const accessToken = jwt.sign(
             { userId, role },
             appConfig.jwtSecret,
-            { expiresIn: '15m' }
+            { expiresIn: '24h' }
         );
         
         // Refresh Token (7 jours)

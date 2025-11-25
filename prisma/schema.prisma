@@ -31,6 +31,7 @@ model User {
   organizedGroups     VisitorGroup[]
   createdVisits       Visit[]                     @relation("VisitCreator")
   refreshTokens       RefreshToken[]
+  reportedNonDesirables NonDesirable[]            @relation("NonDesirableReporter")
 
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
@@ -212,6 +213,11 @@ model Visitor {
   id               String             @id @default(dbgenerated("(uuid())")) @db.Char(36)
   firstName        String             @map("first_name") @db.VarChar(100)
   lastName         String             @map("last_name") @db.VarChar(100)
+  birthDate        String?            @map("birth_date") @db.VarChar(20)
+  birthPlace       String?            @map("birth_place") @db.VarChar(255)
+  sexe             String?            @db.VarChar(10)
+  givingDate       String?            @map("giving_date") @db.VarChar(20)
+  expirationDate   String?            @map("expiration_date") @db.VarChar(20)
   phone            String?            @db.VarChar(20)
   email            String?            @db.VarChar(255)
   idType           String             @map("id_type") @db.VarChar(20)
@@ -228,6 +234,7 @@ model Visitor {
   rendezvous       Rendezvous[]
   id_types         id_types           @relation(fields: [idType], references: [type_name], onDelete: NoAction, onUpdate: NoAction, map: "visitors_ibfk_1")
   visits           Visit[]
+  nonDesirables    NonDesirable[]
 
   @@unique([idType, idNumber], map: "unique_identity")
   @@index([isBlacklisted], map: "idx_visitors_blacklisted")
@@ -510,4 +517,20 @@ model RefreshToken {
   @@index([userId], map: "idx_refresh_tokens_user_id")
   @@index([expiresAt], map: "idx_refresh_tokens_expires_at")
   @@map("refresh_tokens")
+}
+
+model NonDesirable {
+  id         String   @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  visitorId  String?  @map("visitor_id") @db.Char(36)
+  reason     String   @db.Text
+  reportedBy String   @map("reported_by") @db.Char(36)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  
+  visitor  Visitor? @relation(fields: [visitorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  reporter User     @relation("NonDesirableReporter", fields: [reportedBy], references: [id], onDelete: Cascade)
+  
+  @@index([visitorId], map: "idx_non_desirables_visitor_id")
+  @@index([reportedBy], map: "idx_non_desirables_reported_by")
+  @@map("non_desirables")
 }

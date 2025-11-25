@@ -1,33 +1,10 @@
-const { PrismaClient } = require('@prisma/client');
-
-const prisma = new PrismaClient();
+const { prisma } = require('../../config/prisma');
 
 class VisitorService {
   async createVisitor(visitorData) {
     try {
-      // Si un fichier est spécifié, vérifier qu'il existe
-      if (visitorData.fileId) {
-        const file = await prisma.file.findUnique({
-          where: { id: visitorData.fileId }
-        });
-
-        if (!file) {
-          throw new Error('Fichier non trouvé');
-        }
-      }
-
       const visitor = await prisma.visitor.create({
-        data: visitorData,
-        include: {
-          file: {
-            select: {
-              id: true,
-              originalName: true,
-              mimeType: true,
-              size: true
-            }
-          }
-        }
+        data: visitorData
       });
       return visitor;
     } catch (error) {
@@ -60,20 +37,9 @@ class VisitorService {
           skip,
           take: limit,
           include: {
-            file: {
-              select: {
-                id: true,
-                originalName: true,
-                mimeType: true,
-                size: true
-              }
-            },
             _count: {
               select: {
-                visits: true,
-                appointments: true,
-                incidents: true,
-                nonDesirables: true
+                visits: true
               }
             }
           },
@@ -103,15 +69,6 @@ class VisitorService {
       const visitor = await prisma.visitor.findUnique({
         where: { id },
         include: {
-          file: {
-            select: {
-              id: true,
-              originalName: true,
-              mimeType: true,
-              size: true,
-              path: true
-            }
-          },
           visits: {
             take: 10,
             orderBy: {
@@ -138,7 +95,7 @@ class VisitorService {
               }
             }
           },
-          appointments: {
+          rendezvous: {
             take: 10,
             orderBy: {
               createdAt: 'desc'
@@ -148,41 +105,6 @@ class VisitorService {
                 select: {
                   id: true,
                   name: true
-                }
-              }
-            }
-          },
-          incidents: {
-            take: 5,
-            orderBy: {
-              createdAt: 'desc'
-            },
-            include: {
-              service: {
-                select: {
-                  id: true,
-                  name: true
-                }
-              },
-              reporter: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              }
-            }
-          },
-          nonDesirables: {
-            orderBy: {
-              createdAt: 'desc'
-            },
-            include: {
-              reporter: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
                 }
               }
             }
@@ -204,30 +126,9 @@ class VisitorService {
     try {
       const existingVisitor = await this.getVisitorById(id);
       
-      // Si on change le fichier, vérifier qu'il existe
-      if (updateData.fileId) {
-        const file = await prisma.file.findUnique({
-          where: { id: updateData.fileId }
-        });
-
-        if (!file) {
-          throw new Error('Fichier non trouvé');
-        }
-      }
-
       const updatedVisitor = await prisma.visitor.update({
         where: { id },
-        data: updateData,
-        include: {
-          file: {
-            select: {
-              id: true,
-              originalName: true,
-              mimeType: true,
-              size: true
-            }
-          }
-        }
+        data: updateData
       });
 
       return updatedVisitor;
@@ -310,21 +211,16 @@ class VisitorService {
         }
       });
 
-      const nonDesirablesCount = await prisma.nonDesirable.count();
-
-      const visitorsWithFiles = await prisma.visitor.count({
+      const blacklistedCount = await prisma.visitor.count({
         where: {
-          fileId: {
-            not: null
-          }
+          isBlacklisted: true
         }
       });
 
       return {
         totalVisitors: stats._count.id,
-        visitorsWithFiles,
-        visitorsWithoutFiles: stats._count.id - visitorsWithFiles,
-        nonDesirablesCount,
+        blacklistedVisitors: blacklistedCount,
+        activeVisitors: stats._count.id - blacklistedCount,
         companiesDistribution: companyStats
       };
     } catch (error) {
@@ -339,7 +235,7 @@ class VisitorService {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      const [visits, appointments, incidents] = await Promise.all([
+      const [visits, rendezvous] = await Promise.all([
         prisma.visit.findMany({
           where: {
             visitorId: id,
@@ -371,7 +267,7 @@ class VisitorService {
             }
           }
         }),
-        prisma.appointment.findMany({
+        prisma.rendezvous.findMany({
           where: {
             visitorId: id,
             createdAt: {
@@ -386,32 +282,6 @@ class VisitorService {
               select: {
                 id: true,
                 name: true
-              }
-            }
-          }
-        }),
-        prisma.incident.findMany({
-          where: {
-            visitorId: id,
-            createdAt: {
-              gte: startDate
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          include: {
-            service: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            reporter: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true
               }
             }
           }
@@ -432,13 +302,11 @@ class VisitorService {
         },
         history: {
           visits,
-          appointments,
-          incidents
+          rendezvous
         },
         summary: {
           totalVisits: visits.length,
-          totalAppointments: appointments.length,
-          totalIncidents: incidents.length
+          totalRendezvous: rendezvous.length
         }
       };
     } catch (error) {
