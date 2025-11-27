@@ -14,13 +14,10 @@ class CheckpointService {
         throw new Error('Site non trouvé');
       }
 
-      // Extraire la configuration SOS
-      const { sosConfiguration, ...checkpointFields } = checkpointData;
-      
-      // Vérifier l'unicité de l'identifiant SOS si fourni
-      if (sosConfiguration?.sosId) {
+      // Vérifier l'unicité de l'identifiant SOS
+      if (checkpointData.sosId) {
         const existingSOS = await prisma.checkpoint.findFirst({
-          where: { sosId: sosConfiguration.sosId }
+          where: { sosId: checkpointData.sosId }
         });
 
         if (existingSOS) {
@@ -28,57 +25,41 @@ class CheckpointService {
         }
       }
 
-      // Si un agent est assigné, récupérer ses infos pour les champs dénormalisés
-      let agentInfo = {};
-      if (checkpointData.agentId) {
-        const agent = await prisma.user.findUnique({
-          where: { id: checkpointData.agentId }
-        });
-        
-        if (!agent) {
-           throw new Error('Agent non trouvé');
-        }
-
-        // Remplir les champs dénormalisés
-        agentInfo = {
-          agentName: `${agent.firstName} ${agent.lastName}`,
-          agentEmail: agent.email,
-          agentPhone: agent.phone,
-          assignmentDate: new Date()
-        };
-      }
-
       // Préparer les données pour la création
       const createData = {
-        ...checkpointFields,
-        ...agentInfo,
-        sosId: sosConfiguration?.sosId || null,
-        sosConfiguration: sosConfiguration ? JSON.stringify(sosConfiguration) : null
+        name: checkpointData.name,
+        description: checkpointData.description || null,
+        siteId: checkpointData.siteId,
+        zone: checkpointData.zone || null,
+        building: checkpointData.building || null,
+        floor: checkpointData.floor || null,
+        coordinatesLatitude: checkpointData.coordinatesLatitude || null,
+        coordinatesLongitude: checkpointData.coordinatesLongitude || null,
+        sosId: checkpointData.sosId,
+        agentId: checkpointData.agentId || null,
+        checkpointType: checkpointData.checkpointType,
+        status: checkpointData.status,
+        priority: checkpointData.priority,
+        controlFrequency: checkpointData.controlFrequency,
+        equipment: checkpointData.equipment || [],
+        specialInstructions: checkpointData.specialInstructions || null,
+        active: checkpointData.active
       };
 
       const checkpoint = await prisma.checkpoint.create({
         data: createData,
         include: {
           site: true,
-          agent: { // Changé de 'agents' à 'agent'
+          agent: {
             select: {
               id: true,
-              firstName: true, // Changé de 'firstname' à 'firstName' pour correspondre au modèle User
-              lastName: true,  // Changé de 'lastname' à 'lastName' pour correspondre au modèle User
+              firstName: true,
+              lastName: true,
               email: true
             }
           }
         }
       });
-      
-      // Parser la configuration SOS pour le retour
-      if (checkpoint.sosConfiguration) {
-        try {
-          checkpoint.sosConfiguration = JSON.parse(checkpoint.sosConfiguration);
-        } catch (e) {
-          checkpoint.sosConfiguration = null;
-        }
-      }
       
       return checkpoint;
     } catch (error) {
@@ -315,29 +296,43 @@ class CheckpointService {
       // Vérifier que le checkpoint existe
       const checkpoint = await this.getCheckpointById(checkpointId);
       
-      // Vérifier que l'agent existe
-      const agent = await prisma.agentControle.findUnique({
-        where: { id: agentId }
+      // Vérifier que l'agent existe (utiliser User avec rôle AGENT_CONTROLE)
+      const agent = await prisma.user.findFirst({
+        where: { 
+          id: agentId,
+          role: 'AGENT_CONTROLE'
+        }
       });
 
       if (!agent) {
         throw new Error('Agent non trouvé');
       }
 
-      // Assigner l'agent au checkpoint
-      const updatedAgent = await prisma.agentControle.update({
-        where: { id: agentId },
-        data: { checkpointId },
+      // Assigner l'agent au checkpoint (mettre à jour le checkpoint)
+      const updatedCheckpoint = await prisma.checkpoint.update({
+        where: { id: checkpointId },
+        data: { 
+          agent: {
+            connect: {
+              id: agentId
+            }
+          }
+        },
         include: {
-          checkpoint: {
-            include: {
-              site: true
+          site: true,
+          agent: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true
             }
           }
         }
       });
 
-      return updatedAgent;
+      return updatedCheckpoint;
     } catch (error) {
       throw new Error(`Erreur lors de l'assignation de l'agent: ${error.message}`);
     }

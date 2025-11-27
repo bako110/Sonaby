@@ -1,52 +1,52 @@
 const { PrismaClient } = require('@prisma/client');
-const { v4: uuidv4 } = require('uuid');
 
 const prisma = new PrismaClient();
 
 class AppointmentService {
   async createAppointment(appointmentData) {
     try {
-      // Vérifier que le visiteur existe
-      const visitor = await prisma.visitor.findUnique({
-        where: { id: appointmentData.visitorId }
+      // Vérifier que l'organisateur existe
+      const organizer = await prisma.user.findUnique({
+        where: { id: appointmentData.organizerId }
       });
 
-      if (!visitor) {
-        throw new Error('Visiteur non trouvé');
+      if (!organizer) {
+        throw new Error('Organisateur non trouvé');
       }
 
-      // Vérifier que le service existe
-      const service = await prisma.service.findUnique({
-        where: { id: appointmentData.serviceId }
+      // Vérifier que le site existe
+      const site = await prisma.site.findUnique({
+        where: { id: appointmentData.siteId }
       });
 
-      if (!service) {
-        throw new Error('Service non trouvé');
+      if (!site) {
+        throw new Error('Site non trouvé');
       }
 
-      // Générer un QR code unique
-      const qrCode = uuidv4();
-
-      const appointment = await prisma.appointment.create({
+      const appointment = await prisma.rendezvous.create({
         data: {
           ...appointmentData,
-          dateStart: new Date(appointmentData.dateStart),
-          dateEnd: new Date(appointmentData.dateEnd),
-          qrCode
+          visitDate: new Date(appointmentData.visitDate),
+          startTime: appointmentData.startTime ? new Date(`1970-01-01T${appointmentData.startTime}`) : null,
+          endTime: appointmentData.endTime ? new Date(`1970-01-01T${appointmentData.endTime}`) : null
         },
         include: {
-          visitor: {
+          organizer: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
-              company: true
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true
             }
           },
-          service: {
+          site: {
             select: {
               id: true,
-              name: true
+              name: true,
+              address: true,
+              city: true,
+              country: true
             }
           }
         }
@@ -54,66 +54,60 @@ class AppointmentService {
 
       return appointment;
     } catch (error) {
-      throw new Error(`Erreur lors de la création du rendez-vous: ${error.message}`);
+      console.error('Erreur lors de la création du rendez-vous:', error);
+      throw error;
     }
   }
 
-  async getAllAppointments(page = 1, limit = 10, search = null, visitorId = null, serviceId = null, upcoming = false) {
+  async getAllAppointments(page = 1, limit = 10, search = null, organizerId = null, siteId = null, firstName = null, lastName = null, serviceName = null, status = null) {
     try {
       const skip = (page - 1) * limit;
       
-      let whereClause = {};
+      const whereClause = {};
       
+      if (organizerId) whereClause.organizerId = organizerId;
+      if (siteId) whereClause.siteId = siteId;
+      if (firstName) whereClause.firstName = { contains: firstName, mode: 'insensitive' };
+      if (lastName) whereClause.lastName = { contains: lastName, mode: 'insensitive' };
+      if (serviceName) whereClause.serviceName = { contains: serviceName, mode: 'insensitive' };
+      if (status) whereClause.status = status;
       if (search) {
         whereClause.OR = [
-          { personVisited: { contains: search, mode: 'insensitive' } },
-          { visitor: { 
-            OR: [
-              { firstname: { contains: search, mode: 'insensitive' } },
-              { lastname: { contains: search, mode: 'insensitive' } }
-            ]
-          }}
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+          { serviceName: { contains: search, mode: 'insensitive' } },
+          { reason: { contains: search, mode: 'insensitive' } }
         ];
       }
 
-      if (visitorId) {
-        whereClause.visitorId = visitorId;
-      }
-
-      if (serviceId) {
-        whereClause.serviceId = serviceId;
-      }
-
-      if (upcoming) {
-        whereClause.dateStart = { gte: new Date() };
-      }
-
       const [appointments, total] = await Promise.all([
-        prisma.appointment.findMany({
+        prisma.rendezvous.findMany({
           where: whereClause,
-          skip,
-          take: limit,
           include: {
-            visitor: {
+            organizer: {
               select: {
                 id: true,
-                firstname: true,
-                lastname: true,
-                company: true
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true
               }
             },
-            service: {
+            site: {
               select: {
                 id: true,
-                name: true
+                name: true,
+                address: true,
+                city: true,
+                country: true
               }
             }
           },
-          orderBy: {
-            dateStart: 'desc'
-          }
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit
         }),
-        prisma.appointment.count({ where: whereClause })
+        prisma.rendezvous.count({ where: whereClause })
       ]);
 
       return {
@@ -126,72 +120,77 @@ class AppointmentService {
         }
       };
     } catch (error) {
-      throw new Error(`Erreur lors de la récupération des rendez-vous: ${error.message}`);
+      console.error('Erreur lors de la récupération des rendez-vous:', error);
+      throw error;
     }
   }
 
   async getAppointmentById(id) {
     try {
-      const appointment = await prisma.appointment.findUnique({
+      const appointment = await prisma.rendezvous.findUnique({
         where: { id },
         include: {
-          visitor: {
+          organizer: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               email: true,
-              phone: true,
-              company: true
+              role: true
             }
           },
-          service: {
+          site: {
             select: {
               id: true,
-              name: true
+              name: true,
+              address: true,
+              city: true,
+              country: true
             }
           }
         }
       });
-      
+
       if (!appointment) {
         throw new Error('Rendez-vous non trouvé');
       }
 
       return appointment;
     } catch (error) {
-      throw new Error(`Erreur lors de la récupération du rendez-vous: ${error.message}`);
+      console.error('Erreur lors de la récupération du rendez-vous:', error);
+      throw error;
     }
   }
 
   async updateAppointment(id, updateData) {
     try {
       const existingAppointment = await this.getAppointmentById(id);
-      
-      const dataToUpdate = { ...updateData };
-      if (updateData.dateStart) {
-        dataToUpdate.dateStart = new Date(updateData.dateStart);
-      }
-      if (updateData.dateEnd) {
-        dataToUpdate.dateEnd = new Date(updateData.dateEnd);
-      }
 
-      const updatedAppointment = await prisma.appointment.update({
+      const updatedAppointment = await prisma.rendezvous.update({
         where: { id },
-        data: dataToUpdate,
+        data: {
+          ...updateData,
+          visitDate: updateData.visitDate ? new Date(updateData.visitDate) : undefined,
+          startTime: updateData.startTime ? new Date(`1970-01-01T${updateData.startTime}`) : undefined,
+          endTime: updateData.endTime ? new Date(`1970-01-01T${updateData.endTime}`) : undefined
+        },
         include: {
-          visitor: {
+          organizer: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
-              company: true
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true
             }
           },
-          service: {
+          site: {
             select: {
               id: true,
-              name: true
+              name: true,
+              address: true,
+              city: true,
+              country: true
             }
           }
         }
@@ -199,21 +198,23 @@ class AppointmentService {
 
       return updatedAppointment;
     } catch (error) {
-      throw new Error(`Erreur lors de la mise à jour du rendez-vous: ${error.message}`);
+      console.error('Erreur lors de la mise à jour du rendez-vous:', error);
+      throw error;
     }
   }
 
   async deleteAppointment(id) {
     try {
       const existingAppointment = await this.getAppointmentById(id);
-      
-      await prisma.appointment.delete({
+
+      await prisma.rendezvous.delete({
         where: { id }
       });
 
       return { message: 'Rendez-vous supprimé avec succès' };
     } catch (error) {
-      throw new Error(`Erreur lors de la suppression du rendez-vous: ${error.message}`);
+      console.error('Erreur lors de la suppression du rendez-vous:', error);
+      throw error;
     }
   }
 
@@ -221,17 +222,31 @@ class AppointmentService {
     try {
       const appointment = await this.getAppointmentById(id);
       
-      // Le QR code est déjà généré lors de la création
-      return {
+      // Générer les données pour le QR code
+      const qrData = {
         appointmentId: appointment.id,
-        qrCode: appointment.qrCode,
-        visitor: appointment.visitor,
-        service: appointment.service,
-        dateStart: appointment.dateStart,
-        dateEnd: appointment.dateEnd
+        firstName: appointment.firstName,
+        lastName: appointment.lastName,
+        visitDate: appointment.visitDate,
+        siteName: appointment.site.name,
+        serviceName: appointment.serviceName
+      };
+
+      // Pour l'instant, retourner les données du QR code
+      // Dans une implémentation réelle, vous pourriez utiliser une librairie comme qrcode
+      return {
+        qrData: JSON.stringify(qrData),
+        appointment: {
+          id: appointment.id,
+          firstName: appointment.firstName,
+          lastName: appointment.lastName,
+          site: appointment.site,
+          visitDate: appointment.visitDate
+        }
       };
     } catch (error) {
-      throw new Error(`Erreur lors de la génération du QR code: ${error.message}`);
+      console.error('Erreur lors de la génération du QR code:', error);
+      throw error;
     }
   }
 }

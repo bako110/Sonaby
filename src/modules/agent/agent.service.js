@@ -15,6 +15,17 @@ class AgentService {
         throw new Error('Un agent avec cet email existe déjà');
       }
 
+      // Vérifier l'unicité du matricule
+      if (agentData.matricule) {
+        const existingMatricule = await prisma.user.findUnique({
+          where: { matricule: agentData.matricule }
+        });
+
+        if (existingMatricule) {
+          throw new Error('Un agent avec ce matricule existe déjà');
+        }
+      }
+
       // Si un checkpoint est spécifié, vérifier qu'il existe
       if (agentData.checkpointId) {
         const checkpoint = await prisma.checkpoint.findUnique({
@@ -26,31 +37,89 @@ class AgentService {
         }
       }
 
+      // Vérifier que les sites existent
+      if (agentData.assignedSites && agentData.assignedSites.length > 0) {
+        const sites = await prisma.site.findMany({
+          where: { id: { in: agentData.assignedSites } }
+        });
+
+        if (sites.length !== agentData.assignedSites.length) {
+          throw new Error('Un ou plusieurs sites spécifiés n\'existent pas');
+        }
+      }
+
+      // Vérifier que les permissions existent
+      if (agentData.permissions && agentData.permissions.length > 0) {
+        const permissions = await prisma.permission.findMany({
+          where: { name: { in: agentData.permissions } }
+        });
+
+        if (permissions.length !== agentData.permissions.length) {
+          throw new Error('Une ou plusieurs permissions spécifiées n\'existent pas');
+        }
+      }
+
       // Hasher le mot de passe
       const passwordHash = await bcrypt.hash(agentData.password, 12);
 
+      // Extraire les données pour les relations
+      const { assignedSites, permissions, password, ...userData } = agentData;
+
+      // Créer l'agent avec les relations
       const agent = await prisma.user.create({
         data: {
-          ...agentData,
-          role: 'AGENT_CONTROLE', // Forcer le rôle à AGENT_CONTROLE
+          ...userData,
           passwordHash,
-          password: undefined // Supprimer le mot de passe en clair
+          assignedSites: assignedSites && assignedSites.length > 0 ? {
+            create: assignedSites.map(siteId => ({ siteId }))
+          } : undefined,
+          permissions: permissions && permissions.length > 0 ? {
+            create: await Promise.all(
+              permissions.map(async (permName) => {
+                const perm = await prisma.permission.findUnique({
+                  where: { name: permName }
+                });
+                return { permissionId: perm.id };
+              })
+            )
+          } : undefined
         },
         select: {
           id: true,
+          matricule: true,
           firstName: true,
           lastName: true,
           email: true,
           role: true,
           phone: true,
           isActive: true,
-          createdAt: true
+          createdAt: true,
+          assignedSites: {
+            select: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true
+                }
+              }
+            }
+          },
+          permissions: {
+            select: {
+              permission: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true
+                }
+              }
+            }
+          }
         }
       });
 
-      // Supprimer le hash du mot de passe de la réponse
-      const { passwordHash: _, ...agentWithoutPassword } = agent;
-      return agentWithoutPassword;
+      return agent;
     } catch (error) {
       throw new Error(`Erreur lors de la création de l'agent: ${error.message}`);
     }
@@ -84,6 +153,7 @@ class AgentService {
           take: limit,
           select: {
             id: true,
+            matricule: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -101,6 +171,28 @@ class AgentService {
                     id: true,
                     name: true,
                     city: true
+                  }
+                }
+              }
+            },
+            assignedSites: {
+              select: {
+                site: {
+                  select: {
+                    id: true,
+                    name: true,
+                    city: true
+                  }
+                }
+              }
+            },
+            permissions: {
+              select: {
+                permission: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true
                   }
                 }
               }
@@ -129,23 +221,50 @@ class AgentService {
 
   async getAgentById(id) {
     try {
-      const agent = await prisma.agentControle.findUnique({
+      const agent = await prisma.user.findUnique({
         where: { id },
         select: {
           id: true,
-          firstname: true,
-          lastname: true,
+          matricule: true,
+          firstName: true,
+          lastName: true,
           email: true,
-          checkpointId: true,
+          role: true,
+          phone: true,
+          isActive: true,
           createdAt: true,
           updatedAt: true,
-          checkpoint: {
-            include: {
+          assignedCheckpoints: {
+            select: {
+              id: true,
+              name: true,
               site: {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  city: true
+                }
+              }
+            }
+          },
+          assignedSites: {
+            select: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true
+                }
+              }
+            }
+          },
+          permissions: {
+            select: {
+              permission: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true
                 }
               }
             }
@@ -169,12 +288,23 @@ class AgentService {
       
       // Si on change l'email, vérifier l'unicité
       if (updateData.email && updateData.email !== existingAgent.email) {
-        const emailExists = await prisma.agentControle.findUnique({
+        const emailExists = await prisma.user.findUnique({
           where: { email: updateData.email }
         });
 
         if (emailExists) {
           throw new Error('Un agent avec cet email existe déjà');
+        }
+      }
+
+      // Si on change le matricule, vérifier l'unicité
+      if (updateData.matricule && updateData.matricule !== existingAgent.matricule) {
+        const matriculeExists = await prisma.user.findUnique({
+          where: { matricule: updateData.matricule }
+        });
+
+        if (matriculeExists) {
+          throw new Error('Un agent avec ce matricule existe déjà');
         }
       }
 
@@ -189,30 +319,100 @@ class AgentService {
         }
       }
 
+      // Vérifier que les sites existent
+      if (updateData.assignedSites && updateData.assignedSites.length > 0) {
+        const sites = await prisma.site.findMany({
+          where: { id: { in: updateData.assignedSites } }
+        });
+
+        if (sites.length !== updateData.assignedSites.length) {
+          throw new Error('Un ou plusieurs sites spécifiés n\'existent pas');
+        }
+      }
+
+      // Vérifier que les permissions existent
+      if (updateData.permissions && updateData.permissions.length > 0) {
+        const permissions = await prisma.permission.findMany({
+          where: { name: { in: updateData.permissions } }
+        });
+
+        if (permissions.length !== updateData.permissions.length) {
+          throw new Error('Une ou plusieurs permissions spécifiées n\'existent pas');
+        }
+      }
+
       // Si on change le mot de passe, le hasher
       if (updateData.password) {
         updateData.passwordHash = await bcrypt.hash(updateData.password, 12);
         delete updateData.password;
       }
 
-      const updatedAgent = await prisma.agentControle.update({
+      // Extraire les données pour les relations
+      const { assignedSites, permissions, ...userData } = updateData;
+
+      // Mettre à jour l'agent
+      const updatedAgent = await prisma.user.update({
         where: { id },
-        data: updateData,
+        data: {
+          ...userData,
+          assignedSites: assignedSites ? {
+            deleteMany: {},
+            create: assignedSites.map(siteId => ({ siteId }))
+          } : undefined,
+          permissions: permissions ? {
+            deleteMany: {},
+            create: await Promise.all(
+              permissions.map(async (permName) => {
+                const perm = await prisma.permission.findUnique({
+                  where: { name: permName }
+                });
+                return { permissionId: perm.id };
+              })
+            )
+          } : undefined
+        },
         select: {
           id: true,
-          firstname: true,
-          lastname: true,
+          matricule: true,
+          firstName: true,
+          lastName: true,
           email: true,
-          checkpointId: true,
+          role: true,
+          phone: true,
+          isActive: true,
           createdAt: true,
           updatedAt: true,
-          checkpoint: {
-            include: {
+          assignedCheckpoints: {
+            select: {
+              id: true,
+              name: true,
               site: {
                 select: {
                   id: true,
                   name: true,
-                  location: true
+                  city: true
+                }
+              }
+            }
+          },
+          assignedSites: {
+            select: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true
+                }
+              }
+            }
+          },
+          permissions: {
+            select: {
+              permission: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true
                 }
               }
             }
@@ -230,7 +430,7 @@ class AgentService {
     try {
       const existingAgent = await this.getAgentById(id);
       
-      await prisma.agentControle.delete({
+      await prisma.user.delete({
         where: { id }
       });
 
@@ -242,8 +442,17 @@ class AgentService {
 
   async assignToCheckpoint(agentId, checkpointId) {
     try {
-      // Vérifier que l'agent existe
-      const agent = await this.getAgentById(agentId);
+      // Vérifier que l'agent existe (utiliser User avec rôle AGENT_CONTROLE)
+      const agent = await prisma.user.findFirst({
+        where: { 
+          id: agentId,
+          role: 'AGENT_CONTROLE'
+        }
+      });
+      
+      if (!agent) {
+        throw new Error('Agent non trouvé');
+      }
       
       // Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
@@ -257,33 +466,40 @@ class AgentService {
         throw new Error('Checkpoint non trouvé');
       }
 
-      // Assigner l'agent au checkpoint
-      const updatedAgent = await prisma.agentControle.update({
-        where: { id: agentId },
-        data: { checkpointId },
+      // Assigner l'agent au checkpoint (mettre à jour le checkpoint)
+      const updatedCheckpoint = await prisma.checkpoint.update({
+        where: { id: checkpointId },
+        data: { 
+          agent: {
+            connect: {
+              id: agentId
+            }
+          }
+        },
         select: {
           id: true,
-          firstname: true,
-          lastname: true,
-          email: true,
-          checkpointId: true,
-          createdAt: true,
-          updatedAt: true,
-          checkpoint: {
-            include: {
-              site: {
-                select: {
-                  id: true,
-                  name: true,
-                  location: true
-                }
-              }
+          name: true,
+          description: true,
+          agent: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true
+            }
+          },
+          site: {
+            select: {
+              id: true,
+              name: true,
+              location: true
             }
           }
         }
       });
 
-      return updatedAgent;
+      return updatedCheckpoint;
     } catch (error) {
       throw new Error(`Erreur lors de l'assignation de l'agent: ${error.message}`);
     }
@@ -291,27 +507,32 @@ class AgentService {
 
   async getAgentStats() {
     try {
-      const stats = await prisma.agentControle.aggregate({
+      const stats = await prisma.user.aggregate({
+        where: {
+          role: 'AGENT_CONTROLE'
+        },
         _count: {
           id: true
         }
       });
 
-      const assignedAgents = await prisma.agentControle.count({
+      const assignedAgents = await prisma.checkpoint.count({
         where: {
-          checkpointId: {
-            not: null
+          agent: {
+            is: {
+              role: 'AGENT_CONTROLE'
+            }
           }
         }
       });
 
-      const checkpointStats = await prisma.agentControle.groupBy({
-        by: ['checkpointId'],
+      const checkpointStats = await prisma.checkpoint.groupBy({
+        by: ['agentId'],
         _count: {
           id: true
         },
         where: {
-          checkpointId: {
+          agentId: {
             not: null
           }
         }
@@ -321,7 +542,7 @@ class AgentService {
         totalAgents: stats._count.id,
         assignedAgents,
         unassignedAgents: stats._count.id - assignedAgents,
-        agentsPerCheckpoint: checkpointStats
+        checkpointsWithAgents: checkpointStats.length
       };
     } catch (error) {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);

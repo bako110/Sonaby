@@ -79,6 +79,141 @@ const swaggerPathsExtended = {
     }
   },
 
+  '/api/v1/checkpoints/{id}/assign-agent': {
+    post: {
+      tags: ['Checkpoints'],
+      summary: 'Assigner un agent à un checkpoint',
+      description: 'Permet d\'assigner un agent de contrôle à un checkpoint spécifique. Nécessite les permissions ADMIN ou AGENT_GESTION.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { 
+          name: 'id', 
+          in: 'path', 
+          required: true, 
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID du checkpoint'
+        }
+      ],
+      requestBody: {
+        required: true,
+        description: 'Informations d\'assignation de l\'agent',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/AssignAgentRequest' },
+            examples: {
+              assignAgent: {
+                summary: 'Assigner un agent',
+                value: {
+                  agentId: 'e5c397cd-c586-11f0-aa39-0242ac140013'
+                }
+              }
+            }
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'Agent assigné avec succès',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/AssignAgentResponse' },
+              examples: {
+                success: {
+                  summary: 'Assignation réussie',
+                  value: {
+                    success: true,
+                    message: 'Agent assigné avec succès',
+                    data: {
+                      id: 'e5c397cd-c586-11f0-aa39-0242ac140013',
+                      firstName: 'Jean',
+                      lastName: 'Dupont',
+                      email: 'agent@controller.gmail.com',
+                      checkpointId: '14ce1162-ca00-11f0-aa39-0242ac140014',
+                      checkpoint: {
+                        id: '14ce1162-ca00-11f0-aa39-0242ac140014',
+                        name: 'Portail Principal',
+                        site: {
+                          id: '14ce1162-ca00-11f0-aa39-0242ac140013',
+                          name: 'SITE Paul'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        403: {
+          description: 'Accès refusé - ADMIN ou AGENT_GESTION requis',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ApiError' },
+              examples: {
+                forbidden: {
+                  summary: 'Permissions insuffisantes',
+                  value: {
+                    success: false,
+                    error: 'FORBIDDEN',
+                    message: 'Accès refusé. Seuls les administrateurs et agents de gestion peuvent assigner des agents.',
+                    timestamp: '2024-11-27T13:15:00.000Z'
+                  }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: 'Checkpoint ou agent non trouvé',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ApiError' },
+              examples: {
+                checkpointNotFound: {
+                  summary: 'Checkpoint non trouvé',
+                  value: {
+                    success: false,
+                    error: 'NOT_FOUND',
+                    message: 'Checkpoint non trouvé',
+                    timestamp: '2024-11-27T13:15:00.000Z'
+                  }
+                },
+                agentNotFound: {
+                  summary: 'Agent non trouvé',
+                  value: {
+                    success: false,
+                    error: 'NOT_FOUND',
+                    message: 'Agent non trouvé',
+                    timestamp: '2024-11-27T13:15:00.000Z'
+                  }
+                }
+              }
+            }
+          }
+        },
+        500: {
+          description: 'Erreur serveur',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ApiError' },
+              examples: {
+                serverError: {
+                  summary: 'Erreur interne',
+                  value: {
+                    success: false,
+                    error: 'InternalServerError',
+                    message: 'Erreur lors de l\'assignation de l\'agent',
+                    timestamp: '2024-11-27T13:15:00.000Z'
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
   // ==================== AGENT ENDPOINTS ====================
   '/api/v1/agents': {
     get: {

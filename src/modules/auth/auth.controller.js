@@ -69,6 +69,28 @@ const authController = {
             success: true,
             data: { user }
         });
+    }),
+
+    // Tableau de bord complet pour agent de contrôle
+    getAgentDashboard: asyncHandler(async (req, res) => {
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+        
+        // Vérifier que c'est un agent de contrôle
+        if (userRole !== 'AGENT_CONTROLE') {
+            return res.status(403).json({
+                success: false,
+                message: 'Accès réservé aux agents de contrôle'
+            });
+        }
+        
+        const dashboardData = await authService.getAgentDashboardData(userId);
+        
+        res.json({
+            success: true,
+            message: 'Données du tableau de bord agent récupérées',
+            data: dashboardData
+        });
     })
 };
 

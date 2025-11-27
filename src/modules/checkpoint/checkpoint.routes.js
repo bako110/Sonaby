@@ -50,12 +50,12 @@ router.use(authenticateToken);
  *           example: "Rez-de-chaussée"
  *         status:
  *           type: string
- *           enum: ["active", "inactive", "maintenance"]
+ *           enum: ["active", "inactive", "maintenance", "error"]
  *           description: Statut du checkpoint
  *           example: "active"
  *         checkpointType:
  *           type: string
- *           enum: ["entry", "exit", "internal", "emergency"]
+ *           enum: ["entry", "exit", "internal", "external", "emergency", "patrol"]
  *           description: Type de checkpoint
  *           example: "entry"
  *         priority:
@@ -65,7 +65,7 @@ router.use(authenticateToken);
  *           example: "high"
  *         controlFrequency:
  *           type: string
- *           enum: ["hourly", "daily", "weekly", "monthly"]
+ *           enum: ["hourly", "daily", "weekly", "monthly", "on_demand"]
  *           description: Fréquence de contrôle
  *           example: "daily"
  *         specialInstructions:
@@ -88,30 +88,35 @@ router.use(authenticateToken);
  *           example: "2024-11-24T15:30:00.000Z"
  *         site:
  *           $ref: '#/components/schemas/Site'
- *         agent:
- *           type: object
- *           description: Agent assigné au checkpoint
- *           properties:
- *             id:
- *               type: string
- *               format: uuid
- *               example: "990e8400-e29b-41d4-a716-446655440001"
- *             firstName:
- *               type: string
- *               example: "Amadou"
- *             lastName:
- *               type: string
- *               example: "TRAORE"
- *             email:
- *               type: string
- *               format: email
- *               example: "amadou.traore@sonabhy.bf"
+ *         coordinatesLatitude:
+ *           type: string
+ *           description: Latitude du checkpoint
+ *           example: "12.345678"
+ *         coordinatesLongitude:
+ *           type: string
+ *           description: Longitude du checkpoint
+ *           example: "-1.234567"
+ *         agentId:
+ *           type: string
+ *           description: ID de l'agent assigné
+ *           example: "990e8400-e29b-41d4-a716-446655440001"
+ *         equipment:
+ *           type: array
+ *           description: Équipements du checkpoint
+ *           items:
+ *             type: string
+ *           example: ["Badgeuse", "Caméra", "Détecteur"]
  *     CreateCheckpointRequest:
  *       type: object
  *       required:
  *         - name
  *         - siteId
  *         - sosId
+ *         - checkpointType
+ *         - status
+ *         - priority
+ *         - controlFrequency
+ *         - active
  *       properties:
  *         name:
  *           type: string
@@ -147,14 +152,26 @@ router.use(authenticateToken);
  *           description: Étage du checkpoint
  *           maxLength: 50
  *           example: "Rez-de-chaussée"
+ *         coordinatesLatitude:
+ *           type: string
+ *           description: Latitude du checkpoint
+ *           example: "12.345678"
+ *         coordinatesLongitude:
+ *           type: string
+ *           description: Longitude du checkpoint
+ *           example: "-1.234567"
+ *         agentId:
+ *           type: string
+ *           description: ID de l'agent assigné
+ *           example: "990e8400-e29b-41d4-a716-446655440001"
  *         status:
  *           type: string
- *           enum: ["active", "inactive", "maintenance"]
+ *           enum: ["active", "inactive", "maintenance", "error"]
  *           description: Statut du checkpoint
  *           example: "active"
  *         checkpointType:
  *           type: string
- *           enum: ["entry", "exit", "internal", "emergency"]
+ *           enum: ["entry", "exit", "internal", "external", "emergency", "patrol"]
  *           description: Type de checkpoint
  *           example: "entry"
  *         priority:
@@ -164,9 +181,15 @@ router.use(authenticateToken);
  *           example: "high"
  *         controlFrequency:
  *           type: string
- *           enum: ["hourly", "daily", "weekly", "monthly"]
+ *           enum: ["hourly", "daily", "weekly", "monthly", "on_demand"]
  *           description: Fréquence de contrôle
  *           example: "daily"
+ *         equipment:
+ *           type: array
+ *           description: Équipements du checkpoint
+ *           items:
+ *             type: string
+ *           example: ["Badgeuse", "Caméra"]
  *         specialInstructions:
  *           type: string
  *           description: Instructions spéciales pour ce checkpoint
@@ -183,10 +206,14 @@ router.use(authenticateToken);
  *         zone: "Entrée principale"
  *         building: "Bâtiment A"
  *         floor: "Rez-de-chaussée"
+ *         coordinatesLatitude: "12.345678"
+ *         coordinatesLongitude: "-1.234567"
+ *         agentId: "990e8400-e29b-41d4-a716-446655440001"
  *         status: "active"
  *         checkpointType: "entry"
  *         priority: "high"
  *         controlFrequency: "daily"
+ *         equipment: ["Badgeuse", "Caméra"]
  *         specialInstructions: "Vérifier les badges visiteurs"
  *         active: true
  *     UpdateCheckpointRequest:
@@ -227,12 +254,12 @@ router.use(authenticateToken);
  *           example: "Rez-de-chaussée"
  *         status:
  *           type: string
- *           enum: ["active", "inactive", "maintenance"]
+ *           enum: ["active", "inactive", "maintenance", "error"]
  *           description: Statut du checkpoint
  *           example: "active"
  *         checkpointType:
  *           type: string
- *           enum: ["entry", "exit", "internal", "emergency"]
+ *           enum: ["entry", "exit", "internal", "external", "emergency", "patrol"]
  *           description: Type de checkpoint
  *           example: "entry"
  *         priority:
@@ -242,9 +269,27 @@ router.use(authenticateToken);
  *           example: "high"
  *         controlFrequency:
  *           type: string
- *           enum: ["hourly", "daily", "weekly", "monthly"]
+ *           enum: ["hourly", "daily", "weekly", "monthly", "on_demand"]
  *           description: Fréquence de contrôle
  *           example: "daily"
+ *         coordinatesLatitude:
+ *           type: string
+ *           description: Latitude du checkpoint
+ *           example: "12.345678"
+ *         coordinatesLongitude:
+ *           type: string
+ *           description: Longitude du checkpoint
+ *           example: "-1.234567"
+ *         agentId:
+ *           type: string
+ *           description: ID de l'agent assigné
+ *           example: "990e8400-e29b-41d4-a716-446655440001"
+ *         equipment:
+ *           type: array
+ *           description: Équipements du checkpoint
+ *           items:
+ *             type: string
+ *           example: ["Badgeuse", "Caméra"]
  *         specialInstructions:
  *           type: string
  *           description: Instructions spéciales pour ce checkpoint
@@ -261,26 +306,16 @@ router.use(authenticateToken);
  *         zone: "Entrée principale"
  *         building: "Bâtiment A"
  *         floor: "Rez-de-chaussée"
+ *         coordinatesLatitude: "12.345678"
+ *         coordinatesLongitude: "-1.234567"
+ *         agentId: "990e8400-e29b-41d4-a716-446655440001"
  *         status: "active"
  *         checkpointType: "entry"
  *         priority: "high"
  *         controlFrequency: "daily"
+ *         equipment: ["Badgeuse", "Caméra"]
  *         specialInstructions: "Vérifier les badges visiteurs"
  *         active: true
- *     AssignAgentRequest:
- *       type: object
- *       required:
- *         - agentId
- *       properties:
- *         agentId:
- *           type: string
- *           description: ID de l'agent à assigner
- *     SOSRequest:
- *       type: object
- *       properties:
- *         message:
- *           type: string
- *           description: Message optionnel pour l'alerte SOS
  */
 
 /**

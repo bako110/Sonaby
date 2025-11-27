@@ -1,64 +1,41 @@
 const { z } = require('zod');
 
-// Énumérations pour les checkpoints
+// Énumérations pour les checkpoints (basées sur le payload)
 const checkpointStatusEnum = z.enum(['active', 'inactive', 'maintenance', 'error']);
 const checkpointTypeEnum = z.enum(['entry', 'exit', 'internal', 'external', 'emergency', 'patrol']);
 const checkpointPriorityEnum = z.enum(['low', 'medium', 'high', 'critical']);
 const controlFrequencyEnum = z.enum(['hourly', 'daily', 'weekly', 'monthly', 'on_demand']);
-const alertTypeEnum = z.enum(['silent', 'audible', 'visual', 'combined']);
 
-// Schéma pour la configuration SOS complète
-const sosConfigurationSchema = z.object({
-  sosId: z.string().min(1, 'L\'identifiant SOS est requis'),
-  alertType: alertTypeEnum.default('silent'),
-  delaiAlerte: z.number().min(0, 'Le délai d\'alerte doit être positif').default(5),
-  emailsPrincipaux: z.array(z.string().email('Email invalide')).default([]),
-  emailsSecondaires: z.array(z.string().email('Email invalide')).default([]),
-  escaladeAutomatique: z.boolean().default(true),
-  intervalleVerification: z.number().min(1, 'L\'intervalle de vérification doit être positif').default(60),
-  messageAlerte: z.string().min(1, 'Le message d\'alerte est requis'),
-  messageEscalade: z.string().optional(),
-  nombreTentativesMax: z.number().min(1, 'Le nombre de tentatives doit être positif').default(3),
-  notifyAdmin: z.boolean().default(true),
-  notifySecurity: z.boolean().default(true),
-  telephonesPrincipaux: z.array(z.string()).default([]),
-  telephonesSecondaires: z.array(z.string()).default([]),
-  timeoutReponse: z.number().min(1, 'Le timeout de réponse doit être positif').default(30)
-}).optional();
-
-// Schéma de création d'un checkpoint correspondant exactement au frontend
+// Schéma de création d'un checkpoint correspondant exactement au payload
 const createCheckpointSchema = z.object({
   // Informations de base
-  name: z.string().min(1, 'Le nom du checkpoint est requis').max(255, 'Le nom ne peut pas dépasser 255 caractères'),
+  name: z.string().min(1, 'Le nom du checkpoint est requis'),
   description: z.string().optional(),
-  siteId: z.string().uuid('ID de site invalide'),
-  
-  // Statut et état
-  active: z.boolean().default(true),
-  status: checkpointStatusEnum.default('active'),
-  checkpointType: checkpointTypeEnum.default('internal'),
-  priority: checkpointPriorityEnum.default('medium'),
-  
-  // Affectation d'agent
-  agentId: z.string().uuid('ID d\'agent invalide').optional(),
+  siteId: z.string().min(1, 'L\'ID du site est requis'),
   
   // Localisation
-  building: z.string().max(100, 'Le bâtiment ne peut pas dépasser 100 caractères').optional(),
-  floor: z.string().max(50, 'L\'étage ne peut pas dépasser 50 caractères').optional(),
-  zone: z.string().max(100, 'La zone ne peut pas dépasser 100 caractères').optional(),
-  coordinatesLatitude: z.number().min(-90).max(90, 'Latitude invalide').optional(),
-  coordinatesLongitude: z.number().min(-180).max(180, 'Longitude invalide').optional(),
+  zone: z.string().optional(),
+  building: z.string().optional(),
+  floor: z.string().optional(),
+  coordinatesLatitude: z.string().optional(),
+  coordinatesLongitude: z.string().optional(),
   
-  // Planification
-  controlFrequency: controlFrequencyEnum.optional(),
+  // SOS
+  sosId: z.string().min(1, 'L\'ID SOS est requis'),
+  agentId: z.string().optional(),
   
-  // Équipements et matériels
+  // Statut et configuration
+  checkpointType: z.string(),
+  status: z.string(),
+  priority: z.string(),
+  controlFrequency: z.string(),
+  
+  // Équipements et instructions
   equipment: z.array(z.string()).default([]),
-  requiredMaterial: z.array(z.string()).default([]),
   specialInstructions: z.string().optional(),
   
-  // Configuration SOS complète
-  sosConfiguration: sosConfigurationSchema
+  // État
+  active: z.boolean()
 });
 
 // Schéma de mise à jour (tous les champs optionnels)
@@ -66,7 +43,7 @@ const updateCheckpointSchema = createCheckpointSchema.partial();
 
 // Schéma pour l'ID du checkpoint
 const checkpointIdSchema = z.object({
-  id: z.string().uuid('ID de checkpoint invalide')
+  id: z.string().min(1, 'ID de checkpoint requis')
 });
 
 // Schéma de requête avec filtres
@@ -74,31 +51,17 @@ const checkpointQuerySchema = z.object({
   page: z.string().optional().transform(val => val ? parseInt(val) : 1),
   limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
   search: z.string().optional(),
-  siteId: z.string().uuid().optional(),
-  status: checkpointStatusEnum.optional(),
-  checkpointType: checkpointTypeEnum.optional(),
-  priority: checkpointPriorityEnum.optional(),
-  agentId: z.string().uuid().optional(),
+  siteId: z.string().optional(),
+  status: z.string().optional(),
+  checkpointType: z.string().optional(),
+  priority: z.string().optional(),
+  agentId: z.string().optional(),
   active: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
 });
 
-// Schéma pour l'affectation d'agent
+// Schéma pour l'assignation d'agent à checkpoint
 const assignAgentSchema = z.object({
-  agentId: z.string().uuid('ID d\'agent invalide'),
-  agentName: z.string().max(255, 'Le nom de l\'agent ne peut pas dépasser 255 caractères').optional(),
-  agentEmail: z.string().email('Email de l\'agent invalide').optional(),
-  agentPhone: z.string().max(20, 'Le téléphone de l\'agent ne peut pas dépasser 20 caractères').optional()
-});
-
-// Schéma pour les alertes SOS
-const sosSchema = z.object({
-  message: z.string().optional(),
-  checkpointId: z.string().uuid('ID de checkpoint invalide')
-});
-
-// Schéma pour la mise à jour de la configuration SOS
-const updateSosConfigurationSchema = z.object({
-  sosConfiguration: sosConfigurationSchema
+  agentId: z.string().min(1, 'L\'ID de l\'agent est requis')
 });
 
 module.exports = {
@@ -106,14 +69,10 @@ module.exports = {
   updateCheckpointSchema,
   checkpointIdSchema,
   checkpointQuerySchema,
-  assignAgentSchema,
-  sosSchema,
-  updateSosConfigurationSchema,
-  sosConfigurationSchema,
+  assignAgentSchema,  // Ajout du schéma manquant
   // Export des énumérations pour réutilisation
   checkpointStatusEnum,
   checkpointTypeEnum,
   checkpointPriorityEnum,
-  controlFrequencyEnum,
-  alertTypeEnum
+  controlFrequencyEnum
 };

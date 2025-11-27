@@ -550,6 +550,132 @@ const SosAlert = {
   }
 };
 
+const CreateCheckpointInput = {
+  type: "object",
+  required: ["name", "siteId", "sosId"],
+  properties: {
+    name: { 
+      type: "string",
+      description: "Nom du checkpoint",
+      example: "Entrée principale"
+    },
+    description: { 
+      type: "string",
+      description: "Description du checkpoint",
+      example: "Point de contrôle à l'entrée principale du bâtiment A"
+    },
+    siteId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du site",
+      example: "770e8400-e29b-41d4-a716-446655440002"
+    },
+    zone: { 
+      type: "string",
+      description: "Zone du checkpoint",
+      example: "Zone A"
+    },
+    building: { 
+      type: "string",
+      description: "Bâtiment",
+      example: "Bâtiment A"
+    },
+    floor: { 
+      type: "string",
+      description: "Étage",
+      example: "RDC"
+    },
+    sosId: { 
+      type: "string",
+      description: "Identifiant SOS unique",
+      example: "SOS-001"
+    },
+    status: { 
+      type: "string",
+      enum: ["active", "inactive", "maintenance", "error"],
+      default: "active",
+      description: "Statut du checkpoint"
+    },
+    checkpointType: { 
+      type: "string",
+      enum: ["entry", "exit", "internal", "emergency", "patrol"],
+      default: "internal",
+      description: "Type de checkpoint"
+    },
+    priority: { 
+      type: "string",
+      enum: ["low", "medium", "high", "critical"],
+      default: "medium",
+      description: "Priorité"
+    },
+    controlFrequency: { 
+      type: "string",
+      enum: ["hourly", "daily", "weekly", "monthly", "on_demand"],
+      description: "Fréquence de contrôle"
+    },
+    specialInstructions: { 
+      type: "string",
+      description: "Instructions spéciales"
+    },
+    active: { 
+      type: "boolean",
+      default: true,
+      description: "Checkpoint actif"
+    }
+  }
+};
+
+const CreateVisitInput = {
+  type: "object",
+  required: ["visitorId", "checkpointId", "serviceId", "reason"],
+  properties: {
+    visitorId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du visiteur",
+      example: "aa0e8400-e29b-41d4-a716-446655440001"
+    },
+    checkpointId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du checkpoint",
+      example: "770e8400-e29b-41d4-a716-446655440002"
+    },
+    serviceId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du service visité",
+      example: "550e8400-e29b-41d4-a716-446655440003"
+    },
+    reason: { 
+      type: "string",
+      description: "Raison de la visite",
+      example: "Réunion avec le directeur"
+    },
+    plannedId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du rendez-vous planifié (optionnel)",
+      example: "660e8400-e29b-41d4-a716-446655440004"
+    },
+    isGroup: { 
+      type: "boolean",
+      default: false,
+      description: "Visite de groupe"
+    },
+    groupCode: { 
+      type: "string",
+      description: "Code du groupe (si visite de groupe)",
+      example: "GRP-2024-001"
+    },
+    notes: { 
+      type: "string",
+      description: "Notes additionnelles",
+      example: "Visiteur VIP"
+    }
+  }
+};
+
 const CreateIncidentInput = {
   type: "object",
   required: ["visitId", "title", "description"],
@@ -721,6 +847,53 @@ const AgentCheckpointAssignment = {
     startDate: { type: "string", format: "date-time" },
     endDate: { type: "string", format: "date-time", nullable: true },
     createdAt: { type: "string", format: "date-time" }
+  }
+};
+
+// Schéma pour l'assignation d'agent à checkpoint
+const AssignAgentRequest = {
+  type: "object",
+  required: ["agentId"],
+  properties: {
+    agentId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID de l'agent à assigner",
+      example: "e5c397cd-c586-11f0-aa39-0242ac140013"
+    }
+  }
+};
+
+// Schéma pour la réponse d'assignation
+const AssignAgentResponse = {
+  type: "object",
+  properties: {
+    success: { type: "boolean", example: true },
+    message: { type: "string", example: "Agent assigné avec succès" },
+    data: {
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        firstName: { type: "string", example: "Jean" },
+        lastName: { type: "string", example: "Dupont" },
+        email: { type: "string", format: "email", example: "agent@controller.gmail.com" },
+        checkpointId: { type: "string", format: "uuid" },
+        checkpoint: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string", example: "Portail Principal" },
+            site: {
+              type: "object",
+              properties: {
+                id: { type: "string", format: "uuid" },
+                name: { type: "string", example: "SITE Paul" }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 };
 
@@ -912,6 +1085,16 @@ module.exports = {
   // Site
   CreateSiteInput,
   UpdateSiteInput,
+  
+  // Checkpoint
+  CreateCheckpointInput,
+  
+  // Visit
+  CreateVisitInput,
+  
+  // Incident & SOS
+  CreateIncidentInput,
+  CreateSosInput,
   
   // Query Inputs
   SiteQueryInput,
@@ -1654,6 +1837,256 @@ module.exports = {
         maxLength: 255,
         description: "Entreprise du visiteur",
         example: "Entreprise ABC"
+      }
+    }
+  },
+
+  // ===== SCHÉMAS D'ASSIGNATION AGENTS =====
+  AssignAgentRequest,
+  AssignAgentResponse,
+
+  // ===== SCHÉMAS APPOINTMENT (RENDEZ-VOUS) =====
+  CreateAppointmentInput: {
+    type: "object",
+    required: ["organizerId", "siteId", "firstName", "lastName", "office", "serviceName", "reason", "visitDate"],
+    properties: {
+      organizerId: {
+        type: "string",
+        format: "uuid",
+        description: "ID de l'organisateur",
+        example: "0734a724-cb77-11f0-aa39-0242ac140013"
+      },
+      siteId: {
+        type: "string", 
+        format: "uuid",
+        description: "ID du site",
+        example: "14ce1162-ca00-11f0-aa39-0242ac140013"
+      },
+      firstName: {
+        type: "string",
+        description: "Prénom de la personne",
+        example: "Jean"
+      },
+      lastName: {
+        type: "string",
+        description: "Nom de la personne",
+        example: "Dupont"
+      },
+      office: {
+        type: "string",
+        description: "Bureau de la personne",
+        example: "Bureau 101"
+      },
+      serviceName: {
+        type: "string",
+        description: "Nom du service",
+        example: "Service Client"
+      },
+      reason: {
+        type: "string",
+        description: "Raison du rendez-vous",
+        example: "Rendez-vous d'affaires"
+      },
+      visitDate: {
+        type: "string",
+        description: "Date de visite",
+        example: "2024-01-15"
+      },
+      startTime: {
+        type: "string",
+        description: "Heure de début",
+        example: "09:00:00"
+      },
+      endTime: {
+        type: "string",
+        description: "Heure de fin",
+        example: "10:00:00"
+      },
+      status: {
+        type: "string",
+        description: "Statut du rendez-vous",
+        example: "PENDING"
+      },
+      notes: {
+        type: "string",
+        description: "Notes additionnelles",
+        example: "Notes importantes"
+      }
+    }
+  },
+
+  UpdateAppointmentInput: {
+    type: "object",
+    properties: {
+      organizerId: {
+        type: "string",
+        format: "uuid",
+        description: "ID de l'organisateur",
+        example: "0734a724-cb77-11f0-aa39-0242ac140013"
+      },
+      siteId: {
+        type: "string", 
+        format: "uuid",
+        description: "ID du site",
+        example: "14ce1162-ca00-11f0-aa39-0242ac140013"
+      },
+      firstName: {
+        type: "string",
+        description: "Prénom de la personne",
+        example: "Jean"
+      },
+      lastName: {
+        type: "string",
+        description: "Nom de la personne",
+        example: "Dupont"
+      },
+      office: {
+        type: "string",
+        description: "Bureau de la personne",
+        example: "Bureau 101"
+      },
+      serviceName: {
+        type: "string",
+        description: "Nom du service",
+        example: "Service Client"
+      },
+      reason: {
+        type: "string",
+        description: "Raison du rendez-vous",
+        example: "Rendez-vous d'affaires"
+      },
+      visitDate: {
+        type: "string",
+        description: "Date de visite",
+        example: "2024-01-15"
+      },
+      startTime: {
+        type: "string",
+        description: "Heure de début",
+        example: "09:00:00"
+      },
+      endTime: {
+        type: "string",
+        description: "Heure de fin",
+        example: "10:00:00"
+      },
+      status: {
+        type: "string",
+        description: "Statut du rendez-vous",
+        example: "PENDING"
+      },
+      notes: {
+        type: "string",
+        description: "Notes additionnelles",
+        example: "Notes importantes"
+      }
+    }
+  },
+
+  Appointment: {
+    type: "object",
+    properties: {
+      id: {
+        type: "string",
+        format: "uuid",
+        description: "ID unique du rendez-vous",
+        example: "550e8400-e29b-41d4-a716-446655440003"
+      },
+      organizerId: {
+        type: "string",
+        format: "uuid",
+        description: "ID de l'organisateur",
+        example: "0734a724-cb77-11f0-aa39-0242ac140013"
+      },
+      siteId: {
+        type: "string",
+        format: "uuid", 
+        description: "ID du site",
+        example: "14ce1162-ca00-11f0-aa39-0242ac140013"
+      },
+      firstName: {
+        type: "string",
+        description: "Prénom de la personne",
+        example: "Jean"
+      },
+      lastName: {
+        type: "string",
+        description: "Nom de la personne",
+        example: "Dupont"
+      },
+      office: {
+        type: "string",
+        description: "Bureau de la personne",
+        example: "Bureau 101"
+      },
+      serviceName: {
+        type: "string",
+        description: "Nom du service",
+        example: "Service Client"
+      },
+      reason: {
+        type: "string",
+        description: "Raison du rendez-vous",
+        example: "Rendez-vous d'affaires"
+      },
+      visitDate: {
+        type: "string",
+        description: "Date de visite",
+        example: "2024-01-15"
+      },
+      startTime: {
+        type: "string",
+        description: "Heure de début",
+        example: "09:00:00"
+      },
+      endTime: {
+        type: "string",
+        description: "Heure de fin",
+        example: "10:00:00"
+      },
+      status: {
+        type: "string",
+        description: "Statut du rendez-vous",
+        example: "PENDING"
+      },
+      notes: {
+        type: "string",
+        description: "Notes additionnelles",
+        example: "Notes importantes"
+      },
+      createdAt: {
+        type: "string",
+        format: "date-time",
+        description: "Date de création",
+        example: "2024-01-15T08:00:00Z"
+      },
+      updatedAt: {
+        type: "string",
+        format: "date-time", 
+        description: "Date de mise à jour",
+        example: "2024-01-15T08:00:00Z"
+      },
+      organizer: {
+        type: "object",
+        description: "Informations de l'organisateur",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          firstName: { type: "string", example: "Admin" },
+          lastName: { type: "string", example: "User" },
+          email: { type: "string", example: "admin@example.com" },
+          role: { type: "string", example: "ADMIN" }
+        }
+      },
+      site: {
+        type: "object", 
+        description: "Informations du site",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", example: "Siège Social" },
+          address: { type: "string", example: "123 Rue Principale" },
+          city: { type: "string", example: "Abidjan" },
+          country: { type: "string", example: "Côte d'Ivoire" }
+        }
       }
     }
   },
