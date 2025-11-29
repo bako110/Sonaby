@@ -11,6 +11,17 @@ router.use(authenticateToken);
  * @swagger
  * components:
  *   schemas:
+ *     AssignAgentRequest:
+ *       type: object
+ *       required:
+ *         - agentId
+ *       properties:
+ *         agentId:
+ *           type: string
+ *           description: ID de l'agent à assigner au checkpoint
+ *           example: "990e8400-e29b-41d4-a716-446655440001"
+ *       example:
+ *         agentId: "990e8400-e29b-41d4-a716-446655440001"
  *     Checkpoint:
  *       type: object
  *       properties:
@@ -619,6 +630,16 @@ router.delete('/:id', checkpointController.deleteCheckpoint);
  * /api/checkpoints/{id}/assign-agent:
  *   post:
  *     summary: Assigner un agent à un checkpoint
+ *     description: |
+ *       Assigne un agent à un checkpoint en utilisant la table AgentCheckpointAssignment.
+ *       Plusieurs agents peuvent être assignés au même checkpoint en appelant cet endpoint plusieurs fois.
+ *       
+ *       **Permissions requises :** ADMIN ou AGENT_GESTION
+ *       
+ *       **Fonctionnement :**
+ *       - L'agent doit avoir le rôle AGENT_CONTROLE
+ *       - Utilise upsert pour éviter les doublons
+ *       - Ajoute l'agent sans remplacer les affectations existantes
  *     tags: [Checkpoints]
  *     security:
  *       - bearerAuth: []
@@ -635,15 +656,134 @@ router.delete('/:id', checkpointController.deleteCheckpoint);
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/AssignAgentRequest'
+ *           example:
+ *             agentId: "990e8400-e29b-41d4-a716-446655440001"
  *     responses:
  *       200:
- *         description: Agent assigné avec succès
+ *         description: ✅ Agent assigné avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Agent assigné avec succès"
+ *                 data:
+ *                   $ref: '#/components/schemas/Checkpoint'
  *       403:
- *         description: Accès refusé - ADMIN ou AGENT_GESTION requis
+ *         description: ❌ Accès refusé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Accès refusé. Seuls les administrateurs et agents de gestion peuvent assigner des agents."
  *       404:
- *         description: Checkpoint ou agent non trouvé
+ *         description: ❌ Checkpoint ou agent non trouvé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Agent non trouvé"
  */
 router.post('/:id/assign-agent', checkpointController.assignAgent);
+
+/**
+ * @swagger
+ * /api/checkpoints/{id}/agents:
+ *   get:
+ *     summary: Récupérer les agents assignés à un checkpoint
+ *     description: |
+ *       Retourne la liste de tous les agents assignés à un checkpoint spécifique.
+ *       
+ *       **Fonctionnement :**
+ *       - Affiche seulement les affectations actives (endDate = null)
+ *       - Inclut les informations complètes des agents
+ *       - Trié par date d'assignation (plus récent d'abord)
+ *     tags: [Checkpoints]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du checkpoint
+ *     responses:
+ *       200:
+ *         description: ✅ Liste des agents récupérée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     checkpointId:
+ *                       type: string
+ *                       example: "770e8400-e29b-41d4-a716-446655440001"
+ *                     checkpointName:
+ *                       type: string
+ *                       example: "Entrée Principale"
+ *                     totalAgents:
+ *                       type: integer
+ *                       example: 3
+ *                     agents:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           assignmentId:
+ *                             type: string
+ *                             example: "assignment-uuid"
+ *                           assignedAt:
+ *                             type: string
+ *                             format: date-time
+ *                             example: "2024-11-28T08:30:00.000Z"
+ *                           agent:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: "agent-uuid"
+ *                               firstName:
+ *                                 type: string
+ *                                 example: "Jean"
+ *                               lastName:
+ *                                 type: string
+ *                                 example: "Dupont"
+ *                               email:
+ *                                 type: string
+ *                                 example: "jean.dupont@example.com"
+ *                               phone:
+ *                                 type: string
+ *                                 example: "+225 XX XX XX XX"
+ *       404:
+ *         description: ❌ Checkpoint non trouvé
+ *       403:
+ *         description: ❌ Accès refusé
+ */
+router.get('/:id/agents', checkpointController.getCheckpointAgents);
 
 /**
  * @swagger

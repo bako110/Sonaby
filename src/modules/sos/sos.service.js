@@ -5,6 +5,9 @@ const prisma = new PrismaClient();
 class SOSService {
   async createSOS(sosData, sentBy) {
     try {
+      console.log('🔍 DEBUG - sosData:', sosData);
+      console.log('🔍 DEBUG - sentBy:', sentBy);
+      
       // Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
         where: { id: sosData.checkpointId },
@@ -37,10 +40,13 @@ class SOSService {
         throw new Error('Un SOS est déjà actif pour ce checkpoint');
       }
 
+      console.log('🔍 DEBUG - About to create SOS with triggeredBy:', sentBy);
+      
       const sos = await prisma.sosAlert.create({
         data: {
-          ...sosData,
-          triggeredBy: sentBy,
+          checkpointId: sosData.checkpointId,
+          message: sosData.message,
+          triggeredBy: sentBy,  // Utiliser directement sentBy pour éviter undefined
           isResolved: false
         },
         include: {
@@ -74,6 +80,213 @@ class SOSService {
       return sos;
     } catch (error) {
       throw new Error(`Erreur lors de la création du SOS: ${error.message}`);
+    }
+  }
+
+  async createGeneralSOS(sosData, sentBy) {
+    try {
+      console.log('🔍 DEBUG - sosData (GENERAL):', sosData);
+      console.log('🔍 DEBUG - sentBy (GENERAL):', sentBy);
+      
+      // Vérifier que le site existe
+      const site = await prisma.site.findUnique({
+        where: { id: sosData.siteId }
+      });
+
+      if (!site) {
+        throw new Error('Site non trouvé');
+      }
+
+      // Récupérer tous les checkpoints du site
+      const checkpoints = await prisma.checkpoint.findMany({
+        where: { siteId: sosData.siteId },
+        include: {
+          site: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              city: true,
+              country: true
+            }
+          }
+        }
+      });
+
+      if (checkpoints.length === 0) {
+        throw new Error('Aucun checkpoint trouvé pour ce site');
+      }
+
+      // Vérifier s'il y a déjà des SOS actifs pour les checkpoints de ce site
+      const activeSOSCount = await prisma.sosAlert.count({
+        where: {
+          checkpointId: { in: checkpoints.map(cp => cp.id) },
+          isResolved: false
+        }
+      });
+
+      if (activeSOSCount > 0) {
+        throw new Error(`Un SOS est déjà actif pour ${activeSOSCount} checkpoint(s) de ce site`);
+      }
+
+      console.log('🔍 DEBUG - About to create GENERAL SOS with triggeredBy:', sentBy);
+      
+      // Créer des SOS pour tous les checkpoints du site
+      const sosAlerts = await prisma.sosAlert.createMany({
+        data: checkpoints.map(checkpoint => ({
+          checkpointId: checkpoint.id,
+          message: sosData.message || `Alerte générale - ${site.name}`,
+          triggeredBy: sentBy,
+          isResolved: false
+        })),
+        include: {
+          checkpoint: {
+            include: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  address: true,
+                  city: true,
+                  country: true
+                }
+              }
+            }
+          },
+          triggerer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      // Récupérer tous les SOS créés avec leurs relations
+      const createdSOS = await prisma.sosAlert.findMany({
+        where: {
+          checkpointId: { in: checkpoints.map(cp => cp.id) },
+          triggeredBy: sentBy,
+          isResolved: false
+        },
+        include: {
+          checkpoint: {
+            include: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  address: true,
+                  city: true,
+                  country: true
+                }
+              }
+            }
+          },
+          triggerer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      // Simuler l'envoi de notifications pour chaque SOS
+      for (const sos of createdSOS) {
+        await this.sendNotifications(sos);
+      }
+
+      return {
+        message: `Alerte générale créée pour ${createdSOS.length} checkpoints`,
+        site: site,
+        checkpointsAffected: checkpoints.length,
+        sosAlerts: createdSOS
+      };
+    } catch (error) {
+      throw new Error(`Erreur lors de la création de l'alerte SOS générale: ${error.message}`);
+    }
+  }
+
+  async deactivateSOS(sosId, resolvedBy) {
+    try {
+      // Vérifier que le SOS existe
+      const sos = await prisma.sosAlert.findUnique({
+        where: { id: sosId },
+        include: {
+          checkpoint: {
+            include: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  address: true,
+                  city: true,
+                  country: true
+                }
+              }
+            }
+          },
+          triggerer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      if (!sos) {
+        throw new Error('SOS non trouvé');
+      }
+
+      if (sos.isResolved) {
+        throw new Error('SOS déjà résolu');
+      }
+
+      // Marquer le SOS comme résolu
+      const resolvedSos = await prisma.sosAlert.update({
+        where: { id: sosId },
+        data: {
+          isResolved: true,
+          resolvedAt: new Date(),
+          resolvedBy: resolvedBy
+        },
+        include: {
+          checkpoint: {
+            include: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  address: true,
+                  city: true,
+                  country: true
+                }
+              }
+            }
+          },
+          triggerer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      return resolvedSos;
+    } catch (error) {
+      throw new Error(`Erreur lors de la résolution du SOS: ${error.message}`);
     }
   }
 

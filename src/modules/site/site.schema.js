@@ -50,7 +50,7 @@ const baseSiteSchema = z.object({
   website: z.string().url('URL du site web invalide').optional().nullable(),
   
   // Management
-  manager: z.string().max(255, 'Le nom du manager ne peut pas dépasser 255 caractères').optional().nullable(),
+  manager: z.string().uuid('ID du manager invalide').optional().nullable(),
   managerEmail: z.string().email('Email du manager invalide').optional().nullable(),
   managerPhone: z.string().max(20, 'Le téléphone du manager ne peut pas dépasser 20 caractères').optional().nullable(),
   

@@ -48,6 +48,7 @@ class AuthService {
             ...tokens
         };
     }
+
     
     // Connexion
     async login(data) {
@@ -117,7 +118,31 @@ class AuthService {
             } catch (error) {
                 // Si erreur lors de la récupération des données dashboard, log mais ne pas bloquer la connexion
                 console.error('Erreur lors de la récupération des données dashboard:', error.message);
-                additionalData.dashboard = null;
+                // ✅ CORRECTION : Retourner un dashboard vide avec des valeurs à 0 au lieu de null
+                additionalData.dashboard = {
+                    agent: {
+                        id: user.id,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        email: user.email,
+                        phone: user.phone,
+                        role: user.role,
+                        permissions: []
+                    },
+                    assignedCheckpoint: null,
+                    site: null,
+                    visitors: [],
+                    visits: [],
+                    statistics: {
+                        activeVisits: 0,
+                        todayVisits: 0,
+                        activeCheckpoints: 0,
+                        blacklistedVisitors: 0,
+                        totalCheckpoints: 0,
+                        totalVisitors: 0,
+                        checkpointEfficiency: '0%'
+                    }
+                };
             }
         }
         
@@ -312,49 +337,162 @@ class AuthService {
             throw new AppError(404, 'Agent non trouvé');
         }
 
-        // 2. Récupérer le checkpoint assigné à cet agent (peu importe le site)
-        console.log('🔍 [DEBUG] Recherche directe du checkpoint assigné à l\'agent...');
+        // 2. Récupérer le checkpoint assigné à cet agent (priorité à assignedCheckpoints)
+        console.log('🔍 [DEBUG] Recherche du checkpoint assigné à l\'agent...');
         
-        let agentCheckpoint = await prisma.checkpoint.findFirst({
-            where: { 
-                agentId: userId 
-            },
+        let agentCheckpoint = null;
+        
+        // Méthode 1: Chercher via assignedCheckpoints (priorité)
+        const userWithCheckpoints = await prisma.user.findUnique({
+            where: { id: userId },
             select: {
-                id: true,
-                name: true,
-                description: true,
-                zone: true,
-                building: true,
-                floor: true,
-                sosId: true,
-                checkpointType: true,
-                status: true,
-                priority: true,
-                controlFrequency: true,
-                specialInstructions: true,
-                active: true,
-                coordinatesLatitude: true,
-                coordinatesLongitude: true,
-                createdAt: true,
-                site: {
+                assignedCheckpoints: {
                     select: {
                         id: true,
                         name: true,
-                        address: true,
-                        city: true,
-                        phone: true,
-                        manager: true,
-                        managerPhone: true
-                    }
-                },
-                _count: {
-                    select: {
-                        visits: true,
-                        sosAlerts: true
+                        description: true,
+                        siteId: true,
+                        site: {
+                            select: {
+                                id: true,
+                                name: true,
+                                city: true,
+                                address: true,
+                                postalCode: true,
+                                country: true,
+                                phone: true,
+                                email: true,
+                                manager: true,
+                                managerPhone: true,
+                                managerEmail: true,
+                                status: true,
+                                coordinates: true,
+                                description: true,
+                                activityType: true,
+                                code: true,
+                                region: true,
+                                fax: true,
+                                website: true,
+                                area: true,
+                                usableArea: true,
+                                employeeCount: true,
+                                maxEmployeeCapacity: true,
+                                buildingCount: true,
+                                creationDate: true,
+                                modificationDate: true,
+                                openingDate: true,
+                                closingDate: true,
+                                comments: true,
+                                monthlyCost: true,
+                                annualBudget: true,
+                                certifications: true,
+                                lastInspection: true,
+                                nextInspection: true,
+                                equipment: true,
+                                services: true,
+                                wheelchairAccessible: true,
+                                parkingAvailable: true,
+                                parkingSpaces: true,
+                                securitySystem: true,
+                                securityGuard: true,
+                                environmentalCertification: true,
+                                energyConsumption: true,
+                                createdBy: true,
+                                modifiedBy: true,
+                                version: true
+                            }
+                        },
+                        _count: {
+                            select: {
+                                visits: true,
+                                sosAlerts: true
+                            }
+                        }
                     }
                 }
             }
         });
+        
+        if (userWithCheckpoints?.assignedCheckpoints?.length > 0) {
+            agentCheckpoint = userWithCheckpoints.assignedCheckpoints[0];
+            console.log('✅ [DEBUG] Checkpoint trouvé via assignedCheckpoints:', agentCheckpoint.name);
+        } else {
+            console.log('⚠️ [DEBUG] Aucun checkpoint trouvé via assignedCheckpoints');
+        }
+        
+        // Méthode 2: Si pas trouvé, chercher via agentId direct (ancienne méthode)
+        if (!agentCheckpoint) {
+            console.log('🔍 [DEBUG] Recherche via agentId direct...');
+            agentCheckpoint = await prisma.checkpoint.findFirst({
+                where: { 
+                    agentId: userId 
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    siteId: true,
+                    site: {
+                        select: {
+                            id: true,
+                            name: true,
+                            city: true,
+                            address: true,
+                            postalCode: true,
+                            country: true,
+                            phone: true,
+                            email: true,
+                            manager: true,
+                            managerPhone: true,
+                            managerEmail: true,
+                            status: true,
+                            coordinates: true,
+                            description: true,
+                            activityType: true,
+                            code: true,
+                            region: true,
+                            fax: true,
+                            website: true,
+                            area: true,
+                            usableArea: true,
+                            employeeCount: true,
+                            maxEmployeeCapacity: true,
+                            buildingCount: true,
+                            creationDate: true,
+                            modificationDate: true,
+                            openingDate: true,
+                            closingDate: true,
+                            comments: true,
+                            monthlyCost: true,
+                            annualBudget: true,
+                            certifications: true,
+                            lastInspection: true,
+                            nextInspection: true,
+                            equipment: true,
+                            services: true,
+                            wheelchairAccessible: true,
+                            parkingAvailable: true,
+                            parkingSpaces: true,
+                            securitySystem: true,
+                            securityGuard: true,
+                            environmentalCertification: true,
+                            energyConsumption: true,
+                            createdBy: true,
+                            modifiedBy: true,
+                            version: true
+                        }
+                    },
+                    _count: {
+                        select: {
+                            visits: true,
+                            sosAlerts: true
+                        }
+                    }
+                }
+            });
+            
+            console.log('🔍 [DEBUG] Checkpoint via agentId:', agentCheckpoint ? 'TROUVÉ' : 'NON TROUVÉ');
+        }
 
         console.log('🔍 [DEBUG] Checkpoint trouvé:', agentCheckpoint ? 'OUI' : 'NON');
         
@@ -398,7 +536,8 @@ class AuthService {
                             email: user.email,
                             phone: user.phone,
                             role: user.role,
-                            permissions: user.permissions.map(p => p.permission)
+                            // ✅ CORRECTION : Gérer le cas où permissions est null/undefined
+                            permissions: user.permissions ? user.permissions.map(p => p.permission) : []
                         },
                         assignedCheckpoint: null,
                         site: null,
@@ -617,7 +756,8 @@ class AuthService {
                 email: user.email,
                 phone: user.phone,
                 role: user.role,
-                permissions: user.permissions.map(p => p.permission)
+                // ✅ CORRECTION : Gérer le cas où permissions est null/undefined
+                permissions: user.permissions ? user.permissions.map(p => p.permission) : []
             },
 
             // Site d'affectation

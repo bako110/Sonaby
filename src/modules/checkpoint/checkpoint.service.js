@@ -25,7 +25,7 @@ class CheckpointService {
         }
       }
 
-      // Préparer les données pour la création
+      // Préparer les données pour la création (sans agentId)
       const createData = {
         name: checkpointData.name,
         description: checkpointData.description || null,
@@ -36,7 +36,7 @@ class CheckpointService {
         coordinatesLatitude: checkpointData.coordinatesLatitude || null,
         coordinatesLongitude: checkpointData.coordinatesLongitude || null,
         sosId: checkpointData.sosId,
-        agentId: checkpointData.agentId || null,
+        // Ne pas inclure agentId - utiliser agentAssignments à la place
         checkpointType: checkpointData.checkpointType,
         status: checkpointData.status,
         priority: checkpointData.priority,
@@ -50,12 +50,19 @@ class CheckpointService {
         data: createData,
         include: {
           site: true,
-          agent: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
+          agentAssignments: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
+            },
+            where: {
+              endDate: null
             }
           }
         }
@@ -99,12 +106,20 @@ class CheckpointService {
                 country: true
               }
             },
-            agent: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true
+            // Utiliser agentAssignments au lieu du champ agent
+            agentAssignments: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true
+                  }
+                }
+              },
+              where: {
+                endDate: null // Seulement les affectations actives
               }
             },
             _count: {
@@ -121,20 +136,8 @@ class CheckpointService {
         prisma.checkpoint.count({ where: whereClause })
       ]);
 
-      // Parser la configuration SOS pour tous les checkpoints
-      const checkpointsWithParsedSOS = checkpoints.map(checkpoint => {
-        if (checkpoint.sosConfiguration) {
-          try {
-            checkpoint.sosConfiguration = JSON.parse(checkpoint.sosConfiguration);
-          } catch (e) {
-            checkpoint.sosConfiguration = null;
-          }
-        }
-        return checkpoint;
-      });
-
       return {
-        checkpoints: checkpointsWithParsedSOS,
+        checkpoints,
         pagination: {
           page,
           limit,
@@ -153,13 +156,21 @@ class CheckpointService {
         where: { id },
         include: {
           site: true,
-          agent: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              createdAt: true
+          // Utiliser agentAssignments au lieu du champ agent
+          agentAssignments: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  createdAt: true
+                }
+              }
+            },
+            where: {
+              endDate: null // Seulement les affectations actives
             }
           },
           visits: {
@@ -182,15 +193,6 @@ class CheckpointService {
       
       if (!checkpoint) {
         throw new Error('Checkpoint non trouvé');
-      }
-      
-      // Parser la configuration SOS
-      if (checkpoint.sosConfiguration) {
-        try {
-          checkpoint.sosConfiguration = JSON.parse(checkpoint.sosConfiguration);
-        } catch (e) {
-          checkpoint.sosConfiguration = null;
-        }
       }
       
       return checkpoint;
@@ -228,7 +230,7 @@ class CheckpointService {
         }
       }
 
-      // Préparer les données de mise à jour
+      // Préparer les données de mise à jour (sans agentId)
       const finalUpdateData = {
         ...otherUpdateData,
         ...(sosConfiguration && {
@@ -242,25 +244,23 @@ class CheckpointService {
         data: finalUpdateData,
         include: {
           site: true,
-          agent: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
+          agentAssignments: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true
+                }
+              }
+            },
+            where: {
+              endDate: null
             }
           }
         }
       });
-
-      // Parser la configuration SOS pour le retour
-      if (updatedCheckpoint.sosConfiguration) {
-        try {
-          updatedCheckpoint.sosConfiguration = JSON.parse(updatedCheckpoint.sosConfiguration);
-        } catch (e) {
-          updatedCheckpoint.sosConfiguration = null;
-        }
-      }
 
       return updatedCheckpoint;
     } catch (error) {
@@ -308,19 +308,24 @@ class CheckpointService {
         throw new Error('Agent non trouvé');
       }
 
-      // Assigner l'agent au checkpoint (mettre à jour le checkpoint)
-      const updatedCheckpoint = await prisma.checkpoint.update({
-        where: { id: checkpointId },
-        data: { 
-          agent: {
-            connect: {
-              id: agentId
-            }
+      // Créer l'affectation en utilisant la table AgentCheckpointAssignment
+      // Ne plus utiliser le champ agent_id du checkpoint
+      const assignment = await prisma.agentCheckpointAssignment.upsert({
+        where: {
+          userId_checkpointId_startDate: {
+            userId: agentId,
+            checkpointId: checkpointId,
+            startDate: new Date()
           }
         },
+        update: {}, // Ne rien mettre à jour si existe déjà
+        create: {
+          userId: agentId,
+          checkpointId: checkpointId,
+          startDate: new Date()
+        },
         include: {
-          site: true,
-          agent: {
+          user: {
             select: {
               id: true,
               firstName: true,
@@ -332,9 +337,85 @@ class CheckpointService {
         }
       });
 
+      // Récupérer le checkpoint mis à jour avec tous les agents depuis agentAssignments
+      const updatedCheckpoint = await prisma.checkpoint.findUnique({
+        where: { id: checkpointId },
+        include: {
+          site: true,
+          agentAssignments: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            },
+            where: {
+              endDate: null // Seulement les affectations actives
+            }
+          }
+        }
+      });
+
       return updatedCheckpoint;
     } catch (error) {
       throw new Error(`Erreur lors de l'assignation de l'agent: ${error.message}`);
+    }
+  }
+
+  async getCheckpointAgents(checkpointId) {
+    try {
+      // Vérifier que le checkpoint existe
+      const checkpoint = await prisma.checkpoint.findUnique({
+        where: { id: checkpointId }
+      });
+
+      if (!checkpoint) {
+        throw new Error('Checkpoint non trouvé');
+      }
+
+      // Récupérer tous les agents assignés à ce checkpoint
+      const agents = await prisma.agentCheckpointAssignment.findMany({
+        where: {
+          checkpointId: checkpointId,
+          endDate: null // Seulement les affectations actives
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              createdAt: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      // Extraire seulement les informations des agents
+      const agentList = agents.map(assignment => ({
+        assignmentId: assignment.id,
+        assignedAt: assignment.createdAt,
+        agent: assignment.user
+      }));
+
+      return {
+        checkpointId,
+        checkpointName: checkpoint.name,
+        agents: agentList,
+        totalAgents: agentList.length
+      };
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération des agents du checkpoint: ${error.message}`);
     }
   }
 

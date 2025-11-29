@@ -63,7 +63,7 @@ class AgentService {
       const passwordHash = await bcrypt.hash(agentData.password, 12);
 
       // Extraire les données pour les relations
-      const { assignedSites, permissions, password, ...userData } = agentData;
+      const { assignedSites, permissions, password, checkpointId, ...userData } = agentData;
 
       // Créer l'agent avec les relations
       const agent = await prisma.user.create({
@@ -72,6 +72,9 @@ class AgentService {
           passwordHash,
           assignedSites: assignedSites && assignedSites.length > 0 ? {
             create: assignedSites.map(siteId => ({ siteId }))
+          } : undefined,
+          assignedCheckpoints: checkpointId ? {
+            connect: { id: checkpointId }
           } : undefined,
           permissions: permissions && permissions.length > 0 ? {
             create: await Promise.all(
@@ -96,6 +99,19 @@ class AgentService {
           createdAt: true,
           assignedSites: {
             select: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true
+                }
+              }
+            }
+          },
+          assignedCheckpoints: {
+            select: {
+              id: true,
+              name: true,
               site: {
                 select: {
                   id: true,
@@ -140,7 +156,11 @@ class AgentService {
       }
 
       if (checkpointId) {
-        whereClause.checkpointId = checkpointId;
+        whereClause.assignedCheckpoints = {
+          some: {
+            id: checkpointId
+          }
+        };
       }
 
       // Filtrer uniquement les agents de contrôle
@@ -309,13 +329,15 @@ class AgentService {
       }
 
       // Si on change le checkpoint, vérifier qu'il existe
-      if (updateData.checkpointId) {
-        const checkpoint = await prisma.checkpoint.findUnique({
-          where: { id: updateData.checkpointId }
-        });
+      if ('checkpointId' in updateData) {
+        if (updateData.checkpointId) {
+          const checkpoint = await prisma.checkpoint.findUnique({
+            where: { id: updateData.checkpointId }
+          });
 
-        if (!checkpoint) {
-          throw new Error('Checkpoint non trouvé');
+          if (!checkpoint) {
+            throw new Error('Checkpoint non trouvé');
+          }
         }
       }
 
@@ -348,7 +370,7 @@ class AgentService {
       }
 
       // Extraire les données pour les relations
-      const { assignedSites, permissions, ...userData } = updateData;
+      const { assignedSites, permissions, checkpointId, ...userData } = updateData;
 
       // Mettre à jour l'agent
       const updatedAgent = await prisma.user.update({
@@ -358,6 +380,9 @@ class AgentService {
           assignedSites: assignedSites ? {
             deleteMany: {},
             create: assignedSites.map(siteId => ({ siteId }))
+          } : undefined,
+          assignedCheckpoints: 'checkpointId' in updateData ? {
+            set: checkpointId ? [{ id: checkpointId }] : []
           } : undefined,
           permissions: permissions ? {
             deleteMany: {},
@@ -442,11 +467,22 @@ class AgentService {
 
   async assignToCheckpoint(agentId, checkpointId) {
     try {
+      console.log('🔗 [DEBUG] Assignation agent au checkpoint:', { agentId, checkpointId });
+
       // Vérifier que l'agent existe (utiliser User avec rôle AGENT_CONTROLE)
       const agent = await prisma.user.findFirst({
         where: { 
           id: agentId,
           role: 'AGENT_CONTROLE'
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          assignedCheckpoints: {
+            select: { id: true }
+          }
         }
       });
       
@@ -457,8 +493,18 @@ class AgentService {
       // Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
         where: { id: checkpointId },
-        include: {
-          site: true
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          agentId: true,
+          site: {
+            select: {
+              id: true,
+              name: true,
+              location: true
+            }
+          }
         }
       });
 
@@ -466,7 +512,39 @@ class AgentService {
         throw new Error('Checkpoint non trouvé');
       }
 
-      // Assigner l'agent au checkpoint (mettre à jour le checkpoint)
+      // Vérifier si l'agent est déjà assigné à ce checkpoint
+      const alreadyAssigned = agent.assignedCheckpoints.some(cp => cp.id === checkpointId);
+      if (alreadyAssigned) {
+        console.log('ℹ️ [DEBUG] Agent déjà assigné à ce checkpoint');
+        return {
+          id: checkpoint.id,
+          name: checkpoint.name,
+          description: checkpoint.description,
+          agent: {
+            id: agent.id,
+            firstName: agent.firstName,
+            lastName: agent.lastName,
+            email: agent.email,
+            phone: agent.phone
+          },
+          site: checkpoint.site
+        };
+      }
+
+      // Si le checkpoint a déjà un agent, le libérer d'abord
+      // if (checkpoint.agentId && checkpoint.agentId !== agentId) {
+      //   await prisma.user.update({
+      //     where: { id: checkpoint.agentId },
+      //     data: {
+      //       assignedCheckpoints: {
+      //         disconnect: { id: checkpointId }
+      //       }
+      //     }
+      //   });
+      //   console.log('🔄 [DEBUG] Ancien agent libéré du checkpoint');
+      // }
+
+      // 1. Assigner l'agent au checkpoint (mettre à jour le checkpoint)
       const updatedCheckpoint = await prisma.checkpoint.update({
         where: { id: checkpointId },
         data: { 
@@ -499,8 +577,21 @@ class AgentService {
         }
       });
 
+      // 2. Ajouter le checkpoint dans assignedCheckpoints de l'agent (sans effacer les autres)
+      await prisma.user.update({
+        where: { id: agentId },
+        data: {
+          assignedCheckpoints: {
+            connect: { id: checkpointId } // Ajoute seulement, n'écrase pas
+          }
+        }
+      });
+
+      console.log('✅ [DEBUG] Agent assigné au checkpoint ET checkpoint ajouté dans assignedCheckpoints');
+
       return updatedCheckpoint;
     } catch (error) {
+      console.error('❌ [ERROR] Erreur lors de l\'assignation:', error.message);
       throw new Error(`Erreur lors de l'assignation de l'agent: ${error.message}`);
     }
   }

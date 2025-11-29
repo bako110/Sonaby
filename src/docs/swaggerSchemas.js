@@ -388,8 +388,24 @@ const Visitor = {
     isBlacklisted: { type: "boolean", default: false },
     blacklistReason: { type: "string", nullable: true },
     company: { type: "string", nullable: true },
+    emergencyContactPhone: { type: "string", nullable: true, description: "Téléphone du contact d'urgence" },
+    emergencyContactName: { type: "string", nullable: true, description: "Nom du contact d'urgence" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" }
+  },
+  example: {
+    id: "880e8400-e29b-41d4-a716-446655440001",
+    firstName: "Marie",
+    lastName: "KABORE",
+    phone: "+226 70 11 22 33",
+    email: "marie.kabore@email.com",
+    idType: "CNIB",
+    idNumber: "C123456789",
+    company: "Entreprise KABORE & Fils",
+    emergencyContactPhone: "+226 76 99 88 77",
+    emergencyContactName: "Jean KABORE",
+    createdAt: "2024-11-24T10:30:00Z",
+    updatedAt: "2024-11-24T10:30:00Z"
   }
 };
 
@@ -442,25 +458,69 @@ const BlacklistHistory = {
 const Visit = {
   type: "object",
   properties: {
-    id: { type: "string", format: "uuid" },
-    visitorId: { type: "string", format: "uuid" },
-    checkpointId: { type: "string", format: "uuid" },
-    serviceId: { type: "string", format: "uuid" },
-    reason: { type: "string" },
-    plannedId: { type: "string", format: "uuid", nullable: true },
-    isGroup: { type: "boolean", default: false },
-    groupCode: { type: "string", nullable: true },
-    entryTime: { type: "string", format: "date-time" },
-    exitTime: { type: "string", format: "date-time", nullable: true },
-    createdBy: { type: "string", format: "uuid" },
+    id: { type: "string", format: "uuid", description: "ID unique de la visite" },
+    visitorId: { type: "string", format: "uuid", description: "ID du visiteur" },
+    checkpointId: { type: "string", format: "uuid", description: "ID du checkpoint d'entrée" },
+    entryTime: { type: "string", format: "date-time", description: "Date et heure d'entrée" },
+    exitTime: { type: "string", format: "date-time", nullable: true, description: "Date et heure de sortie" },
+    entityVisited: { type: "string", description: "Entité visitée (service, personne, etc.)" },
+    contactPerson: { type: "string", description: "Personne contactée" },
+    origin: { type: "string", description: "Origine de la visite (entreprise, etc.)" },
+    reason: { type: "string", description: "Raison de la visite" },
+    notes: { type: "string", description: "Notes sur la visite" },
     status: { 
       type: "string", 
-      enum: ["active", "finished", "refused"],
-      default: "active"
+      enum: ["present", "left"],
+      default: "present",
+      description: "Statut de la visite"
     },
-    signatureUrl: { type: "string", nullable: true },
-    notes: { type: "string", nullable: true },
-    createdAt: { type: "string", format: "date-time" }
+    createdAt: { type: "string", format: "date-time", description: "Date de création" },
+    updatedAt: { type: "string", format: "date-time", description: "Date de mise à jour" },
+    visitor: {
+      type: "object",
+      description: "Informations du visiteur",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        firstName: { type: "string", description: "Prénom du visiteur" },
+        lastName: { type: "string", description: "Nom du visiteur" },
+        phone: { type: "string", nullable: true, description: "Téléphone du visiteur" },
+        email: { type: "string", format: "email", nullable: true, description: "Email du visiteur" },
+        company: { type: "string", nullable: true, description: "Entreprise du visiteur" },
+        emergencyContactPhone: { type: "string", nullable: true, description: "Contact d'urgence" },
+        emergencyContactName: { type: "string", nullable: true, description: "Nom du contact d'urgence" }
+      }
+    },
+    checkpoint: {
+      type: "object",
+      description: "Informations du checkpoint",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        name: { type: "string", description: "Nom du checkpoint" },
+        site: {
+          type: "object",
+          description: "Site du checkpoint",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string", description: "Nom du site" }
+          }
+        }
+      }
+    },
+    incidents: {
+      type: "array",
+      description: "Incidents liés à la visite",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: "string", description: "Titre de l'incident" },
+          description: { type: "string", description: "Description de l'incident" },
+          severityLevel: { type: "integer", description: "Niveau de gravité (1-4)" },
+          isResolved: { type: "boolean", description: "Incident résolu" },
+          createdAt: { type: "string", format: "date-time" }
+        }
+      }
+    }
   }
 };
 
@@ -627,51 +687,50 @@ const CreateCheckpointInput = {
 
 const CreateVisitInput = {
   type: "object",
-  required: ["visitorId", "checkpointId", "serviceId", "reason"],
+  required: ["visitorId", "checkpointId", "entityVisited", "contactPerson", "origin", "reason", "notes"],
   properties: {
     visitorId: { 
       type: "string", 
       format: "uuid",
-      description: "ID du visiteur",
-      example: "aa0e8400-e29b-41d4-a716-446655440001"
+      description: "ID du visiteur existant",
+      example: "550e8400-e29b-41d4-a716-446655440000"
     },
     checkpointId: { 
       type: "string", 
       format: "uuid",
-      description: "ID du checkpoint",
+      description: "ID du checkpoint d'entrée",
       example: "770e8400-e29b-41d4-a716-446655440002"
     },
-    serviceId: { 
-      type: "string", 
-      format: "uuid",
-      description: "ID du service visité",
-      example: "550e8400-e29b-41d4-a716-446655440003"
+    entityVisited: { 
+      type: "string",
+      description: "Entité visitée (service, personne, etc.)",
+      example: "Direction Générale"
+    },
+    contactPerson: { 
+      type: "string",
+      description: "Personne contactée",
+      example: "Jean KABORE"
+    },
+    origin: { 
+      type: "string",
+      description: "Origine de la visite (entreprise, etc.)",
+      example: "Entreprise ABC"
     },
     reason: { 
       type: "string",
       description: "Raison de la visite",
-      example: "Réunion avec le directeur"
-    },
-    plannedId: { 
-      type: "string", 
-      format: "uuid",
-      description: "ID du rendez-vous planifié (optionnel)",
-      example: "660e8400-e29b-41d4-a716-446655440004"
-    },
-    isGroup: { 
-      type: "boolean",
-      default: false,
-      description: "Visite de groupe"
-    },
-    groupCode: { 
-      type: "string",
-      description: "Code du groupe (si visite de groupe)",
-      example: "GRP-2024-001"
+      example: "Réunion de suivi projet"
     },
     notes: { 
       type: "string",
-      description: "Notes additionnelles",
-      example: "Visiteur VIP"
+      description: "Notes sur la visite",
+      example: "Visiteur attendu à 14h00"
+    },
+    status: { 
+      type: "string",
+      enum: ["present", "left"],
+      default: "present",
+      description: "Statut de la visite (par défaut: present)"
     }
   }
 };
@@ -1643,22 +1702,27 @@ module.exports = {
       firstName: {
         type: "string",
         description: "Prénom du visiteur",
-        example: "Jean"
+        example: "BAKO"
       },
       lastName: {
         type: "string",
         description: "Nom du visiteur",
-        example: "Dupont"
+        example: "ROBERT"
       },
       birthDate: {
         type: "string",
         description: "Date de naissance",
-        example: "1985-06-15"
+        example: "15/06/1985"
       },
       birthPlace: {
         type: "string",
         description: "Lieu de naissance",
         example: "Ouagadougou"
+      },
+      residence: {
+        type: "string",
+        description: "Résidence du visiteur",
+        example: "Koulouba"
       },
       sexe: {
         type: "string",
@@ -1669,23 +1733,23 @@ module.exports = {
       givingDate: {
         type: "string",
         description: "Date de délivrance du document",
-        example: "2020-01-15"
+        example: "15/01/2020"
       },
       expirationDate: {
         type: "string",
         description: "Date d'expiration du document",
-        example: "2030-01-15"
+        example: "15/01/2030"
       },
       phone: {
         type: "string",
         description: "Numéro de téléphone",
-        example: "+226 70 11 22 33"
+        example: "+22657443692"
       },
       email: {
         type: "string",
         format: "email",
         description: "Adresse email",
-        example: "jean.dupont@email.com"
+        example: null
       },
       idType: {
         type: "string",
@@ -1695,19 +1759,19 @@ module.exports = {
       idNumber: {
         type: "string",
         description: "Numéro du document d'identité",
-        example: "B1234567890"
+        example: "15673612322367890"
       },
       idScanUrl: {
         type: "string",
         format: "uri",
         description: "URL du scan du document",
-        example: "https://example.com/scan.jpg"
+        example: null
       },
       photoUrl: {
         type: "string",
         format: "uri",
         description: "URL de la photo du visiteur",
-        example: "https://example.com/photo.jpg"
+        example: null
       },
       isBlacklisted: {
         type: "boolean",
@@ -1722,7 +1786,17 @@ module.exports = {
       company: {
         type: "string",
         description: "Entreprise du visiteur",
-        example: "Entreprise ABC"
+        example: null
+      },
+      emergencyContactPhone: {
+        type: "string",
+        description: "Téléphone du contact d'urgence",
+        example: "+22676102577"
+      },
+      emergencyContactName: {
+        type: "string",
+        description: "Nom du contact d'urgence",
+        example: "Jean KABORE"
       },
       createdAt: {
         type: "string",
@@ -1747,97 +1821,149 @@ module.exports = {
         type: "string",
         minLength: 1,
         maxLength: 100,
-        description: "Prénom du visiteur",
+        description: "Prénom du visiteur (requis)",
         example: "Jean"
       },
       lastName: {
         type: "string",
         minLength: 1,
         maxLength: 100,
-        description: "Nom du visiteur",
+        description: "Nom du visiteur (requis)",
         example: "Dupont"
       },
       birthDate: {
         type: "string",
-        description: "Date de naissance",
-        example: "1985-06-15"
+        nullable: true,
+        description: "Date de naissance (optionnel, null accepté)",
+        example: "15/06/1985"
       },
       birthPlace: {
         type: "string",
         maxLength: 255,
-        description: "Lieu de naissance",
+        nullable: true,
+        description: "Lieu de naissance (optionnel, null accepté)",
         example: "Ouagadougou"
+      },
+      residence: {
+        type: "string",
+        maxLength: 255,
+        nullable: true,
+        description: "Résidence du visiteur (optionnel, null accepté)",
+        example: "Koulouba"
       },
       sexe: {
         type: "string",
         enum: ["M", "F", "HOMME", "FEMME"],
-        description: "Sexe du visiteur",
+        nullable: true,
+        description: "Sexe du visiteur (optionnel, null accepté)",
         example: "M"
       },
       givingDate: {
         type: "string",
-        description: "Date de délivrance du document",
-        example: "2020-01-15"
+        nullable: true,
+        description: "Date de délivrance du document (optionnel, null accepté)",
+        example: "15/01/2020"
       },
       expirationDate: {
         type: "string",
-        description: "Date d'expiration du document",
-        example: "2030-01-15"
+        nullable: true,
+        description: "Date d'expiration du document (optionnel, null accepté)",
+        example: "15/01/2030"
       },
       phone: {
         type: "string",
         maxLength: 20,
-        description: "Numéro de téléphone",
-        example: "+226 70 11 22 33"
+        nullable: true,
+        description: "Numéro de téléphone (optionnel, null accepté)",
+        example: "+22657443692"
       },
       email: {
         type: "string",
         format: "email",
-        description: "Adresse email",
-        example: "jean.dupont@email.com"
+        nullable: true,
+        description: "Adresse email (optionnel, null accepté)",
+        example: null
       },
       idType: {
         type: "string",
         enum: ["CNI", "PASSEPORT", "PERMIS_CONDUITE"],
-        description: "Type de document d'identité",
+        description: "Type d'identité (requis)",
         example: "CNI"
       },
       idNumber: {
         type: "string",
         minLength: 1,
         maxLength: 255,
-        description: "Numéro du document d'identité",
-        example: "B1234567890"
+        description: "Numéro d'identité (requis)",
+        example: "15673612322367890"
       },
       idScanUrl: {
         type: "string",
         format: "uri",
-        description: "URL du scan du document",
-        example: "https://example.com/scan.jpg"
+        nullable: true,
+        description: "URL du scan de l'identité (optionnel, null accepté)",
+        example: null
       },
       photoUrl: {
         type: "string",
         format: "uri",
-        description: "URL de la photo du visiteur",
-        example: "https://example.com/photo.jpg"
+        nullable: true,
+        description: "URL de la photo (optionnel, null accepté)",
+        example: null
       },
       isBlacklisted: {
         type: "boolean",
-        default: false,
-        description: "Indique si le visiteur est blacklisté",
+        description: "Statut de blacklistage (optionnel)",
         example: false
       },
       blacklistReason: {
         type: "string",
-        description: "Raison de la blacklist (si applicable)",
+        nullable: true,
+        description: "Raison du blacklistage (optionnel, null accepté)",
         example: null
       },
       company: {
         type: "string",
         maxLength: 255,
-        description: "Entreprise du visiteur",
-        example: "Entreprise ABC"
+        nullable: true,
+        description: "Entreprise du visiteur (optionnel, null accepté)",
+        example: null
+      },
+      emergencyContactPhone: {
+        type: "string",
+        maxLength: 20,
+        nullable: true,
+        description: "Téléphone du contact d'urgence (optionnel, null accepté)",
+        example: "+22676102577"
+      },
+      emergencyContactName: {
+        type: "string",
+        maxLength: 255,
+        nullable: true,
+        description: "Nom du contact d'urgence (optionnel, null accepté)",
+        example: "Jean KABORE"
       }
+    },
+    example: {
+      firstName: "BAKO",
+      lastName: "ROBERT",
+      birthDate: "15/06/1985",
+      birthPlace: "Ouagadougou",
+      residence: "Koulouba",
+      sexe: "M",
+      givingDate: "15/01/2020",
+      expirationDate: "15/01/2030",
+      phone: "+22657443692",
+      email: null,
+      idType: "CNI",
+      idNumber: "15673612322367890",
+      idScanUrl: null,
+      photoUrl: null,
+      isBlacklisted: false,
+      blacklistReason: null,
+      company: null,
+      emergencyContactPhone: "+22676102577",
+      emergencyContactName: "Jean KABORE"
     }
   },
 

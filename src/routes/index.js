@@ -15,6 +15,7 @@ const sosRoutes = require('../modules/sos/sos.routes');
 const blacklistRoutes = require('../modules/blacklist/blacklist.routes');
 const rendezvousRoutes = require('../modules/rendezvous/rendezvous.routes');
 const dashboardRoutes = require('../modules/dashboard');
+const statsRoutes = require('../modules/stats/stats.routes');
 
 const router = express.Router();
 
@@ -35,6 +36,7 @@ router.use('/sos', sosRoutes);
 router.use('/blacklist', blacklistRoutes);
 router.use('/rendezvous', rendezvousRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/stats', statsRoutes);
 
 
 // Route de santé de l'API

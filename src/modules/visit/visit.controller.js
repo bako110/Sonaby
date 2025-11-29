@@ -64,7 +64,7 @@ class VisitController {
 
   getAllVisits = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour consulter les visites.'

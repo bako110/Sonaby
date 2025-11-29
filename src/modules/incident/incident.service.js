@@ -5,163 +5,153 @@ const prisma = new PrismaClient();
 class IncidentService {
   async createIncident(incidentData, reportedBy) {
     try {
-      // Vérifier que le visiteur existe
-      const visitor = await prisma.visitor.findUnique({
-        where: { id: incidentData.visitorId }
-      });
-
-      if (!visitor) {
-        throw new Error('Visiteur non trouvé');
+      // Vérifications des données requises
+      if (!incidentData.titre || !incidentData.description || !incidentData.siteId) {
+        throw new Error('Titre, description et siteId sont requis');
       }
 
-      // Vérifier que le service existe
-      const service = await prisma.service.findUnique({
-        where: { id: incidentData.serviceId }
+      // Vérifier que le site existe
+      const site = await prisma.site.findUnique({
+        where: { id: incidentData.siteId }
       });
 
-      if (!service) {
-        throw new Error('Service non trouvé');
+      if (!site) {
+        throw new Error('Site non trouvé');
       }
 
+      // Vérifier le visiteur si fourni
+      let visitor = null;
+      if (incidentData.visiteurId && incidentData.visiteurId !== '') {
+        visitor = await prisma.visitor.findUnique({
+          where: { id: incidentData.visiteurId }
+        });
+
+        if (!visitor) {
+          throw new Error('Visiteur non trouvé');
+        }
+      }
+
+      // Vérifier que l'utilisateur qui rapporte existe
+      if (!reportedBy) {
+        throw new Error('L\'utilisateur qui rapporte l\'incident est requis');
+      }
+
+      const reporterExists = await prisma.user.findUnique({
+        where: { id: reportedBy }
+      });
+
+      if (!reporterExists) {
+        throw new Error('Utilisateur rapporteur non trouvé');
+      }
+
+      // Préparer les données de l'incident
       const incident = await prisma.incident.create({
         data: {
-          ...incidentData,
-          reportedBy
+          titre: incidentData.titre,
+          description: incidentData.description,
+          typeIncident: incidentData.typeIncident || 'AUTRE',
+          severite: incidentData.severite || 'MOYENNE',
+          priorite: incidentData.priorite || 'NORMALE',
+          source: incidentData.source || 'AGENT',
+          dateIncident: new Date(incidentData.dateIncident),
+          heureIncident: new Date(incidentData.heureIncident),
+          siteId: incidentData.siteId,
+          visiteurId: incidentData.visiteurId && incidentData.visiteurId !== '' ? incidentData.visiteurId : null,
+          actionsImmediates: incidentData.actionsImmediates || null,
+          temoinPresent: incidentData.temoinPresent || false,
+          notifierAgents: incidentData.notifierAgents || false,
+          reportedBy: reportedBy
         },
         include: {
-          visitor: {
-            select: {
-              id: true,
-              firstname: true,
-              lastname: true,
-              company: true
-            }
+          site: {
+            select: { id: true, name: true }
           },
-          service: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
+          visiteur: visitor ? {
+            select: { id: true, firstName: true, lastName: true }
+          } : false,
           reporter: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true
-            }
+            select: { id: true, firstName: true, lastName: true }
           }
         }
       });
 
-      // Vérifier si le visiteur doit être marqué comme indésirable
-      await this.checkAndMarkNonDesirable(incidentData.visitorId, reportedBy);
+      // Notifier les agents si demandé
+      if (incidentData.notifierAgents) {
+        await this.notifyAgents(incident);
+      }
 
-      return incident;
+      return {
+        success: true,
+        message: 'Incident créé avec succès',
+        data: incident
+      };
+
     } catch (error) {
+      console.error('Erreur lors de la création de l\'incident:', error);
       throw new Error(`Erreur lors de la création de l'incident: ${error.message}`);
     }
   }
 
-  async checkAndMarkNonDesirable(visitorId, reportedBy, threshold = 3) {
+  async getIncidents(filters = {}) {
     try {
-      // Compter les incidents du visiteur
-      const incidentCount = await prisma.incident.count({
-        where: { visitorId }
+      const where = {};
+
+      // Filtrer par site
+      if (filters.siteId) {
+        where.siteId = filters.siteId;
+      }
+
+      // Filtrer par statut de résolution
+      if (filters.isResolved !== undefined) {
+        where.isResolved = filters.isResolved;
+      }
+
+      // Filtrer par sévérité
+      if (filters.severite) {
+        where.severite = filters.severite;
+      }
+
+      // Filtrer par date
+      if (filters.dateDebut) {
+        where.dateIncident = {
+          ...where.dateIncident,
+          gte: new Date(filters.dateDebut)
+        };
+      }
+
+      if (filters.dateFin) {
+        where.dateIncident = {
+          ...where.dateIncident,
+          lte: new Date(filters.dateFin)
+        };
+      }
+
+      const incidents = await prisma.incident.findMany({
+        where,
+        include: {
+          site: {
+            select: { id: true, name: true }
+          },
+          visiteur: {
+            select: { id: true, firstName: true, lastName: true, phone: true }
+          },
+          reporter: {
+            select: { id: true, firstName: true, lastName: true }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
       });
 
-      // Si le seuil est atteint, marquer comme indésirable
-      if (incidentCount >= threshold) {
-        const existingNonDesirable = await prisma.nonDesirable.findFirst({
-          where: { visitorId }
-        });
-
-        if (!existingNonDesirable) {
-          await prisma.nonDesirable.create({
-            data: {
-              visitorId,
-              reason: `Marqué automatiquement après ${incidentCount} incidents`,
-              reportedBy
-            }
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Erreur lors de la vérification du statut indésirable:', error);
-    }
-  }
-
-  async getAllIncidents(page = 1, limit = 10, search = null, visitorId = null, serviceId = null) {
-    try {
-      const skip = (page - 1) * limit;
-      
-      let whereClause = {};
-      
-      if (search) {
-        whereClause.OR = [
-          { reason: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { visitor: { 
-            OR: [
-              { firstname: { contains: search, mode: 'insensitive' } },
-              { lastname: { contains: search, mode: 'insensitive' } }
-            ]
-          }}
-        ];
-      }
-
-      if (visitorId) {
-        whereClause.visitorId = visitorId;
-      }
-
-      if (serviceId) {
-        whereClause.serviceId = serviceId;
-      }
-
-      const [incidents, total] = await Promise.all([
-        prisma.incident.findMany({
-          where: whereClause,
-          skip,
-          take: limit,
-          include: {
-            visitor: {
-              select: {
-                id: true,
-                firstname: true,
-                lastname: true,
-                company: true
-              }
-            },
-            service: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            reporter: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true
-              }
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }),
-        prisma.incident.count({ where: whereClause })
-      ]);
-
       return {
-        incidents,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit)
-        }
+        success: true,
+        data: incidents,
+        total: incidents.length
       };
+
     } catch (error) {
+      console.error('Erreur lors de la récupération des incidents:', error);
       throw new Error(`Erreur lors de la récupération des incidents: ${error.message}`);
     }
   }
@@ -171,54 +161,265 @@ class IncidentService {
       const incident = await prisma.incident.findUnique({
         where: { id },
         include: {
-          visitor: {
-            select: {
-              id: true,
-              firstname: true,
-              lastname: true,
-              email: true,
-              phone: true,
-              company: true
-            }
+          site: {
+            select: { id: true, name: true, address: true }
           },
-          service: {
-            select: {
-              id: true,
-              name: true
-            }
+          visiteur: {
+            select: { id: true, firstName: true, lastName: true, phone: true, email: true }
           },
           reporter: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
+            select: { id: true, firstName: true, lastName: true, email: true }
           }
         }
       });
-      
+
       if (!incident) {
         throw new Error('Incident non trouvé');
       }
 
-      return incident;
+      return {
+        success: true,
+        data: incident
+      };
+
     } catch (error) {
+      console.error('Erreur lors de la récupération de l\'incident:', error);
       throw new Error(`Erreur lors de la récupération de l'incident: ${error.message}`);
+    }
+  }
+
+  async updateIncident(id, updateData, updatedBy) {
+    try {
+      // Vérifier que l'incident existe
+      const existingIncident = await prisma.incident.findUnique({
+        where: { id }
+      });
+
+      if (!existingIncident) {
+        throw new Error('Incident non trouvé');
+      }
+
+      // Préparer les données de mise à jour
+      const updateFields = {
+        ...updateData,
+        updatedAt: new Date()
+      };
+
+      // Ne pas permettre la modification de certains champs critiques
+      delete updateFields.reportedBy;
+      delete updateFields.createdAt;
+
+      const incident = await prisma.incident.update({
+        where: { id },
+        data: updateFields,
+        include: {
+          site: {
+            select: { id: true, name: true }
+          },
+          visiteur: {
+            select: { id: true, firstName: true, lastName: true }
+          },
+          reporter: {
+            select: { id: true, firstName: true, lastName: true }
+          }
+        }
+      });
+
+      return {
+        success: true,
+        message: 'Incident mis à jour avec succès',
+        data: incident
+      };
+
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'incident:', error);
+      throw new Error(`Erreur lors de la mise à jour de l'incident: ${error.message}`);
+    }
+  }
+
+  async resolveIncident(id, resolutionData, resolvedBy) {
+    try {
+      const incident = await prisma.incident.update({
+        where: { id },
+        data: {
+          isResolved: true,
+          resolvedAt: new Date(),
+          resolutionNotes: resolutionData.resolutionNotes || null,
+          resolvedBy: resolvedBy
+        },
+        include: {
+          site: {
+            select: { id: true, name: true }
+          },
+          reporter: {
+            select: { id: true, firstName: true, lastName: true }
+          }
+        }
+      });
+
+      return {
+        success: true,
+        message: 'Incident résolu avec succès',
+        data: incident
+      };
+
+    } catch (error) {
+      console.error('Erreur lors de la résolution de l\'incident:', error);
+      throw new Error(`Erreur lors de la résolution de l'incident: ${error.message}`);
     }
   }
 
   async deleteIncident(id) {
     try {
-      const existingIncident = await this.getIncidentById(id);
-      
-      await prisma.incident.delete({
+      const incident = await prisma.incident.delete({
         where: { id }
       });
 
-      return { message: 'Incident supprimé avec succès' };
+      return {
+        success: true,
+        message: 'Incident supprimé avec succès',
+        data: incident
+      };
+
     } catch (error) {
+      console.error('Erreur lors de la suppression de l\'incident:', error);
       throw new Error(`Erreur lors de la suppression de l'incident: ${error.message}`);
+    }
+  }
+
+  async getIncidentStatistics(filters = {}) {
+    try {
+      const where = {};
+
+      // Appliquer les filtres
+      if (filters.siteId) {
+        where.siteId = filters.siteId;
+      }
+
+      if (filters.dateDebut) {
+        where.dateIncident = {
+          ...where.dateIncident,
+          gte: new Date(filters.dateDebut)
+        };
+      }
+
+      if (filters.dateFin) {
+        where.dateIncident = {
+          ...where.dateIncident,
+          lte: new Date(filters.dateFin)
+        };
+      }
+
+      // Statistiques générales
+      const [
+        totalIncidents,
+        resolvedIncidents,
+        pendingIncidents,
+        incidentsBySeverity,
+        incidentsByType,
+        incidentsByPriority
+      ] = await Promise.all([
+        // Total des incidents
+        prisma.incident.count({ where }),
+
+        // Incidents résolus
+        prisma.incident.count({ 
+          where: { ...where, isResolved: true } 
+        }),
+
+        // Incidents en attente
+        prisma.incident.count({ 
+          where: { ...where, isResolved: false } 
+        }),
+
+        // Incidents par sévérité
+        prisma.incident.groupBy({
+          by: ['severite'],
+          where,
+          _count: { id: true }
+        }),
+
+        // Incidents par type
+        prisma.incident.groupBy({
+          by: ['typeIncident'],
+          where,
+          _count: { id: true }
+        }),
+
+        // Incidents par priorité
+        prisma.incident.groupBy({
+          by: ['priorite'],
+          where,
+          _count: { id: true }
+        })
+      ]);
+
+      return {
+        success: true,
+        data: {
+          total: totalIncidents,
+          resolved: resolvedIncidents,
+          pending: pendingIncidents,
+          resolutionRate: totalIncidents > 0 ? Math.round((resolvedIncidents / totalIncidents) * 100) : 0,
+          bySeverity: incidentsBySeverity.map(item => ({
+            severite: item.severite,
+            count: item._count.id
+          })),
+          byType: incidentsByType.map(item => ({
+            type: item.typeIncident,
+            count: item._count.id
+          })),
+          byPriority: incidentsByPriority.map(item => ({
+            priorite: item.priorite,
+            count: item._count.id
+          }))
+        }
+      };
+
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
+    }
+  }
+
+  // Méthode privée pour notifier les agents
+  async notifyAgents(incident) {
+    try {
+      // Récupérer les agents du site
+      const agents = await prisma.user.findMany({
+        where: {
+          assignedSites: {
+            some: {
+              siteId: incident.siteId
+            }
+          },
+          isActive: true
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true
+        }
+      });
+
+      // Ici vous pourriez intégrer un système de notification
+      // Email, SMS, WebSocket, etc.
+      console.log(`Notification envoyée à ${agents.length} agents pour l'incident ${incident.id}`);
+
+      // Pour l'instant, on simule la notification
+      return {
+        notifiedAgents: agents.length,
+        message: 'Agents notifiés avec succès'
+      };
+
+    } catch (error) {
+      console.error('Erreur lors de la notification des agents:', error);
+      // Ne pas bloquer la création de l'incident si la notification échoue
+      return {
+        notifiedAgents: 0,
+        error: error.message
+      };
     }
   }
 }

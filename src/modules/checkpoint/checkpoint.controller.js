@@ -177,11 +177,11 @@ class CheckpointController {
     const { agentId } = assignAgentSchema.parse(req.body);
     
     try {
-      const agent = await checkpointService.assignAgent(id, agentId);
+      const checkpoint = await checkpointService.assignAgent(id, agentId);
       res.json({
         success: true,
         message: 'Agent assigné avec succès',
-        data: agent
+        data: checkpoint
       });
     } catch (error) {
       if (error.message.includes('non trouvé')) {
@@ -217,6 +217,29 @@ class CheckpointController {
       }
       if (error.message.includes('déjà actif')) {
         return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
+  getCheckpointAgents = asyncHandler(async (req, res) => {
+    const { id } = checkpointIdSchema.parse(req.params);
+    
+    try {
+      const result = await checkpointService.getCheckpointAgents(id);
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      if (error.message.includes('non trouvé')) {
+        return res.status(404).json({
           success: false,
           message: error.message
         });

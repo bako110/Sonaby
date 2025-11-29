@@ -1,43 +1,52 @@
 const visitorService = require('./visitor.service');
-const { createVisitorSchema, updateVisitorSchema, visitorIdSchema, visitorQuerySchema } = require('./visitor.schema');
+const { createVisitorWithTransform, updateVisitorSchema, visitorIdSchema, visitorQuerySchema } = require('./visitor.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class VisitorController {
   createVisitor = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour créer un visiteur.'
       });
     }
 
-    const validated = createVisitorSchema.parse(req.body);
+    const validated = createVisitorWithTransform.parse(req.body);
     
     try {
-      const visitor = await visitorService.createVisitor(validated);
+      const visitor = await visitorService.createOrUpdateVisitor(validated);
       res.status(201).json({
         success: true,
-        message: 'Visiteur créé avec succès',
+        message: 'Visiteur créé ou mis à jour avec succès',
         data: visitor
       });
     } catch (error) {
+      // Gérer les erreurs de contrainte unique
+      if (error.message.includes('Unique constraint failed on the constraint: `unique_identity`')) {
+        return res.status(400).json({
+          success: false,
+          message: `Erreur lors de la création du visiteur: \nInvalid \`prisma.visitor.create()\` invocation in\nC:\\dev\\backend-sonaby\\src\\modules\\visitor\\visitor.service.js:6:44\n\n  3 class VisitorService {\n  4   async createVisitor(visitorData) {\n  5     try {\n→ 6       const visitor = await prisma.visitor.create(\nUnique constraint failed on the constraint: \`unique_identity\``
+        });
+      }
+      
       if (error.message.includes('non trouvé')) {
         return res.status(400).json({
           success: false,
           message: error.message
         });
       }
+      
       res.status(500).json({
         success: false,
-        message: error.message
+        message: `Erreur lors de la création du visiteur: ${error.message}`
       });
     }
   });
 
   getAllVisitors = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour consulter les visiteurs.'
@@ -68,7 +77,7 @@ class VisitorController {
 
   getVisitorById = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour consulter les détails du visiteur.'
@@ -99,7 +108,7 @@ class VisitorController {
 
   updateVisitor = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour modifier un visiteur.'
@@ -132,7 +141,7 @@ class VisitorController {
 
   deleteVisitor = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour supprimer un visiteur.'
@@ -169,7 +178,7 @@ class VisitorController {
 
   checkNonDesirable = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour vérifier le statut indésirable.'
@@ -223,7 +232,7 @@ class VisitorController {
 
   getVisitorHistory = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour consulter l\'historique.'

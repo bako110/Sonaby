@@ -9,7 +9,8 @@ router.get('/', sosController.getAllSOS);
 router.get('/active', sosController.getActiveSOS);
 router.get('/stats', sosController.getSOSStats);
 router.post('/', sosController.createSOS);
+router.post('/general', sosController.createGeneralSOS);
 router.get('/:id', sosController.getSOSById);
-router.patch('/:id/deactivate', sosController.deactivateSOS);
+router.patch('/:id', sosController.deactivateSOS);
 
 module.exports = router;

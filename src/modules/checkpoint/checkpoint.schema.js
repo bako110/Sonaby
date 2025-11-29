@@ -59,7 +59,7 @@ const checkpointQuerySchema = z.object({
   active: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
 });
 
-// Schéma pour l'assignation d'agent à checkpoint
+// Schéma pour l'assignation d'agent(s) à checkpoint
 const assignAgentSchema = z.object({
   agentId: z.string().min(1, 'L\'ID de l\'agent est requis')
 });
@@ -69,7 +69,7 @@ module.exports = {
   updateCheckpointSchema,
   checkpointIdSchema,
   checkpointQuerySchema,
-  assignAgentSchema,  // Ajout du schéma manquant
+  assignAgentSchema,
   // Export des énumérations pour réutilisation
   checkpointStatusEnum,
   checkpointTypeEnum,

@@ -127,8 +127,6 @@ router.get('/stats', authenticateToken, asyncHandler(async (req, res) => {
         summary: {
           totalVisitorsToday: visitsInProgress + visitsCompleted,
           hasVisitorsPresent: presentVisitors.length > 0,
-          presentCount: presentVisitors.length,
-          totalVisitorsInDb: visitorsRegistered
         }
       }
     });
@@ -142,13 +140,63 @@ router.get('/stats', authenticateToken, asyncHandler(async (req, res) => {
   }
 }));
 
-// GET /api/v1/dashboard/visitors-present - Visiteurs présents détaillés
+// GET /api/v1/dashboard/visitors-present - Visiteurs présents du jour pour un site
 router.get('/visitors-present', authenticateToken, asyncHandler(async (req, res) => {
   try {
-    const visitorsPresent = await prisma.visit.findMany({
+    const { siteId } = req.query;
+
+    // siteId est obligatoire
+    if (!siteId) {
+      return res.status(400).json({
+        success: false,
+        message: 'siteId est requis dans les paramètres de requête'
+      });
+    }
+
+    // Obtenir la date du jour (sans l'heure)
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+    // 1. D'abord trouver tous les checkpoints du site
+    const siteCheckpoints = await prisma.checkpoint.findMany({
       where: {
-        status: 'active',
-        exitTime: null
+        siteId: siteId
+      },
+      select: {
+        id: true,
+        name: true
+      }
+    });
+
+    if (siteCheckpoints.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          count: 0,
+          visitors: [],
+          siteId: siteId,
+          date: today.toISOString().split('T')[0],
+          message: 'Aucun checkpoint trouvé pour ce site'
+        }
+      });
+    }
+
+    // 2. Extraire les IDs des checkpoints
+    const checkpointIds = siteCheckpoints.map(cp => cp.id);
+
+    // 3. Chercher les visites du jour pour ces checkpoints (sans filtre de status pour debug)
+    const allVisitsToday = await prisma.visit.findMany({
+      where: {
+        // Visiteurs du jour
+        entryTime: {
+          gte: startOfDay,
+          lt: endOfDay
+        },
+        // Pour les checkpoints du site
+        checkpointId: {
+          in: checkpointIds
+        }
       },
       include: {
         visitor: true,
@@ -162,6 +210,7 @@ router.get('/visitors-present', authenticateToken, asyncHandler(async (req, res)
             name: true,
             site: {
               select: {
+                id: true,
                 name: true
               }
             }
@@ -172,6 +221,11 @@ router.get('/visitors-present', authenticateToken, asyncHandler(async (req, res)
         entryTime: 'desc'
       }
     });
+
+    // Filtrer manuellement pour voir les visiteurs "présents" (ceux qui n'ont pas de exitTime)
+    const visitorsPresent = allVisitsToday.filter(visit => 
+      visit.exitTime === null || visit.status === 'active' || visit.status === 'present'
+    );
 
     const formattedVisitors = visitorsPresent.map(visit => ({
       visitId: visit.id,
@@ -188,7 +242,10 @@ router.get('/visitors-present', authenticateToken, asyncHandler(async (req, res)
         reason: visit.reason,
         service: visit.service?.name,
         checkpoint: visit.checkpoint?.name,
-        site: visit.checkpoint?.site?.name
+        site: visit.checkpoint?.site?.name,
+        siteId: visit.checkpoint?.site?.id,
+        status: visit.status,
+        exitTime: visit.exitTime
       }
     }));
 
@@ -196,7 +253,20 @@ router.get('/visitors-present', authenticateToken, asyncHandler(async (req, res)
       success: true,
       data: {
         count: formattedVisitors.length,
-        visitors: formattedVisitors
+        visitors: formattedVisitors,
+        siteId: siteId,
+        date: today.toISOString().split('T')[0], // Format YYYY-MM-DD
+        checkpointsFound: siteCheckpoints.length,
+        checkpointIds: checkpointIds,
+        debug: {
+          totalVisitsToday: allVisitsToday.length,
+          allVisitStatuses: allVisitsToday.map(v => ({ 
+            id: v.id, 
+            status: v.status, 
+            exitTime: v.exitTime,
+            visitorName: `${v.visitor.firstName} ${v.visitor.lastName}`
+          }))
+        }
       }
     });
 

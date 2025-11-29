@@ -3,12 +3,58 @@ const { prisma } = require('../../config/prisma');
 class VisitorService {
   async createVisitor(visitorData) {
     try {
+      // Vérifier si le visiteur existe déjà (même idType + idNumber)
+      const existingVisitor = await prisma.visitor.findFirst({
+        where: {
+          idType: visitorData.idType,
+          idNumber: visitorData.idNumber
+        }
+      });
+
+      if (existingVisitor) {
+        throw new Error(`Un visiteur avec le même type d'identité (${visitorData.idType}) et numéro (${visitorData.idNumber}) existe déjà. ID du visiteur existant: ${existingVisitor.id}`);
+      }
+
       const visitor = await prisma.visitor.create({
         data: visitorData
       });
       return visitor;
     } catch (error) {
       throw new Error(`Erreur lors de la création du visiteur: ${error.message}`);
+    }
+  }
+
+  async createOrUpdateVisitor(visitorData) {
+    try {
+      // Utiliser upsert pour créer ou mettre à jour
+      const visitor = await prisma.visitor.upsert({
+        where: {
+          // La contrainte unique_identity est sur idType + idNumber
+          idType_idNumber: {
+            idType: visitorData.idType,
+            idNumber: visitorData.idNumber
+          }
+        },
+        update: visitorData, // Mettre à jour avec les nouvelles données
+        create: visitorData  // Créer si n'existe pas
+      });
+      return visitor;
+    } catch (error) {
+      throw new Error(`Erreur lors de la création/mise à jour du visiteur: ${error.message}`);
+    }
+  }
+
+  async findByIdentifier(idType, idNumber) {
+    try {
+      const visitor = await prisma.visitor.findFirst({
+        where: {
+          idType: idType,
+          idNumber: idNumber
+        }
+      });
+      return visitor;
+    } catch (error) {
+      throw new Error(`Erreur lors de la recherche du visiteur: ${error.message}`);
     }
   }
 
