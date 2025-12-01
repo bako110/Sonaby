@@ -794,6 +794,34 @@ const CreateSosInput = {
   }
 };
 
+const CreateGeneralSOSInput = {
+  type: "object",
+  required: ["checkpointId"],
+  properties: {
+    checkpointId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du checkpoint pour l'alerte générale",
+      example: "770e8400-e29b-41d4-a716-446655440002"
+    },
+    message: { 
+      type: "string",
+      description: "Message optionnel décrivant la situation d'urgence",
+      example: "Alerte générale - Situation d'urgence"
+    },
+    triggeredBy: {
+      type: "string",
+      format: "uuid",
+      description: "ID de l'utilisateur qui déclenche l'alerte (optionnel)",
+      example: "550e8400-e29b-41d4-a716-446655440000"
+    }
+  },
+  example: {
+    checkpointId: "770e8400-e29b-41d4-a716-446655440002",
+    message: "Alerte générale - Situation d'urgence"
+  }
+};
+
 const Rendezvous = {
   type: "object",
   properties: {
@@ -1127,6 +1155,80 @@ const PaginatedResponse = {
 // EXPORTS - SCHÉMAS SWAGGER ADAPTÉS
 // =====================================================================================
 
+// Déclaration du schéma VisitorWithSiteCount
+const VisitorWithSiteCount = {
+  type: "object",
+  properties: {
+    id: {
+      type: "string",
+      format: "uuid",
+      description: "Identifiant unique du visiteur",
+      example: "550e8400-e29b-41d4-a716-446655440000"
+    },
+    firstName: {
+      type: "string",
+      description: "Prénom du visiteur",
+      example: "BAKO"
+    },
+    lastName: {
+      type: "string",
+      description: "Nom du visiteur",
+      example: "ROBERT"
+    },
+    email: {
+      type: "string",
+      format: "email",
+      nullable: true,
+      description: "Email du visiteur",
+      example: "bako.robert@example.com"
+    },
+    phone: {
+      type: "string",
+      nullable: true,
+      description: "Téléphone du visiteur",
+      example: "+22657443692"
+    },
+    company: {
+      type: "string",
+      nullable: true,
+      description: "Entreprise du visiteur",
+      example: "Société Générale"
+    },
+    idType: {
+      type: "string",
+      description: "Type d'identité",
+      example: "CNI"
+    },
+    idNumber: {
+      type: "string",
+      description: "Numéro d'identité",
+      example: "15673612322367890"
+    },
+    isBlacklisted: {
+      type: "boolean",
+      description: "Statut de blacklist",
+      example: false
+    },
+    blacklistReason: {
+      type: "string",
+      nullable: true,
+      description: "Raison du blacklist",
+      example: null
+    },
+    createdAt: {
+      type: "string",
+      format: "date-time",
+      description: "Date de création",
+      example: "2024-11-24T10:30:00.000Z"
+    },
+    siteVisitCount: {
+      type: "integer",
+      description: "Nombre de visites sur ce site",
+      example: 3
+    }
+  }
+};
+
 module.exports = {
   // ===== SCHÉMAS D'ENTRÉE =====
   
@@ -1154,6 +1256,7 @@ module.exports = {
   // Incident & SOS
   CreateIncidentInput,
   CreateSosInput,
+  CreateGeneralSOSInput,
   
   // Query Inputs
   SiteQueryInput,
@@ -1172,6 +1275,7 @@ module.exports = {
   Site,
   Checkpoint,
   Visitor,
+  VisitorWithSiteCount,
   Service,
   Visit,
   Rendezvous,
@@ -1809,6 +1913,48 @@ module.exports = {
         format: "date-time",
         description: "Date de dernière mise à jour",
         example: "2024-11-24T10:30:00.000Z"
+      },
+      checkpointId: {
+        type: "string",
+        format: "uuid",
+        nullable: true,
+        description: "ID du checkpoint par défaut du visiteur",
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      },
+      checkpoint: {
+        type: "object",
+        nullable: true,
+        description: "Informations du checkpoint par défaut",
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            description: "ID du checkpoint",
+            example: "550e8400-e29b-41d4-a716-446655440000"
+          },
+          name: {
+            type: "string",
+            description: "Nom du checkpoint",
+            example: "Portail Principal"
+          },
+          site: {
+            type: "object",
+            description: "Informations du site",
+            properties: {
+              id: {
+                type: "string",
+                format: "uuid",
+                description: "ID du site",
+                example: "0734a724-cb77-11f0-aa39-0242ac140013"
+              },
+              name: {
+                type: "string",
+                description: "Nom du site",
+                example: "Siège Social"
+              }
+            }
+          }
+        }
       }
     }
   },

@@ -160,6 +160,59 @@ router.get('/', visitorController.getAllVisitors);
 
 /**
  * @swagger
+ * /api/visitors/site/{siteId}:
+ *   get:
+ *     summary: Récupérer les visiteurs d'un site spécifique
+ *     tags: [Visiteurs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: siteId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du site
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Nombre d'éléments par page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Recherche par nom, prénom, email, téléphone ou entreprise
+ *     responses:
+ *       200:
+ *         description: Liste des visiteurs du site
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/VisitorWithSiteCount'
+ *                 pagination:
+ *                   type: object
+ *       403:
+ *         description: Accès refusé
+ */
+router.get('/site/:siteId', visitorController.getVisitorsBySite);
+
+/**
+ * @swagger
  * /api/visitors/stats:
  *   get:
  *     summary: Statistiques des visiteurs

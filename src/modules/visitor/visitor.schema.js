@@ -26,7 +26,8 @@ const createVisitorSchema = z.object({
     blacklistReason: z.string().nullable().optional(),
     company: z.string().max(255).nullable().optional(),
     emergencyContactPhone: z.string().max(20).nullable().optional(),
-    emergencyContactName: z.string().max(255).nullable().optional()
+    emergencyContactName: z.string().max(255).nullable().optional(),
+    
 });
 
 const createVisitorWithTransform = createVisitorSchema.transform((data) => ({
@@ -45,7 +46,8 @@ const createVisitorWithTransform = createVisitorSchema.transform((data) => ({
     blacklistReason: (data.blacklistReason === '' || data.blacklistReason === 'null') ? null : data.blacklistReason,
     company: (data.company === '' || data.company === 'null') ? null : data.company,
     emergencyContactPhone: (data.emergencyContactPhone === '' || data.emergencyContactPhone === 'null') ? null : data.emergencyContactPhone,
-    emergencyContactName: (data.emergencyContactName === '' || data.emergencyContactName === 'null') ? null : data.emergencyContactName
+    emergencyContactName: (data.emergencyContactName === '' || data.emergencyContactName === 'null') ? null : data.emergencyContactName,
+    // checkpointId: (data.checkpointId === '' || data.checkpointId === 'null') ? null : data.checkpointId
 }));
 
 const updateVisitorSchema = createVisitorSchema.partial();

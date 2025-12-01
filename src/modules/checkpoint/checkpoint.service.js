@@ -292,80 +292,67 @@ class CheckpointService {
   }
 
   async assignAgent(checkpointId, agentId) {
-    try {
-      // Vérifier que le checkpoint existe
-      const checkpoint = await this.getCheckpointById(checkpointId);
-      
-      // Vérifier que l'agent existe (utiliser User avec rôle AGENT_CONTROLE)
-      const agent = await prisma.user.findFirst({
-        where: { 
-          id: agentId,
-          role: 'AGENT_CONTROLE'
-        }
-      });
+  try {
+    // Vérifier que le checkpoint existe
+    const checkpoint = await prisma.checkpoint.findUnique({
+      where: { id: checkpointId }
+    });
+    if (!checkpoint) throw new Error('Checkpoint non trouvé');
 
-      if (!agent) {
-        throw new Error('Agent non trouvé');
-      }
+    // Vérifier que l'agent existe (rôle AGENT_CONTROLE)
+    const agent = await prisma.user.findFirst({
+      where: { id: agentId, role: 'AGENT_CONTROLE' }
+    });
+    if (!agent) throw new Error('Agent non trouvé');
 
-      // Créer l'affectation en utilisant la table AgentCheckpointAssignment
-      // Ne plus utiliser le champ agent_id du checkpoint
-      const assignment = await prisma.agentCheckpointAssignment.upsert({
-        where: {
-          userId_checkpointId_startDate: {
-            userId: agentId,
-            checkpointId: checkpointId,
-            startDate: new Date()
-          }
-        },
-        update: {}, // Ne rien mettre à jour si existe déjà
-        create: {
-          userId: agentId,
-          checkpointId: checkpointId,
-          startDate: new Date()
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true
-            }
-          }
-        }
-      });
-
-      // Récupérer le checkpoint mis à jour avec tous les agents depuis agentAssignments
-      const updatedCheckpoint = await prisma.checkpoint.findUnique({
+    // Mettre à jour le checkpoint et le user dans une transaction
+    const [updatedCheckpoint] = await prisma.$transaction([
+      // 1️⃣ Mettre à jour le checkpoint
+      prisma.checkpoint.update({
         where: { id: checkpointId },
-        include: {
-          site: true,
-          agentAssignments: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  phone: true
-                }
-              }
-            },
-            where: {
-              endDate: null // Seulement les affectations actives
-            }
+        data: { agentId: agentId }
+      }),
+      // 2️⃣ Ajouter le checkpoint à l’agent
+      prisma.user.update({
+        where: { id: agentId },
+        data: {
+          assignedCheckpoints: {
+            connect: { id: checkpointId } // ajoute le checkpoint à la liste
           }
         }
-      });
+      })
+    ]);
 
-      return updatedCheckpoint;
-    } catch (error) {
-      throw new Error(`Erreur lors de l'assignation de l'agent: ${error.message}`);
-    }
+    // Récupérer le checkpoint mis à jour avec les infos de l’agent
+    const checkpointWithAgent = await prisma.checkpoint.findUnique({
+  where: { id: checkpointId },
+  include: {
+    agentAssignments: {
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true
+          }
+        }
+      },
+      where: {
+        endDate: null // seulement les affectations actives
+      }
+    },
+    site: true
   }
+});
+
+
+    return checkpointWithAgent;
+  } catch (error) {
+    throw new Error(`Erreur lors de l'assignation de l'agent: ${error.message}`);
+  }
+}
 
   async getCheckpointAgents(checkpointId) {
     try {

@@ -1,48 +1,78 @@
 const { prisma } = require('../../config/prisma');
 
 class VisitorService {
-  async createVisitor(visitorData) {
+  async createOrFindVisitor(visitorData) {
     try {
-      // Vérifier si le visiteur existe déjà (même idType + idNumber)
-      const existingVisitor = await prisma.visitor.findFirst({
-        where: {
-          idType: visitorData.idType,
-          idNumber: visitorData.idNumber
+        const { idType, idNumber } = visitorData;
+
+        // 1️⃣ Vérifier si un visiteur existe déjà
+        const existingVisitor = await prisma.visitor.findFirst({
+            where: { idType, idNumber },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                idType: true,
+                idNumber: true,
+                isBlacklisted: true,
+                blacklistReason: true,
+                createdAt: true,
+            }
+        });
+
+        // 👉 Vérifier s’il est indésirable (dans la table NonDesirable)
+        let undesirableRecord = null;
+
+        if (existingVisitor) {
+            undesirableRecord = await prisma.nonDesirable.findFirst({
+                where: { visitorId: existingVisitor.id },
+                select: {
+                    id: true,
+                    reason: true,
+                    createdAt: true
+                }
+            });
+
+            return {
+                success: true,
+                status: "EXISTING_VISITOR",
+                visitor: existingVisitor,
+                isBlacklisted: existingVisitor.isBlacklisted,
+                isUndesirable: !!undesirableRecord,
+                undesirableInfo: undesirableRecord,
+                message:
+                    existingVisitor.isBlacklisted
+                        ? "Visiteur existant et BLACKLISTÉ"
+                        : undesirableRecord
+                            ? "Visiteur existant et INDÉSIRABLE"
+                            : "Visiteur existant"
+            };
         }
-      });
 
-      if (existingVisitor) {
-        throw new Error(`Un visiteur avec le même type d'identité (${visitorData.idType}) et numéro (${visitorData.idNumber}) existe déjà. ID du visiteur existant: ${existingVisitor.id}`);
-      }
+        // 2️⃣ Si n’existe pas → création
+        const newVisitor = await prisma.visitor.create({
+            data: {
+                ...visitorData,
+                isBlacklisted: false,
+                blacklistReason: null
+            }
+        });
 
-      const visitor = await prisma.visitor.create({
-        data: visitorData
-      });
-      return visitor;
+        return {
+            success: true,
+            status: "NEW_VISITOR_CREATED",
+            visitor: newVisitor,
+            isBlacklisted: false,
+            isUndesirable: false,
+            message: "Nouveau visiteur créé avec succès"
+        };
+
     } catch (error) {
-      throw new Error(`Erreur lors de la création du visiteur: ${error.message}`);
+        console.error("❌ Erreur createOrFindVisitor:", error);
+        throw new Error(`Erreur lors de la création ou récupération du visiteur: ${error.message}`);
     }
-  }
+}
 
-  async createOrUpdateVisitor(visitorData) {
-    try {
-      // Utiliser upsert pour créer ou mettre à jour
-      const visitor = await prisma.visitor.upsert({
-        where: {
-          // La contrainte unique_identity est sur idType + idNumber
-          idType_idNumber: {
-            idType: visitorData.idType,
-            idNumber: visitorData.idNumber
-          }
-        },
-        update: visitorData, // Mettre à jour avec les nouvelles données
-        create: visitorData  // Créer si n'existe pas
-      });
-      return visitor;
-    } catch (error) {
-      throw new Error(`Erreur lors de la création/mise à jour du visiteur: ${error.message}`);
-    }
-  }
 
   async findByIdentifier(idType, idNumber) {
     try {
@@ -87,7 +117,7 @@ class VisitorService {
               select: {
                 visits: true
               }
-            }
+            },
           },
           orderBy: {
             createdAt: 'desc'
@@ -102,7 +132,7 @@ class VisitorService {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / limit)
         }
       };
     } catch (error) {
@@ -110,11 +140,118 @@ class VisitorService {
     }
   }
 
+  // async getVisitorsBySite(siteId, page = 1, limit = 10, search = null) {
+  //   try {
+  //     const skip = (page - 1) * limit;
+      
+  //     // Récupérer les visiteurs qui ont visité ce site
+  //     const visitors = await prisma.visitor.findMany({
+  //       where: {
+  //         visits: {
+  //           some: {
+  //             checkpoint: {
+  //               siteId: siteId
+  //             }
+  //           }
+  //         },
+  //         ...(search && {
+  //           OR: [
+  //             { firstName: { contains: search, mode: 'insensitive' } },
+  //             { lastName: { contains: search, mode: 'insensitive' } },
+  //             { email: { contains: search, mode: 'insensitive' } },
+  //             { phone: { contains: search, mode: 'insensitive' } },
+  //             { company: { contains: search, mode: 'insensitive' } }
+  //           ]
+  //         })
+  //       },
+  //       select: {
+  //         id: true,
+  //         firstName: true,
+  //         lastName: true,
+  //         email: true,
+  //         phone: true,
+  //         company: true,
+  //         idType: true,
+  //         idNumber: true,
+  //         isBlacklisted: true,
+  //         blacklistReason: true,
+  //         createdAt: true,
+  //         _count: {
+  //           select: {
+  //             visits: {
+  //               where: {
+  //                 checkpoint: {
+  //                   siteId: siteId
+  //                 }
+  //               }
+  //             }
+  //           }
+  //         }
+  //       },
+  //       distinct: ['id'],
+  //       orderBy: {
+  //         createdAt: 'desc'
+  //       },
+  //       skip,
+  //       take: limit
+  //     });
+
+  //     // Compter le total des visiteurs pour la pagination
+  //     const totalVisitors = await prisma.visitor.count({
+  //       where: {
+  //         visits: {
+  //           some: {
+  //             checkpoint: {
+  //               siteId: siteId
+  //             }
+  //           }
+  //         },
+  //         ...(search && {
+  //           OR: [
+  //             { firstName: { contains: search, mode: 'insensitive' } },
+  //             { lastName: { contains: search, mode: 'insensitive' } },
+  //             { email: { contains: search, mode: 'insensitive' } },
+  //             { phone: { contains: search, mode: 'insensitive' } },
+  //             { company: { contains: search, mode: 'insensitive' } }
+  //           ]
+  //         })
+  //       }
+  //     });
+
+  //     return {
+  //       visitors: visitors.map(visitor => ({
+  //         ...visitor,
+  //         siteVisitCount: visitor._count.visits
+  //       })),
+  //       pagination: {
+  //         page,
+  //         limit,
+  //         total: totalVisitors,
+  //         totalPages: Math.ceil(totalVisitors / limit)
+  //       }
+  //     };
+  //   } catch (error) {
+  //     throw new Error(`Erreur lors de la récupération des visiteurs du site: ${error.message}`);
+  //   }
+  // }
+
   async getVisitorById(id) {
     try {
       const visitor = await prisma.visitor.findUnique({
         where: { id },
         include: {
+          checkpoint: {
+            select: {
+              id: true,
+              name: true,
+              site: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          },
           visits: {
             take: 10,
             orderBy: {

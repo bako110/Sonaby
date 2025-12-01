@@ -23,7 +23,7 @@ class SiteController {
       });
     } catch (error) {
       // Erreur de validation Zod
-      if (error.name === 'ZodError') {
+      if (error.name === 'ZodError' && error.errors) {
         return res.status(400).json({
           success: false,
           message: 'Erreur de validation des données',

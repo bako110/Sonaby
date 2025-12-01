@@ -514,6 +514,195 @@ const swaggerPathsExtended = {
         }
       }
     }
+  },
+
+  // '/api/v1/visitors/site/{siteId}': {
+  //   get: {
+  //     tags: ['Visitors'],
+  //     summary: 'Récupérer les visiteurs d\'un site spécifique',
+  //     security: [{ bearerAuth: [] }],
+  //     parameters: [
+  //       { name: 'siteId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID du site' },
+  //       { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+  //       { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
+  //       { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche par nom, prénom, email, téléphone ou entreprise' }
+  //     ],
+  //     responses: {
+  //       200: {
+  //         description: 'Liste des visiteurs du site',
+  //         content: {
+  //           'application/json': {
+  //             schema: {
+  //               type: 'object',
+  //               properties: {
+  //                 success: { type: 'boolean' },
+  //                 data: {
+  //                   type: 'array',
+  //                   items: { $ref: '#/components/schemas/VisitorWithSiteCount' }
+  //                 },
+  //                 pagination: {
+  //                   type: 'object',
+  //                   properties: {
+  //                     page: { type: 'integer' },
+  //                     limit: { type: 'integer' },
+  //                     total: { type: 'integer' },
+  //                     totalPages: { type: 'integer' }
+  //                   }
+  //                 }
+  //               }
+  //             }
+  //           }
+  //         }
+  //       },
+  //       403: {
+  //         description: 'Accès refusé'
+  //       },
+  //       404: {
+  //         description: 'Site non trouvé'
+  //       }
+  //     }
+  //   }
+  // },
+
+  '/api/v1/visitors/site/{siteId}': {
+    get: {
+      tags: ['Visitors'],
+      summary: 'Récupérer les visiteurs d\'un site spécifique',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'siteId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID du site' },
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
+        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche par nom, prénom, email, téléphone ou entreprise' }
+      ],
+      responses: {
+        200: {
+          description: 'Liste des visiteurs du site',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/VisitorWithSiteCount' }
+                  },
+                  pagination: {
+                    type: 'object',
+                    properties: {
+                      page: { type: 'integer' },
+                      limit: { type: 'integer' },
+                      total: { type: 'integer' },
+                      totalPages: { type: 'integer' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        403: {
+          description: 'Accès refusé'
+        },
+        404: {
+          description: 'Site non trouvé'
+        }
+      }
+    }
+  },
+
+  '/api/v1/visits/checkpoint/{checkpointId}/daily': {
+    get: {
+      tags: ['Visits'],
+      summary: 'Récupérer les visiteurs d\'un checkpoint par jour',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'checkpointId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID du checkpoint' },
+        { name: 'date', in: 'query', required: true, schema: { type: 'string', format: 'date' }, description: 'Date pour récupérer les visiteurs (format: YYYY-MM-DD)' }
+      ],
+      responses: {
+        200: {
+          description: 'Liste des visiteurs du checkpoint pour la date spécifiée',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean' },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      date: { type: 'string', example: '2024-11-24' },
+                      checkpoint: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', format: 'uuid' },
+                          name: { type: 'string' },
+                          site: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string', format: 'uuid' },
+                              name: { type: 'string' }
+                            }
+                          }
+                        }
+                      },
+                      visitors: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string', format: 'uuid' },
+                            firstName: { type: 'string' },
+                            lastName: { type: 'string' },
+                            email: { type: 'string' },
+                            phone: { type: 'string' },
+                            company: { type: 'string' },
+                            isBlacklisted: { type: 'boolean' },
+                            visitInfo: {
+                              type: 'object',
+                              properties: {
+                                visitId: { type: 'string', format: 'uuid' },
+                                entryTime: { type: 'string', format: 'date-time' },
+                                exitTime: { type: 'string', format: 'date-time' },
+                                status: { type: 'string' },
+                                reason: { type: 'string' }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      stats: {
+                        type: 'object',
+                        properties: {
+                          totalVisitors: { type: 'integer' },
+                          blacklistedCount: { type: 'integer' },
+                          uniqueCompanies: { type: 'integer' },
+                          visitsByHour: {
+                            type: 'object',
+                            additionalProperties: { type: 'integer' }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        400: {
+          description: 'Date manquante ou invalide'
+        },
+        403: {
+          description: 'Accès refusé'
+        },
+        404: {
+          description: 'Checkpoint non trouvé'
+        }
+      }
+    }
   }
 };
 

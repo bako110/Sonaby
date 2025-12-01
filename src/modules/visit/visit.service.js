@@ -296,6 +296,114 @@ class VisitService {
       throw new Error(`Erreur lors de l'incrémentation du compteur de visites: ${error.message}`);
     }
   }
+
+  async getVisitorsByCheckpointByDay(checkpointId, date) {
+    try {
+      // Convertir la date en début et fin de journée
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+
+      // Récupérer les visites pour ce checkpoint à cette date
+      const visits = await prisma.visit.findMany({
+        where: {
+          checkpointId: checkpointId,
+          entryTime: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        include: {
+          visitor: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+              company: true,
+              idType: true,
+              idNumber: true,
+              isBlacklisted: true,
+              blacklistReason: true,
+              createdAt: true
+            }
+          },
+          checkpoint: {
+            select: {
+              id: true,
+              name: true,
+              site: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          },
+          service: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        },
+        orderBy: {
+          entryTime: 'desc'
+        }
+      });
+
+      // Compter les statistiques
+      const stats = {
+        totalVisitors: visits.length,
+        blacklistedCount: visits.filter(v => v.visitor.isBlacklisted).length,
+        uniqueCompanies: [...new Set(visits.map(v => v.visitor.company).filter(Boolean))].length,
+        visitsByHour: {}
+      };
+
+      // Compter les visites par heure
+      visits.forEach(visit => {
+        const hour = new Date(visit.entryTime).getHours();
+        stats.visitsByHour[hour] = (stats.visitsByHour[hour] || 0) + 1;
+      });
+
+      return {
+        date: date,
+        checkpoint: {
+          id: checkpointId,
+          // S'il y a des visites, prendre le checkpoint de la première visite
+          ...((visits[0] && visits[0].checkpoint) || {})
+        },
+        visitors: visits.map(visit => ({
+          id: visit.visitor.id,
+          firstName: visit.visitor.firstName,
+          lastName: visit.visitor.lastName,
+          email: visit.visitor.email,
+          phone: visit.visitor.phone,
+          company: visit.visitor.company,
+          idType: visit.visitor.idType,
+          idNumber: visit.visitor.idNumber,
+          isBlacklisted: visit.visitor.isBlacklisted,
+          blacklistReason: visit.visitor.blacklistReason,
+          visitInfo: {
+            visitId: visit.id,
+            entryTime: visit.entryTime,
+            exitTime: visit.exitTime,
+            status: visit.status,
+            reason: visit.reason,
+            entityVisited: visit.entityVisited,
+            contactPerson: visit.contactPerson,
+            service: visit.service
+          }
+        })),
+        stats
+      };
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération des visiteurs du checkpoint: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new VisitService();

@@ -88,18 +88,9 @@ class SOSService {
       console.log('🔍 DEBUG - sosData (GENERAL):', sosData);
       console.log('🔍 DEBUG - sentBy (GENERAL):', sentBy);
       
-      // Vérifier que le site existe
-      const site = await prisma.site.findUnique({
-        where: { id: sosData.siteId }
-      });
-
-      if (!site) {
-        throw new Error('Site non trouvé');
-      }
-
-      // Récupérer tous les checkpoints du site
-      const checkpoints = await prisma.checkpoint.findMany({
-        where: { siteId: sosData.siteId },
+      // Vérifier que le checkpoint existe
+      const checkpoint = await prisma.checkpoint.findUnique({
+        where: { id: sosData.checkpointId },
         include: {
           site: {
             select: {
@@ -113,32 +104,39 @@ class SOSService {
         }
       });
 
-      if (checkpoints.length === 0) {
-        throw new Error('Aucun checkpoint trouvé pour ce site');
+      if (!checkpoint) {
+        throw new Error('Checkpoint non trouvé');
       }
 
-      // Vérifier s'il y a déjà des SOS actifs pour les checkpoints de ce site
+      // Récupérer le checkpoint spécifique
+      const checkpoints = [checkpoint];
+
+      if (checkpoints.length === 0) {
+        throw new Error('Checkpoint non trouvé');
+      }
+
+      // Vérifier s'il y a déjà un SOS actif pour ce checkpoint
       const activeSOSCount = await prisma.sosAlert.count({
         where: {
-          checkpointId: { in: checkpoints.map(cp => cp.id) },
+          checkpointId: checkpoint.id,
           isResolved: false
         }
       });
 
       if (activeSOSCount > 0) {
-        throw new Error(`Un SOS est déjà actif pour ${activeSOSCount} checkpoint(s) de ce site`);
+        throw new Error('Un SOS est déjà actif pour ce checkpoint');
       }
 
       console.log('🔍 DEBUG - About to create GENERAL SOS with triggeredBy:', sentBy);
       
-      // Créer des SOS pour tous les checkpoints du site
-      const sosAlerts = await prisma.sosAlert.createMany({
-        data: checkpoints.map(checkpoint => ({
+      // Créer un SOS pour le checkpoint spécifique
+      const sosAlert = await prisma.sosAlert.create({
+        data: {
           checkpointId: checkpoint.id,
-          message: sosData.message || `Alerte générale - ${site.name}`,
+          message: sosData.message || `Alerte générale - ${checkpoint.name}`,
           triggeredBy: sentBy,
           isResolved: false
-        })),
+        },
         include: {
           checkpoint: {
             include: {
@@ -164,52 +162,13 @@ class SOSService {
         }
       });
 
-      // Récupérer tous les SOS créés avec leurs relations
-      const createdSOS = await prisma.sosAlert.findMany({
-        where: {
-          checkpointId: { in: checkpoints.map(cp => cp.id) },
-          triggeredBy: sentBy,
-          isResolved: false
-        },
-        include: {
-          checkpoint: {
-            include: {
-              site: {
-                select: {
-                  id: true,
-                  name: true,
-                  address: true,
-                  city: true,
-                  country: true
-                }
-              }
-            }
-          },
-          triggerer: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
-        },
-        orderBy: { createdAt: 'desc' }
-      });
-
-      // Simuler l'envoi de notifications pour chaque SOS
-      for (const sos of createdSOS) {
-        await this.sendNotifications(sos);
-      }
-
       return {
-        message: `Alerte générale créée pour ${createdSOS.length} checkpoints`,
-        site: site,
-        checkpointsAffected: checkpoints.length,
-        sosAlerts: createdSOS
+        success: true,
+        message: 'SOS général créé avec succès',
+        data: sosAlert
       };
     } catch (error) {
-      throw new Error(`Erreur lors de la création de l'alerte SOS générale: ${error.message}`);
+      throw new Error(`Erreur lors de la création du SOS général: ${error.message}`);
     }
   }
 

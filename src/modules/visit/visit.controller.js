@@ -243,6 +243,42 @@ class VisitController {
       });
     }
   });
+
+  getVisitorsByCheckpointByDay = asyncHandler(async (req, res) => {
+    // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE, CHEF_SERVICE
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Permissions insuffisantes pour consulter les visiteurs du checkpoint.'
+      });
+    }
+
+    const { checkpointId } = req.params;
+    const { date } = req.query;
+    
+    // Valider que la date est fournie
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: 'La date est requise (format: YYYY-MM-DD)'
+      });
+    }
+    
+    try {
+      const result = await visitService.getVisitorsByCheckpointByDay(checkpointId, date);
+      
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
 }
 
 module.exports = new VisitController();

@@ -3,43 +3,82 @@ const { createVisitorWithTransform, updateVisitorSchema, visitorIdSchema, visito
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class VisitorController {
-  createVisitor = asyncHandler(async (req, res) => {
-    // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
+    createVisitor = asyncHandler(async (req, res) => {
+    // 🔹 Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE, CHEF_SERVICE
+      if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
+          return res.status(403).json({
+              success: false,
+              message: 'Accès refusé. Permissions insuffisantes pour créer un visiteur.'
+          });
+      }
+
+      // 🔹 Valider les données
+      const validated = createVisitorWithTransform.parse(req.body);
+
+      try {
+          // 🔹 Créer ou récupérer le visiteur
+          const visitor = await visitorService.createOrFindVisitor(validated);
+
+          res.status(201).json({
+              success: true,
+              message: visitor.message,
+              data: visitor
+          });
+
+      } catch (error) {
+          // 🔹 Gestion des contraintes uniques
+          if (error.message.includes('Unique constraint failed on the constraint: `unique_identity`')) {
+              return res.status(400).json({
+                  success: false,
+                  message: `Erreur de duplication : ${error.message}`
+              });
+          }
+
+          // 🔹 Gestion des erreurs de type "non trouvé"
+          if (error.message.includes('non trouvé')) {
+              return res.status(400).json({
+                  success: false,
+                  message: error.message
+              });
+          }
+
+          // 🔹 Erreur serveur générique
+          res.status(500).json({
+              success: false,
+              message: `Erreur lors de la création du visiteur: ${error.message}`
+          });
+      }
+  });
+
+  getVisitorsBySite = asyncHandler(async (req, res) => {
+    // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE, CHEF_SERVICE
     if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: 'Accès refusé. Permissions insuffisantes pour créer un visiteur.'
+        message: 'Accès refusé. Permissions insuffisantes pour consulter les visiteurs du site.'
       });
     }
 
-    const validated = createVisitorWithTransform.parse(req.body);
+    const { siteId } = req.params;
+    const { page = 1, limit = 10, search } = req.query;
     
     try {
-      const visitor = await visitorService.createOrUpdateVisitor(validated);
-      res.status(201).json({
+      const result = await visitorService.getVisitorsBySite(
+        siteId,
+        parseInt(page),
+        parseInt(limit),
+        search
+      );
+      
+      res.json({
         success: true,
-        message: 'Visiteur créé ou mis à jour avec succès',
-        data: visitor
+        data: result.visitors,
+        pagination: result.pagination
       });
     } catch (error) {
-      // Gérer les erreurs de contrainte unique
-      if (error.message.includes('Unique constraint failed on the constraint: `unique_identity`')) {
-        return res.status(400).json({
-          success: false,
-          message: `Erreur lors de la création du visiteur: \nInvalid \`prisma.visitor.create()\` invocation in\nC:\\dev\\backend-sonaby\\src\\modules\\visitor\\visitor.service.js:6:44\n\n  3 class VisitorService {\n  4   async createVisitor(visitorData) {\n  5     try {\n→ 6       const visitor = await prisma.visitor.create(\nUnique constraint failed on the constraint: \`unique_identity\``
-        });
-      }
-      
-      if (error.message.includes('non trouvé')) {
-        return res.status(400).json({
-          success: false,
-          message: error.message
-        });
-      }
-      
       res.status(500).json({
         success: false,
-        message: `Erreur lors de la création du visiteur: ${error.message}`
+        message: error.message
       });
     }
   });

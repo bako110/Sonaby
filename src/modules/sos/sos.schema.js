@@ -10,7 +10,7 @@ const createSOSSchema = z.object({
 
 // Schéma pour créer une alerte SOS générale
 const createGeneralSOSSchema = z.object({
-  siteId: z.string().uuid('ID du site invalide'),
+  checkpointId: z.string().uuid('ID du checkpoint invalide'),
   triggeredBy: z.string().uuid('ID de l\'utilisateur invalide').optional(),
   message: z.string().optional(),
   triggeredAt: z.string().datetime('Date de déclenchement invalide').optional()

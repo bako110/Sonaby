@@ -71,7 +71,6 @@ const baseSiteSchema = z.object({
   
   // Descriptions
   description: z.string().optional().nullable(),
-  comments: z.string().optional().nullable(),
   
   // Informations financières
   monthlyCost: z.number().min(0, 'Le coût mensuel doit être positif').optional().nullable(),
