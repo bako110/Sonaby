@@ -32,6 +32,7 @@ const createCheckpointSchema = z.object({
   
   // Équipements et instructions
   equipment: z.array(z.string()).default([]),
+  devicesId: z.array(z.string()).default([]),
   specialInstructions: z.string().optional(),
   
   // État

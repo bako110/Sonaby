@@ -546,6 +546,196 @@ class StatsService {
     
     return `${peakHour.toString().padStart(2, '0')}:00`;
   }
+
+  async getAgentStats() {
+    try {
+      const [
+        totalAgents,
+        activeAgents,
+        inactiveAgents,
+        agentsByRole
+      ] = await Promise.all([
+        // Nombre total d'agents
+        prisma.user.count({
+          where: {
+            role: {
+              in: ['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']
+            }
+          }
+        }),
+        
+        // Agents actifs
+        prisma.user.count({
+          where: {
+            role: {
+              in: ['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']
+            },
+            isActive: true
+          }
+        }),
+        
+        // Agents inactifs
+        prisma.user.count({
+          where: {
+            role: {
+              in: ['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']
+            },
+            isActive: false
+          }
+        }),
+        
+        // Répartition par rôle
+        prisma.user.groupBy({
+          by: ['role'],
+          where: {
+            role: {
+              in: ['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']
+            }
+          },
+          _count: {
+            role: true
+          }
+        })
+      ]);
+
+      return {
+        totalAgents,
+        activeAgents,
+        inactiveAgents,
+        agentsByRole: agentsByRole.map(item => ({
+          role: item.role,
+          count: item._count.role
+        })),
+        // Calcul pourcentage
+        activePercentage: totalAgents > 0 ? Math.round((activeAgents / totalAgents) * 100) : 0,
+        inactivePercentage: totalAgents > 0 ? Math.round((inactiveAgents / totalAgents) * 100) : 0
+      };
+    } catch (error) {
+      console.error('Erreur dans getAgentStats:', error);
+      throw new Error('Erreur lors de la récupération des statistiques des agents');
+    }
+  }
+
+  async getRecentConnections(limit = 10) {
+    try {
+      // Récupérer les utilisateurs récemment connectés
+      // Note: Comme nous n'avons pas de table de connexions, nous allons utiliser les tokens rafraîchis
+      // comme proxy pour les connexions récentes
+      const recentConnections = await prisma.refreshToken.findMany({
+        take: limit,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
+              isActive: true,
+              phone: true
+            }
+          }
+        },
+        distinct: ['userId'] // Éviter les doublons pour le même utilisateur
+      });
+
+      // Formatter les données
+      const formattedConnections = recentConnections.map(connection => ({
+        id: connection.id,
+        user: connection.user,
+        connectedAt: connection.createdAt,
+        expiresAt: connection.expiresAt,
+        isCurrentlyActive: new Date(connection.expiresAt) > new Date(),
+        connectionType: 'API'
+      }));
+
+      // Statistiques des connexions
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const thisWeek = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+      
+      const connectionStats = {
+        totalConnections: recentConnections.length,
+        todayConnections: recentConnections.filter(c => new Date(c.createdAt) >= today).length,
+        weekConnections: recentConnections.filter(c => new Date(c.createdAt) >= thisWeek).length,
+        activeConnections: recentConnections.filter(c => new Date(c.expiresAt) > now).length
+      };
+
+      return {
+        connections: formattedConnections,
+        stats: connectionStats
+      };
+    } catch (error) {
+      console.error('Erreur dans getRecentConnections:', error);
+      throw new Error('Erreur lors de la récupération des connexions récentes');
+    }
+  }
+
+  async getAgentActivity(limit = 20, agentId = null) {
+    try {
+      let whereClause = {};
+      if (agentId) {
+        whereClause.userId = agentId;
+      }
+      
+      // Récupérer les logs d'audit récents pour les agents
+      const recentActivities = await prisma.auditLog.findMany({
+        take: limit,
+        where: whereClause,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      // Formatter les activités
+      const formattedActivities = recentActivities.map(activity => ({
+        id: activity.id,
+        user: activity.user,
+        action: activity.action,
+        entity: activity.entity,
+        entityId: activity.entityId,
+        timestamp: activity.createdAt,
+        ipAddress: activity.ipAddress,
+        userAgent: activity.userAgent ? activity.userAgent.substring(0, 100) : null
+      }));
+
+      // Statistiques d'activité
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const activityStats = {
+        totalActivities: recentActivities.length,
+        todayActivities: recentActivities.filter(a => new Date(a.createdAt) >= today).length,
+        uniqueAgents: [...new Set(recentActivities.map(a => a.userId))].length,
+        topActions: recentActivities.reduce((acc, activity) => {
+          acc[activity.action] = (acc[activity.action] || 0) + 1;
+          return acc;
+        }, {})
+      };
+
+      return {
+        activities: formattedActivities,
+        stats: activityStats
+      };
+    } catch (error) {
+      console.error('Erreur dans getAgentActivity:', error);
+      throw new Error('Erreur lors de la récupération de l\'activité des agents');
+    }
+  }
 }
 
 module.exports = new StatsService();

@@ -39,10 +39,10 @@ const createIncidentSchema = z.object({
   severite: z.enum(Object.values(SeveriteIncident)).default(SeveriteIncident.MOYENNE),
   priorite: z.enum(Object.values(PrioriteIncident)).default(PrioriteIncident.NORMALE),
   source: z.enum(Object.values(SourceIncident)).default(SourceIncident.AGENT),
-  dateIncident: z.string().datetime('Date d\'incident invalide'),
+  dateIncident: z.string().min(1, 'La date d\'incident est requise').regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
   heureIncident: z.string().datetime('Heure d\'incident invalide'),
   siteId: z.string().uuid('ID du site invalide'),
-  visiteurId: z.string().uuid('ID du visiteur invalide').optional().or(z.literal('')),
+  visitId: z.string().uuid('ID de la visite invalide').optional().or(z.literal('')),
   actionsImmediates: z.string().optional(),
   temoinPresent: z.boolean().default(false),
   notifierAgents: z.boolean().default(false)
@@ -59,7 +59,7 @@ const updateIncidentSchema = z.object({
   dateIncident: z.string().datetime('Date d\'incident invalide').optional(),
   heureIncident: z.string().datetime('Heure d\'incident invalide').optional(),
   siteId: z.string().uuid('ID du site invalide').optional(),
-  visiteurId: z.string().uuid('ID du visiteur invalide').optional().or(z.literal('')),
+  visitId: z.string().uuid('ID de la visite invalide').optional().or(z.literal('')),
   actionsImmediates: z.string().optional(),
   temoinPresent: z.boolean().optional(),
   notifierAgents: z.boolean().optional()

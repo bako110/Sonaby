@@ -67,6 +67,23 @@ async function main() {
     }
 
     console.log('✅ Users created successfully!');
+    console.log('🔧 Creating blacklist actions...');
+
+    // Créer les actions de blacklistage par défaut
+    const blacklistActions = [
+        { action_name: 'BLACKLIST' },
+        { action_name: 'UNBLACKLIST' }
+    ];
+
+    for (const action of blacklistActions) {
+        await prisma.blacklist_actions.upsert({
+            where: { action_name: action.action_name },
+            update: {},
+            create: action
+        });
+    }
+
+    console.log('✅ Blacklist actions created successfully');
     console.log('🔑 Mot de passe par défaut : "password"');
 }
 

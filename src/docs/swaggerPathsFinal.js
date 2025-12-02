@@ -1,5 +1,399 @@
 // Dernière partie de la documentation Swagger
 const swaggerPathsFinal = {
+  // ==================== SITES ENDPOINTS ====================
+  '/api/v1/sites/filter': {
+    get: {
+      tags: ['Sites'],
+      summary: 'Récupérer les sites avec filtres avancés et options automatiques',
+      description: 'Récupère les sites filtrés avec options de filtre dynamiques pour une expérience utilisateur automatique',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle (nom, code, description, adresse, manager)' },
+        { name: 'city', in: 'query', schema: { type: 'string' }, description: 'Filtrer par ville' },
+        { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'under_maintenance', 'closed'] }, description: 'Statut du site' },
+        { name: 'activityType', in: 'query', schema: { type: 'string', enum: ['headquarters', 'branch', 'warehouse', 'factory', 'office', 'retail'] }, description: 'Type d\'activité' },
+        { name: 'manager', in: 'query', schema: { type: 'string' }, description: 'Filtrer par nom du manager' },
+        { name: 'dateCreationDebut', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création début' },
+        { name: 'dateCreationFin', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création fin' },
+        { name: 'wheelchairAccessible', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer sites accessibles fauteuil roulant' },
+        { name: 'parkingAvailable', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer sites avec parking' },
+        { name: 'securitySystem', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer sites avec système de sécurité' },
+        { name: 'securityGuard', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer sites avec gardien de sécurité' },
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' }
+      ],
+      responses: {
+        200: {
+          description: 'Sites filtrés récupérés avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Sites filtrés récupérés avec succès' },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Site' }
+                  },
+                  pagination: {
+                    type: 'object',
+                    properties: {
+                      page: { type: 'integer', example: 1 },
+                      limit: { type: 'integer', example: 10 },
+                      total: { type: 'integer', example: 156 },
+                      totalPages: { type: 'integer', example: 16 },
+                      hasNext: { type: 'boolean', example: true },
+                      hasPrev: { type: 'boolean', example: false }
+                    }
+                  },
+                  filterOptions: { $ref: '#/components/schemas/SiteFilterOptionsSchema' },
+                  filters: {
+                    type: 'object',
+                    description: 'Filtres appliqués'
+                  }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
+  '/api/v1/sites/filter-options': {
+    get: {
+      tags: ['Sites'],
+      summary: 'Récupérer les options de filtre dynamiques pour les sites',
+      description: 'Récupère les options de filtre automatiques qui se mettent à jour selon les filtres sélectionnés',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'city', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par ville' },
+        { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par statut' },
+        { name: 'activityType', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par type d\'activité' },
+        { name: 'manager', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par manager' }
+      ],
+      responses: {
+        200: {
+          description: 'Options de filtre récupérées avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Options de filtre récupérées avec succès' },
+                  data: { $ref: '#/components/schemas/SiteFilterOptionsSchema' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
+  // ==================== CHECKPOINTS ENDPOINTS ====================
+  '/api/v1/checkpoints/filter': {
+    get: {
+      tags: ['Checkpoints'],
+      summary: 'Récupérer les checkpoints avec filtres avancés et options automatiques',
+      description: 'Récupère les checkpoints filtrés avec options de filtre dynamiques pour une expérience utilisateur automatique',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle (nom, description, SOS ID)' },
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par site' },
+        { name: 'zone', in: 'query', schema: { type: 'string' }, description: 'Filtrer par zone' },
+        { name: 'checkpointType', in: 'query', schema: { type: 'string', enum: ['internal', 'external', 'virtual'] }, description: 'Type de checkpoint' },
+        { name: 'status', in: 'query', schema: { type: 'string', enum: ['active', 'inactive', 'maintenance'] }, description: 'Statut du checkpoint' },
+        { name: 'priority', in: 'query', schema: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] }, description: 'Priorité du checkpoint' },
+        { name: 'agentId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par agent assigné' },
+        { name: 'dateCreationDebut', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création début' },
+        { name: 'dateCreationFin', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création fin' },
+        { name: 'avecAgent', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer checkpoints avec/sans agent' },
+        { name: 'enAlerte', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer checkpoints en alerte SOS' },
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' }
+      ],
+      responses: {
+        200: {
+          description: 'Checkpoints filtrés récupérés avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Checkpoints filtrés récupérés avec succès' },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Checkpoint' }
+                  },
+                  pagination: {
+                    type: 'object',
+                    properties: {
+                      page: { type: 'integer', example: 1 },
+                      limit: { type: 'integer', example: 10 },
+                      total: { type: 'integer', example: 45 },
+                      totalPages: { type: 'integer', example: 5 },
+                      hasNext: { type: 'boolean', example: true },
+                      hasPrev: { type: 'boolean', example: false }
+                    }
+                  },
+                  filterOptions: { $ref: '#/components/schemas/CheckpointFilterOptionsSchema' },
+                  filters: {
+                    type: 'object',
+                    description: 'Filtres appliqués'
+                  }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
+  '/api/v1/checkpoints/filter-options': {
+    get: {
+      tags: ['Checkpoints'],
+      summary: 'Récupérer les options de filtre dynamiques pour les checkpoints',
+      description: 'Récupère les options de filtre automatiques qui se mettent à jour selon les filtres sélectionnés',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Pré-filtrer les options par site' },
+        { name: 'zone', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par zone' },
+        { name: 'checkpointType', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par type de checkpoint' },
+        { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par statut' },
+        { name: 'priority', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par priorité' },
+        { name: 'agentId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Pré-filtrer les options par agent' }
+      ],
+      responses: {
+        200: {
+          description: 'Options de filtre récupérées avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Options de filtre récupérées avec succès' },
+                  data: { $ref: '#/components/schemas/CheckpointFilterOptionsSchema' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
+  // ==================== VISIT ENDPOINTS ====================
+  '/api/v1/visits/filter': {
+    get: {
+      tags: ['Visits'],
+      summary: 'Récupérer les visites avec filtres avancés et options automatiques',
+      description: 'Récupère les visites filtrées avec options de filtre dynamiques pour une expérience utilisateur automatique',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle (entité visitée, contact, origine, raison, notes, visiteur)' },
+        { name: 'status', in: 'query', schema: { type: 'string', enum: ['present', 'left', 'refused', 'cancelled'] }, description: 'Statut de la visite' },
+        { name: 'visitorId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par visiteur' },
+        { name: 'checkpointId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par checkpoint' },
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par site' },
+        { name: 'serviceId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par service' },
+        { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date d\'entrée début' },
+        { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date d\'entrée fin' },
+        { name: 'dateCreationDebut', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création début' },
+        { name: 'dateCreationFin', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création fin' },
+        { name: 'withIncidents', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer visites avec/sans incidents' },
+        { name: 'overdue', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer visites en retard (plus de 8h)' },
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' }
+      ],
+      responses: {
+        200: {
+          description: 'Visites filtrées récupérées avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Visites filtrées récupérées avec succès' },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Visit' }
+                  },
+                  pagination: {
+                    type: 'object',
+                    properties: {
+                      page: { type: 'integer', example: 1 },
+                      limit: { type: 'integer', example: 10 },
+                      total: { type: 'integer', example: 78 },
+                      totalPages: { type: 'integer', example: 8 },
+                      hasNext: { type: 'boolean', example: true },
+                      hasPrev: { type: 'boolean', example: false }
+                    }
+                  },
+                  filterOptions: { $ref: '#/components/schemas/VisitFilterOptionsSchema' },
+                  filters: {
+                    type: 'object',
+                    description: 'Filtres appliqués'
+                  }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
+  '/api/v1/visits/filter-options': {
+    get: {
+      tags: ['Visits'],
+      summary: 'Récupérer les options de filtre dynamiques pour les visites',
+      description: 'Récupère les options de filtre automatiques qui se mettent à jour selon les filtres sélectionnés',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'status', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par statut' },
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Pré-filtrer les options par site' },
+        { name: 'checkpointId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Pré-filtrer les options par checkpoint' },
+        { name: 'serviceId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Pré-filtrer les options par service' }
+      ],
+      responses: {
+        200: {
+          description: 'Options de filtre récupérées avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Options de filtre récupérées avec succès' },
+                  data: { $ref: '#/components/schemas/VisitFilterOptionsSchema' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
+  // ==================== VISITOR ENDPOINTS ====================
+  '/api/v1/visitors/filter': {
+    get: {
+      tags: ['Visitors'],
+      summary: 'Récupérer les visiteurs avec filtres avancés et options automatiques',
+      description: 'Récupère les visiteurs filtrés avec options de filtre dynamiques pour une expérience utilisateur automatique',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle (nom, prénom, ID, entreprise, email, téléphone)' },
+        { name: 'isBlacklisted', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer visiteurs blacklistés ou non' },
+        { name: 'idType', in: 'query', schema: { type: 'string', enum: ['CNIB', 'PASSEPORT', 'PERMIS_CONDUITE', 'CARTE_CONSULAIRE', 'AUTRE'] }, description: 'Type d\'identifiant' },
+        { name: 'company', in: 'query', schema: { type: 'string' }, description: 'Filtrer par entreprise' },
+        { name: 'dateFrom', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de première visite début' },
+        { name: 'dateTo', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de première visite fin' },
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par site visité' },
+        { name: 'checkpointId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par checkpoint visité' },
+        { name: 'dateCreationDebut', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création début' },
+        { name: 'dateCreationFin', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de création fin' },
+        { name: 'actif', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer visiteurs actifs (avec visites récentes - 30 jours)' },
+        { name: 'avecBadge', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer visiteurs avec/sans badge' },
+        { name: 'avecIncidents', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filtrer visiteurs avec/sans incidents' },
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' }
+      ],
+      responses: {
+        200: {
+          description: 'Visiteurs filtrés récupérés avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Visiteurs filtrés récupérés avec succès' },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Visitor' }
+                  },
+                  pagination: {
+                    type: 'object',
+                    properties: {
+                      page: { type: 'integer', example: 1 },
+                      limit: { type: 'integer', example: 10 },
+                      total: { type: 'integer', example: 156 },
+                      totalPages: { type: 'integer', example: 16 },
+                      hasNext: { type: 'boolean', example: true },
+                      hasPrev: { type: 'boolean', example: false }
+                    }
+                  },
+                  filterOptions: { $ref: '#/components/schemas/VisitorFilterOptionsSchema' },
+                  filters: {
+                    type: 'object',
+                    description: 'Filtres appliqués'
+                  }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
+  '/api/v1/visitors/filter-options': {
+    get: {
+      tags: ['Visitors'],
+      summary: 'Récupérer les options de filtre dynamiques pour les visiteurs',
+      description: 'Récupère les options de filtre automatiques qui se mettent à jour selon les filtres sélectionnés',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'idType', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par type d\'ID' },
+        { name: 'company', in: 'query', schema: { type: 'string' }, description: 'Pré-filtrer les options par entreprise' },
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Pré-filtrer les options par site' },
+        { name: 'checkpointId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Pré-filtrer les options par checkpoint' },
+        { name: 'isBlacklisted', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Pré-filtrer les options par statut blacklist' }
+      ],
+      responses: {
+        200: {
+          description: 'Options de filtre récupérées avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Options de filtre récupérées avec succès' },
+                  data: { $ref: '#/components/schemas/VisitorFilterOptionsSchema' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Requête invalide' },
+        403: { description: 'Accès refusé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
   // ==================== VISIT ENDPOINTS ====================
   '/api/v1/visits': {
     get: {
@@ -344,23 +738,47 @@ const swaggerPathsFinal = {
       summary: 'Lister tous les incidents',
       security: [{ bearerAuth: [] }],
       parameters: [
-        { name: 'page', in: 'query', schema: { type: 'string' } },
-        { name: 'limit', in: 'query', schema: { type: 'string' } },
-        { name: 'search', in: 'query', schema: { type: 'string' } },
-        { name: 'visitorId', in: 'query', schema: { type: 'string' } },
-        { name: 'serviceId', in: 'query', schema: { type: 'string' } },
-        { name: 'resolved', in: 'query', schema: { type: 'string' } }
+        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
+        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle' },
+        { name: 'visitId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par visite' },
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par site' },
+        { name: 'resolved', in: 'query', schema: { type: 'boolean' }, description: 'Filtrer incidents résolus' }
       ],
       responses: {
         200: {
-          description: 'Liste des incidents',
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedResponse' } } }
+          description: '✅ Liste des incidents récupérée',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Incidents récupérés avec succès' },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Incident' }
+                  },
+                  pagination: {
+                    type: 'object',
+                    properties: {
+                      page: { type: 'integer', example: 1 },
+                      limit: { type: 'integer', example: 10 },
+                      total: { type: 'integer', example: 25 },
+                      totalPages: { type: 'integer', example: 3 }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     post: {
       tags: ['Incidents'],
-      summary: 'Créer un nouvel incident',
+      summary: '🚨 Créer un nouvel incident',
+      description: 'Crée un nouvel incident lié à une visite ou à un visiteur',
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
@@ -368,8 +786,47 @@ const swaggerPathsFinal = {
       },
       responses: {
         201: {
-          description: 'Incident créé',
-          content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Incident' } } } } }
+          description: '✅ Incident créé avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Incident créé avec succès' },
+                  data: { $ref: '#/components/schemas/Incident' }
+                }
+              }
+            }
+          }
+        },
+        400: {
+          description: '❌ Données invalides',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Titre, description et siteId sont requis' }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: '❌ Ressource non trouvée',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Site non trouvé' }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -377,13 +834,92 @@ const swaggerPathsFinal = {
   '/api/v1/incidents/{id}': {
     get: {
       tags: ['Incidents'],
-      summary: 'Récupérer un incident par ID',
+      summary: '🔍 Récupérer un incident par ID',
+      description: 'Récupère les détails complets d\'un incident avec ses relations',
       security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID de l\'incident' }],
       responses: {
         200: {
-          description: 'Incident trouvé',
-          content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Incident' } } } } }
+          description: '✅ Incident trouvé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Incident trouvé avec succès' },
+                  data: { $ref: '#/components/schemas/Incident' }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: '❌ Incident non trouvé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Incident non trouvé' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  '/api/v1/incidents/visitor/{visitorId}': {
+    get: {
+      tags: ['Incidents'],
+      summary: '👤 Récupérer les incidents d\'un visiteur',
+      description: 'Récupère tous les incidents liés aux visites d\'un visiteur spécifique',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'visitorId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID du visiteur' },
+        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par site' },
+        { name: 'isResolved', in: 'query', schema: { type: 'boolean' }, description: 'Filtrer incidents résolus' },
+        { name: 'severite', in: 'query', schema: { type: 'string', enum: ['FAIBLE', 'MOYENNE', 'ELEVEE', 'CRITIQUE'] }, description: 'Filtrer par sévérité' },
+        { name: 'dateDebut', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de début (YYYY-MM-DD)' },
+        { name: 'dateFin', in: 'query', schema: { type: 'string', format: 'date' }, description: 'Date de fin (YYYY-MM-DD)' }
+      ],
+      responses: {
+        200: {
+          description: '✅ Incidents du visiteur récupérés',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: '3 incident(s) trouvé(s) pour ce visiteur' },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Incident' }
+                  },
+                  total: { type: 'integer', example: 3 }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: '❌ Aucune visite trouvée pour ce visiteur',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Aucune visite trouvée pour ce visiteur' },
+                  data: { type: 'array', items: {} },
+                  total: { type: 'integer', example: 0 }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -643,42 +1179,80 @@ const swaggerPathsFinal = {
   '/api/v1/sos/general': {
     post: {
       tags: ['SOS'],
-      summary: 'Déclencher une alerte SOS générale pour tous les checkpoints d\'un site',
+      summary: 'Déclencher une alerte SOS générale automatique pour un checkpoint',
+      description: 'Déclenche automatiquement une alerte SOS générale avec un message prédéfini. Un seul paramètre requis : checkpointId. Le message est généré automatiquement au format "ALERTE GÉNÉRALE - [Nom du checkpoint]"',
       security: [{ bearerAuth: [] }],
       requestBody: {
         required: true,
         content: {
           'application/json': {
             schema: {
-              type: 'object',
-              required: ['siteId'],
-              properties: {
-                siteId: {
-                  type: 'string',
-                  format: 'uuid',
-                  description: 'ID du site pour lequel déclencher l\'alerte générale',
-                  example: '14ce1162-ca00-11f0-aa39-0242ac140013'
-                },
-                message: {
-                  type: 'string',
-                  description: 'Message décrivant la situation d\'urgence (optionnel)',
-                  example: 'Alerte générale - Urgence sécurité sur tout le site'
-                }
-              }
+              $ref: '#/components/schemas/CreateGeneralSOSInput'
+            },
+            example: {
+              checkpointId: "770e8400-e29b-41d4-a716-446655440002"
             }
           }
         }
       },
       responses: {
         201: {
-          description: 'Alerte SOS générale déclenchée',
-          content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, message: { type: 'string' }, data: { type: 'object', properties: { message: { type: 'string' }, site: { type: 'object' }, checkpointsAffected: { type: 'number' }, sosAlerts: { type: 'array', items: { $ref: '#/components/schemas/SosAlert' } } } } } } } }
+          description: 'Alerte SOS générale déclenchée automatiquement',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: {
+                    type: 'boolean',
+                    example: true
+                  },
+                  message: {
+                    type: 'string',
+                    example: 'SOS général déclenché automatiquement'
+                  },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      id: {
+                        type: 'string',
+                        format: 'uuid',
+                        description: 'ID de l\'alerte SOS créée'
+                      },
+                      checkpointId: {
+                        type: 'string',
+                        format: 'uuid',
+                        description: 'ID du checkpoint concerné'
+                      },
+                      message: {
+                        type: 'string',
+                        example: 'ALERTE GÉNÉRALE - Portail Principal',
+                        description: 'Message généré automatiquement'
+                      },
+                      triggeredBy: {
+                        type: 'string',
+                        format: 'uuid',
+                        description: 'ID de l\'utilisateur qui a déclenché l\'alerte'
+                      },
+                      isResolved: {
+                        type: 'boolean',
+                        example: false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
         400: {
-          description: 'Site non trouvé ou SOS déjà actif'
+          description: 'Checkpoint non trouvé'
         },
         403: {
-          description: 'Permissions insuffisantes'
+          description: 'Accès refusé'
+        },
+        500: {
+          description: 'Erreur serveur'
         }
       }
     }
@@ -1168,6 +1742,7 @@ const swaggerPathsFinal = {
     }
   },
   
+
   // ==================== STATS ENDPOINTS ====================
   '/api/v1/stats': {
     get: {
@@ -1378,6 +1953,164 @@ const swaggerPathsFinal = {
                 properties: {
                   success: { type: 'boolean', example: false },
                   message: { type: 'string', example: 'Erreur lors de la récupération des statistiques' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  
+  // ==================== STATISTICS ENDPOINTS ====================
+  '/api/v1/stats/agent-stats': {
+    get: {
+      tags: ['Statistics'],
+      summary: '👥 Statistiques des agents',
+      description: 'Retourne les statistiques complètes des agents du système',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: '✅ Statistiques des agents récupérées',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      totalAgents: { type: 'integer', example: 15 },
+                      activeAgents: { type: 'integer', example: 12 },
+                      inactiveAgents: { type: 'integer', example: 3 },
+                      agentsByRole: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            role: { type: 'string', example: 'AGENT_CONTROLE' },
+                            count: { type: 'integer', example: 8 }
+                          }
+                        }
+                      },
+                      activePercentage: { type: 'integer', example: 80 },
+                      inactivePercentage: { type: 'integer', example: 20 }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/api/v1/stats/recent-connections': {
+    get: {
+      tags: ['Statistics'],
+      summary: '🔌 Connexions récentes des agents',
+      description: 'Retourne la liste des connexions récentes des agents avec statistiques',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10, minimum: 1, maximum: 50 }, description: 'Nombre maximum de connexions' }
+      ],
+      responses: {
+        200: {
+          description: '✅ Connexions récentes récupérées',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      connections: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+                            user: { $ref: '#/components/schemas/User' },
+                            connectedAt: { type: 'string', format: 'date-time' },
+                            expiresAt: { type: 'string', format: 'date-time' },
+                            isCurrentlyActive: { type: 'boolean' },
+                            connectionType: { type: 'string', example: 'API' }
+                          }
+                        }
+                      },
+                      stats: {
+                        type: 'object',
+                        properties: {
+                          totalConnections: { type: 'integer' },
+                          todayConnections: { type: 'integer' },
+                          weekConnections: { type: 'integer' },
+                          activeConnections: { type: 'integer' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/api/v1/stats/agent-activity': {
+    get: {
+      tags: ['Statistics'],
+      summary: '📋 Activité récente des agents',
+      description: 'Retourne l\'activité récente des agents avec logs d\'audit',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20, minimum: 1, maximum: 100 }, description: 'Nombre maximum d\'activités' },
+        { name: 'agentId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par un agent spécifique' }
+      ],
+      responses: {
+        200: {
+          description: '✅ Activité des agents récupérée',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      activities: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string' },
+                            user: { $ref: '#/components/schemas/User' },
+                            action: { type: 'string', example: 'CREATE_VISIT' },
+                            entity: { type: 'string', example: 'visit' },
+                            entityId: { type: 'string' },
+                            timestamp: { type: 'string', format: 'date-time' },
+                            ipAddress: { type: 'string' },
+                            userAgent: { type: 'string' }
+                          }
+                        }
+                      },
+                      stats: {
+                        type: 'object',
+                        properties: {
+                          totalActivities: { type: 'integer' },
+                          todayActivities: { type: 'integer' },
+                          uniqueAgents: { type: 'integer' },
+                          topActions: { type: 'object', additionalProperties: { type: 'integer' } }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

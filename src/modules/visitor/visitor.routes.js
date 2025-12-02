@@ -9,6 +9,333 @@ router.use(authenticateToken);
 
 /**
  * @swagger
+ * /api/v1/visitors/filter:
+ *   get:
+ *     summary: Récupérer les visiteurs avec filtres avancés et options automatiques
+ *     tags: [Visitors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Recherche textuelle (nom, prénom, ID, entreprise, email, téléphone)
+ *       - in: query
+ *         name: isBlacklisted
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer visiteurs blacklistés ou non
+ *       - in: query
+ *         name: idType
+ *         schema:
+ *           type: string
+ *           enum: [CNIB, PASSEPORT, PERMIS_CONDUITE, CARTE_CONSULAIRE, AUTRE]
+ *         description: Type d'identifiant
+ *       - in: query
+ *         name: company
+ *         schema:
+ *           type: string
+ *         description: Filtrer par entreprise
+ *       - in: query
+ *         name: dateFrom
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date de première visite début
+ *       - in: query
+ *         name: dateTo
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date de première visite fin
+ *       - in: query
+ *         name: siteId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrer par site visité
+ *       - in: query
+ *         name: checkpointId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrer par checkpoint visité
+ *       - in: query
+ *         name: dateCreationDebut
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date de création début
+ *       - in: query
+ *         name: dateCreationFin
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date de création fin
+ *       - in: query
+ *         name: actif
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer visiteurs actifs (avec visites récentes - 30 jours)
+ *       - in: query
+ *         name: avecBadge
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer visiteurs avec/sans badge
+ *       - in: query
+ *         name: avecIncidents
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer visiteurs avec/sans incidents
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Nombre d'éléments par page
+ *     responses:
+ *       200:
+ *         description: Visiteurs filtrés récupérés avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Visiteurs filtrés récupérés avec succès"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Visitor'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrev:
+ *                       type: boolean
+ *                 filterOptions:
+ *                   type: object
+ *                   description: Options de filtre dynamiques
+ *                 filters:
+ *                   type: object
+ *                   description: Filtres appliqués
+ *       400:
+ *         description: Requête invalide
+ *       403:
+ *         description: Accès refusé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/filter', visitorController.getFilteredVisitors);
+
+/**
+ * @swagger
+ * /api/v1/visitors/filter-options:
+ *   get:
+ *     summary: Récupérer les options de filtre dynamiques pour les visiteurs
+ *     tags: [Visitors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: idType
+ *         schema:
+ *           type: string
+ *         description: Pré-filtrer les options par type d'ID
+ *       - in: query
+ *         name: company
+ *         schema:
+ *           type: string
+ *         description: Pré-filtrer les options par entreprise
+ *       - in: query
+ *         name: siteId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Pré-filtrer les options par site
+ *       - in: query
+ *         name: checkpointId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Pré-filtrer les options par checkpoint
+ *       - in: query
+ *         name: isBlacklisted
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Pré-filtrer les options par statut blacklist
+ *     responses:
+ *       200:
+ *         description: Options de filtre récupérées avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Options de filtre récupérées avec succès"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     idTypes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "CNIB"
+ *                           label:
+ *                             type: string
+ *                             example: "CNIB"
+ *                           count:
+ *                             type: integer
+ *                             example: 45
+ *                     companies:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "TechCorp"
+ *                           label:
+ *                             type: string
+ *                             example: "TechCorp"
+ *                           count:
+ *                             type: integer
+ *                             example: 12
+ *                     sites:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             format: uuid
+ *                           label:
+ *                             type: string
+ *                             example: "Siège Social (PAR001)"
+ *                           count:
+ *                             type: integer
+ *                             example: 8
+ *                           city:
+ *                             type: string
+ *                             example: "Paris"
+ *                     checkpoints:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             format: uuid
+ *                           label:
+ *                             type: string
+ *                             example: "Portail Principal (Zone A)"
+ *                           count:
+ *                             type: integer
+ *                             example: 5
+ *                           zone:
+ *                             type: string
+ *                             example: "Zone A"
+ *                           checkpointType:
+ *                             type: string
+ *                             example: "entry"
+ *                           site:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 format: uuid
+ *                               name:
+ *                                 type: string
+ *                                 example: "Siège Social"
+ *                               code:
+ *                                 type: string
+ *                                 example: "PAR001"
+ *                     blacklistOptions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "true"
+ *                           label:
+ *                             type: string
+ *                             example: "Oui"
+ *                           count:
+ *                             type: integer
+ *                             example: 3
+ *                     badgeOptions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "true"
+ *                           label:
+ *                             type: string
+ *                             example: "Avec badge"
+ *                           count:
+ *                             type: integer
+ *                             example: 25
+ *                     incidentOptions:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "true"
+ *                           label:
+ *                             type: string
+ *                             example: "Avec incidents"
+ *                           count:
+ *                             type: integer
+ *                             example: 4
+ *       400:
+ *         description: Requête invalide
+ *       403:
+ *         description: Accès refusé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/filter-options', visitorController.getFilterOptions);
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     Visitor:

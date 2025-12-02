@@ -3,6 +3,45 @@ const { createSiteSchema, updateSiteSchema, siteIdSchema, siteQuerySchema } = re
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class SiteController {
+  getFilteredSites = asyncHandler(async (req, res) => {
+    const filters = {
+      ...req.query,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10
+    };
+
+    const result = await siteService.getFilteredSites(filters);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Sites filtrés récupérés avec succès',
+      data: result.sites,
+      pagination: result.pagination,
+      filterOptions: result.filterOptions,
+      filters: filters
+    });
+  });
+
+  getFilterOptions = asyncHandler(async (req, res) => {
+    try {
+      // Construire les filtres à partir des query params (sauf les options)
+      const { page, limit, ...currentFilters } = req.query;
+      
+      const filterOptions = await siteService.getFilterOptions(currentFilters);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Options de filtre récupérées avec succès',
+        data: filterOptions
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
   createSite = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN
     if (req.user.role !== 'ADMIN') {

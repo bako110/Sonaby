@@ -8,12 +8,10 @@ const createSOSSchema = z.object({
   triggeredAt: z.string().datetime('Date de déclenchement invalide').optional()
 });
 
-// Schéma pour créer une alerte SOS générale
+// Schéma pour créer une alerte SOS générale (automatique)
 const createGeneralSOSSchema = z.object({
   checkpointId: z.string().uuid('ID du checkpoint invalide'),
-  triggeredBy: z.string().uuid('ID de l\'utilisateur invalide').optional(),
-  message: z.string().optional(),
-  triggeredAt: z.string().datetime('Date de déclenchement invalide').optional()
+  triggeredBy: z.string().uuid('ID de l\'utilisateur invalide').optional()
 });
 
 // Schéma pour résoudre une alerte SOS

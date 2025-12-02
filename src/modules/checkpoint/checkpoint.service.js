@@ -3,6 +3,295 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class CheckpointService {
+  async getFilteredCheckpoints(filters = {}) {
+    try {
+      const {
+        search,
+        siteId,
+        zone,
+        checkpointType,
+        status,
+        priority,
+        agentId,
+        dateCreationDebut,
+        dateCreationFin,
+        avecAgent,
+        enAlerte,
+        page = 1,
+        limit = 10
+      } = filters;
+
+      const skip = (page - 1) * limit;
+      
+      // Construction de la clause WHERE
+      const whereClause = {};
+
+      // Filtres de base
+      if (search) {
+        whereClause.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { sosId: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      if (siteId) {
+        whereClause.siteId = siteId;
+      }
+
+      if (zone) {
+        whereClause.zone = { contains: zone, mode: 'insensitive' };
+      }
+
+      if (checkpointType) {
+        whereClause.checkpointType = checkpointType;
+      }
+
+      if (status) {
+        whereClause.status = status;
+      }
+
+      if (priority) {
+        whereClause.priority = priority;
+      }
+
+      if (agentId) {
+        whereClause.agentId = agentId;
+      }
+
+      // Filtres avancés
+      if (dateCreationDebut || dateCreationFin) {
+        whereClause.createdAt = {};
+        if (dateCreationDebut) {
+          whereClause.createdAt.gte = new Date(dateCreationDebut);
+        }
+        if (dateCreationFin) {
+          whereClause.createdAt.lte = new Date(dateCreationFin);
+        }
+      }
+
+      if (avecAgent !== undefined) {
+        if (avecAgent === 'true') {
+          whereClause.agentId = { not: null };
+        } else if (avecAgent === 'false') {
+          whereClause.agentId = null;
+        }
+      }
+
+      if (enAlerte !== undefined) {
+        if (enAlerte === 'true') {
+          // Vérifier s'il y a des SOS actifs pour ce checkpoint
+          const checkpointsWithActiveSOS = await prisma.checkpoint.findMany({
+            where: {
+              sosAlerts: {
+                some: {
+                  isResolved: false
+                }
+              }
+            },
+            select: { id: true }
+          });
+          whereClause.id = {
+            in: checkpointsWithActiveSOS.map(cp => cp.id)
+          };
+        } else if (enAlerte === 'false') {
+          // Checkpoints sans SOS actif
+          const checkpointsWithActiveSOS = await prisma.checkpoint.findMany({
+            where: {
+              sosAlerts: {
+                some: {
+                  isResolved: false
+                }
+              }
+            },
+            select: { id: true }
+          });
+          whereClause.id = {
+            notIn: checkpointsWithActiveSOS.map(cp => cp.id)
+          };
+        }
+      }
+
+      const [checkpoints, total] = await Promise.all([
+        prisma.checkpoint.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          include: {
+            site: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                city: true
+              }
+            },
+            agent: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            },
+            sosAlerts: {
+              where: { isResolved: false },
+              select: {
+                id: true,
+                message: true,
+                createdAt: true
+              }
+            },
+            _count: {
+              select: {
+                visits: true,
+                sosAlerts: {
+                  where: { isResolved: false }
+                }
+              }
+            }
+          },
+          orderBy: [
+            { createdAt: 'desc' },
+            { name: 'asc' }
+          ]
+        }),
+        prisma.checkpoint.count({ where: whereClause })
+      ]);
+
+      return {
+        checkpoints,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1
+        },
+        filterOptions: await this.getFilterOptions(whereClause)
+      };
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération des checkpoints filtrés: ${error.message}`);
+    }
+  }
+
+  async getFilterOptions(currentFilters = {}) {
+    try {
+      // Récupérer toutes les zones uniques
+      const zones = await prisma.checkpoint.groupBy({
+        by: ['zone'],
+        where: {
+          ...currentFilters,
+          zone: { not: null }
+        },
+        _count: {
+          zone: true
+        },
+        orderBy: {
+          zone: 'asc'
+        }
+      });
+
+      // Récupérer tous les types de checkpoint uniques
+      const checkpointTypes = await prisma.checkpoint.groupBy({
+        by: ['checkpointType'],
+        where: {
+          ...currentFilters,
+          checkpointType: { not: null }
+        },
+        _count: {
+          checkpointType: true
+        },
+        orderBy: {
+          checkpointType: 'asc'
+        }
+      });
+
+      // Récupérer tous les statuts uniques
+      const statuses = await prisma.checkpoint.groupBy({
+        by: ['status'],
+        where: {
+          ...currentFilters,
+          status: { not: null }
+        },
+        _count: {
+          status: true
+        },
+        orderBy: {
+          status: 'asc'
+        }
+      });
+
+      // Récupérer toutes les priorités uniques
+      const priorities = await prisma.checkpoint.groupBy({
+        by: ['priority'],
+        where: {
+          ...currentFilters,
+          priority: { not: null }
+        },
+        _count: {
+          priority: true
+        },
+        orderBy: {
+          priority: 'asc'
+        }
+      });
+
+      // Récupérer tous les sites pour le filtre site
+      const sites = await prisma.site.findMany({
+        where: currentFilters.siteId ? { id: currentFilters.siteId } : {},
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          city: true,
+          _count: {
+            select: {
+              checkpoints: true
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+
+      // Récupérer tous les agents pour le filtre agent
+      const agents = await prisma.user.findMany({
+        where: {
+          role: { in: ['AGENT', 'AGENT_GESTION'] },
+          ...(currentFilters.agentId && { id: currentFilters.agentId })
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          _count: {
+            select: {
+              checkpointsAssigned: true
+            }
+          }
+        },
+        orderBy: {
+          lastName: 'asc',
+          firstName: 'asc'
+        }
+      });
+
+      return {
+        zones: zones.map(z => ({ value: z.zone, label: z.zone, count: z._count.zone })),
+        checkpointTypes: checkpointTypes.map(ct => ({ value: ct.checkpointType, label: ct.checkpointType, count: ct._count.checkpointType })),
+        statuses: statuses.map(s => ({ value: s.status, label: s.status, count: s._count.status })),
+        priorities: priorities.map(p => ({ value: p.priority, label: p.priority, count: p._count.priority })),
+        sites: sites.map(s => ({ value: s.id, label: `${s.name} (${s.code})`, count: s._count.checkpoints, city: s.city })),
+        agents: agents.map(a => ({ value: a.id, label: `${a.firstName} ${a.lastName}`, count: a._count.checkpointsAssigned, email: a.email }))
+      };
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération des options de filtre: ${error.message}`);
+    }
+  }
   async createCheckpoint(checkpointData) {
     try {
       // Vérifier que le site existe
@@ -42,6 +331,7 @@ class CheckpointService {
         priority: checkpointData.priority,
         controlFrequency: checkpointData.controlFrequency,
         equipment: checkpointData.equipment || [],
+        devicesId: checkpointData.devicesId || [],
         specialInstructions: checkpointData.specialInstructions || null,
         active: checkpointData.active
       };

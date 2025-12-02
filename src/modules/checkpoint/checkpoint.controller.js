@@ -10,6 +10,45 @@ const {
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class CheckpointController {
+  getFilteredCheckpoints = asyncHandler(async (req, res) => {
+    const filters = {
+      ...req.query,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10
+    };
+
+    const result = await checkpointService.getFilteredCheckpoints(filters);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Checkpoints filtrés récupérés avec succès',
+      data: result.checkpoints,
+      pagination: result.pagination,
+      filterOptions: result.filterOptions,
+      filters: filters
+    });
+  });
+
+  getFilterOptions = asyncHandler(async (req, res) => {
+    try {
+      // Construire les filtres à partir des query params (sauf les options)
+      const { page, limit, ...currentFilters } = req.query;
+      
+      const filterOptions = await checkpointService.getFilterOptions(currentFilters);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Options de filtre récupérées avec succès',
+        data: filterOptions
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
   createCheckpoint = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN et AGENT_GESTION
     if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {

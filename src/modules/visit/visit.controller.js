@@ -3,6 +3,45 @@ const { createVisitSchema, updateVisitSchema, visitIdSchema, visitQuerySchema, c
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class VisitController {
+  getFilteredVisits = asyncHandler(async (req, res) => {
+    const filters = {
+      ...req.query,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10
+    };
+
+    const result = await visitService.getFilteredVisits(filters);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Visites filtrées récupérées avec succès',
+      data: result.visits,
+      pagination: result.pagination,
+      filterOptions: result.filterOptions,
+      filters: filters
+    });
+  });
+
+  getFilterOptions = asyncHandler(async (req, res) => {
+    try {
+      // Construire les filtres à partir des query params (sauf les options)
+      const { page, limit, ...currentFilters } = req.query;
+      
+      const filterOptions = await visitService.getFilterOptions(currentFilters);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Options de filtre récupérées avec succès',
+        data: filterOptions
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
   createVisit = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
     if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {

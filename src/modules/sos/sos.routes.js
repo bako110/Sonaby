@@ -14,7 +14,8 @@ router.post('/', sosController.createSOS);
  * @swagger
  * /api/v1/sos/general:
  *   post:
- *     summary: Créer une alerte SOS générale pour un checkpoint
+ *     summary: Déclencher une alerte SOS générale automatique pour un checkpoint
+ *     description: Déclenche automatiquement une alerte SOS générale avec un message prédéfini. Un seul paramètre requis : checkpointId. Le message est généré automatiquement au format "ALERTE GÉNÉRALE - [Nom du checkpoint]"
  *     tags: [SOS]
  *     security:
  *       - bearerAuth: []
@@ -24,9 +25,11 @@ router.post('/', sosController.createSOS);
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateGeneralSOSInput'
+ *           example:
+ *             checkpointId: "770e8400-e29b-41d4-a716-446655440002"
  *     responses:
  *       201:
- *         description: Alerte SOS générale créée avec succès
+ *         description: Alerte SOS générale déclenchée automatiquement
  *         content:
  *           application/json:
  *             schema:
@@ -37,7 +40,7 @@ router.post('/', sosController.createSOS);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: "Alerte SOS générale déclenchée avec succès"
+ *                   example: "SOS général déclenché automatiquement"
  *                 data:
  *                   type: object
  *                   properties:
@@ -49,6 +52,7 @@ router.post('/', sosController.createSOS);
  *                       format: uuid
  *                     message:
  *                       type: string
+ *                       example: "ALERTE GÉNÉRALE - Portail Principal"
  *                     triggeredBy:
  *                       type: string
  *                       format: uuid
@@ -56,7 +60,7 @@ router.post('/', sosController.createSOS);
  *                       type: boolean
  *                       example: false
  *       400:
- *         description: Données invalides ou checkpoint non trouvé
+ *         description: Checkpoint non trouvé
  *       403:
  *         description: Accès refusé
  *       500:

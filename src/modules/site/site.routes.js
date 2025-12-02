@@ -9,6 +9,246 @@ router.use(authenticateToken);
 
 /**
  * @swagger
+ * /api/v1/sites/filter:
+ *   get:
+ *     summary: Récupérer les sites avec filtres avancés
+ *     tags: [Sites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Recherche textuelle (nom, code, description, adresse, manager)
+ *       - in: query
+ *         name: city
+ *         schema:
+ *           type: string
+ *         description: Filtrer par ville
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, under_maintenance, closed]
+ *         description: Statut du site
+ *       - in: query
+ *         name: activityType
+ *         schema:
+ *           type: string
+ *           enum: [headquarters, branch, warehouse, factory, office, retail]
+ *         description: Type d'activité
+ *       - in: query
+ *         name: manager
+ *         schema:
+ *           type: string
+ *         description: Filtrer par nom du manager
+ *       - in: query
+ *         name: dateCreationDebut
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date de création début
+ *       - in: query
+ *         name: dateCreationFin
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date de création fin
+ *       - in: query
+ *         name: wheelchairAccessible
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer sites accessibles fauteuil roulant
+ *       - in: query
+ *         name: parkingAvailable
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer sites avec parking
+ *       - in: query
+ *         name: securitySystem
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer sites avec système de sécurité
+ *       - in: query
+ *         name: securityGuard
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filtrer sites avec gardien de sécurité
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Numéro de page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Nombre d'éléments par page
+ *     responses:
+ *       200:
+ *         description: Sites filtrés récupérés avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Sites filtrés récupérés avec succès"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Site'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrev:
+ *                       type: boolean
+ *                 filters:
+ *                   type: object
+ *                   description: Filtres appliqués
+ *       400:
+ *         description: Requête invalide
+ *       403:
+ *         description: Accès refusé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/filter', siteController.getFilteredSites);
+
+/**
+ * @swagger
+ * /api/v1/sites/filter-options:
+ *   get:
+ *     summary: Récupérer les options de filtre dynamiques pour les sites
+ *     tags: [Sites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: city
+ *         schema:
+ *           type: string
+ *         description: Pré-filtrer les options par ville
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Pré-filtrer les options par statut
+ *       - in: query
+ *         name: activityType
+ *         schema:
+ *           type: string
+ *         description: Pré-filtrer les options par type d'activité
+ *       - in: query
+ *         name: manager
+ *         schema:
+ *           type: string
+ *         description: Pré-filtrer les options par manager
+ *     responses:
+ *       200:
+ *         description: Options de filtre récupérées avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Options de filtre récupérées avec succès"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     cities:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "Paris"
+ *                           label:
+ *                             type: string
+ *                             example: "Paris"
+ *                           count:
+ *                             type: integer
+ *                             example: 15
+ *                     managers:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "Jean Dupont"
+ *                           label:
+ *                             type: string
+ *                             example: "Jean Dupont"
+ *                           count:
+ *                             type: integer
+ *                             example: 8
+ *                     activityTypes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "headquarters"
+ *                           label:
+ *                             type: string
+ *                             example: "headquarters"
+ *                           count:
+ *                             type: integer
+ *                             example: 5
+ *                     statuses:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "active"
+ *                           label:
+ *                             type: string
+ *                             example: "active"
+ *                           count:
+ *                             type: integer
+ *                             example: 20
+ *       400:
+ *         description: Requête invalide
+ *       403:
+ *         description: Accès refusé
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/filter-options', siteController.getFilterOptions);
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     Site:

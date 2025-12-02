@@ -117,8 +117,9 @@ model Checkpoint {
   priority                String    @default("medium") @db.VarChar(20)
   controlFrequency        String?   @map("control_frequency") @db.VarChar(20)
   equipment               Json?
-  specialInstructions     String?   @map("special_instructions") @db.Text
-  active                  Boolean   @default(true)
+  devicesId               Json?             @default("[]") @map("devices_id")
+  specialInstructions     String?           @map("special_instructions") @db.Text
+  active                  Boolean           @default(true)
   createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
   

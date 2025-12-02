@@ -108,32 +108,13 @@ class SOSService {
         throw new Error('Checkpoint non trouvé');
       }
 
-      // Récupérer le checkpoint spécifique
-      const checkpoints = [checkpoint];
-
-      if (checkpoints.length === 0) {
-        throw new Error('Checkpoint non trouvé');
-      }
-
-      // Vérifier s'il y a déjà un SOS actif pour ce checkpoint
-      const activeSOSCount = await prisma.sosAlert.count({
-        where: {
-          checkpointId: checkpoint.id,
-          isResolved: false
-        }
-      });
-
-      if (activeSOSCount > 0) {
-        throw new Error('Un SOS est déjà actif pour ce checkpoint');
-      }
-
       console.log('🔍 DEBUG - About to create GENERAL SOS with triggeredBy:', sentBy);
       
-      // Créer un SOS pour le checkpoint spécifique
+      // Créer un SOS automatique avec message prédéfini
       const sosAlert = await prisma.sosAlert.create({
         data: {
           checkpointId: checkpoint.id,
-          message: sosData.message || `Alerte générale - ${checkpoint.name}`,
+          message: `ALERTE GÉNÉRALE - ${checkpoint.name}`,
           triggeredBy: sentBy,
           isResolved: false
         },
@@ -164,7 +145,7 @@ class SOSService {
 
       return {
         success: true,
-        message: 'SOS général créé avec succès',
+        message: 'SOS général déclenché automatiquement',
         data: sosAlert
       };
     } catch (error) {

@@ -349,4 +349,243 @@ router.use(authenticateToken);
  */
 router.get('/', statsController.getAllStats);
 
+/**
+ * @swagger
+ * /api/stats/agent-stats:
+ *   get:
+ *     summary: 👥 Statistiques des agents
+ *     description: |
+ *       Retourne les statistiques complètes des agents du système.
+ *       
+ *       **Données incluses :**
+ *       - 📊 **Effectifs** : Total, actifs, inactifs
+ *       - 🏷️ **Répartition** : Par rôle (ADMIN, AGENT_GESTION, etc.)
+ *       - 📈 **Pourcentages** : Taux d'activité/inactivité
+ *     tags: [Statistics]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: ✅ Statistiques des agents récupérées
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalAgents:
+ *                       type: integer
+ *                       example: 15
+ *                     activeAgents:
+ *                       type: integer
+ *                       example: 12
+ *                     inactiveAgents:
+ *                       type: integer
+ *                       example: 3
+ *                     agentsByRole:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           role:
+ *                             type: string
+ *                             example: "AGENT_CONTROLE"
+ *                           count:
+ *                             type: integer
+ *                             example: 8
+ *                     activePercentage:
+ *                       type: integer
+ *                       example: 80
+ *                     inactivePercentage:
+ *                       type: integer
+ *                       example: 20
+ */
+router.get('/agent-stats', statsController.getAgentStats);
+
+/**
+ * @swagger
+ * /api/stats/recent-connections:
+ *   get:
+ *     summary: 🔌 Connexions récentes des agents
+ *     description: |
+ *       Retourne la liste des connexions récentes des agents avec statistiques.
+ *       
+ *       **Données incluses :**
+ *       - 👤 **Utilisateurs** : Infos complètes sur les agents connectés
+ *       - ⏰ **Timestamps** : Date de connexion et d'expiration
+ *       - 📊 **Stats** : Aujourd'hui, cette semaine, connexions actives
+ *     tags: [Statistics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 50
+ *         description: Nombre maximum de connexions à retourner
+ *     responses:
+ *       200:
+ *         description: ✅ Connexions récentes récupérées
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     connections:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             example: "550e8400-e29b-41d4-a716-446655440000"
+ *                           user:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                               firstName:
+ *                                 type: string
+ *                               lastName:
+ *                                 type: string
+ *                               email:
+ *                                 type: string
+ *                               role:
+ *                                 type: string
+ *                               isActive:
+ *                                 type: boolean
+ *                           connectedAt:
+ *                             type: string
+ *                             format: date-time
+ *                           expiresAt:
+ *                             type: string
+ *                             format: date-time
+ *                           isCurrentlyActive:
+ *                             type: boolean
+ *                           connectionType:
+ *                             type: string
+ *                             example: "API"
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         totalConnections:
+ *                           type: integer
+ *                         todayConnections:
+ *                           type: integer
+ *                         weekConnections:
+ *                           type: integer
+ *                         activeConnections:
+ *                           type: integer
+ */
+router.get('/recent-connections', statsController.getRecentConnections);
+
+/**
+ * @swagger
+ * /api/stats/agent-activity:
+ *   get:
+ *     summary: 📋 Activité récente des agents
+ *     description: |
+ *       Retourne l'activité récente des agents avec logs d'audit.
+ *       
+ *       **Données incluses :**
+ *       - 📝 **Activités** : Actions effectuées par les agents
+ *       - 👤 **Agents** : Informations sur l'utilisateur
+ *       - 📊 **Stats** : Top actions, agents uniques, activités du jour
+ *     tags: [Statistics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Nombre maximum d'activités à retourner
+ *       - in: query
+ *         name: agentId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filtrer par un agent spécifique
+ *     responses:
+ *       200:
+ *         description: ✅ Activité des agents récupérée
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     activities:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           user:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                               firstName:
+ *                                 type: string
+ *                               lastName:
+ *                                 type: string
+ *                               email:
+ *                                 type: string
+ *                               role:
+ *                                 type: string
+ *                           action:
+ *                             type: string
+ *                             example: "CREATE_VISIT"
+ *                           entity:
+ *                             type: string
+ *                             example: "visit"
+ *                           entityId:
+ *                             type: string
+ *                           timestamp:
+ *                             type: string
+ *                             format: date-time
+ *                           ipAddress:
+ *                             type: string
+ *                           userAgent:
+ *                             type: string
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         totalActivities:
+ *                           type: integer
+ *                         todayActivities:
+ *                           type: integer
+ *                         uniqueAgents:
+ *                           type: integer
+ *                         topActions:
+ *                           type: object
+ *                           additionalProperties:
+ *                             type: integer
+ */
+router.get('/agent-activity', statsController.getAgentActivity);
+
 module.exports = router;

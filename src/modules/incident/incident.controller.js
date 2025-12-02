@@ -57,6 +57,28 @@ class IncidentController {
     }
   });
 
+  getIncidentsByVisitor = asyncHandler(async (req, res) => {
+    if (!['ADMIN', 'AGENT_GESTION', 'CHEF_SERVICE', 'AGENT_CONTROLE'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Permissions insuffisantes.'
+      });
+    }
+
+    const { visitorId } = req.params;
+    const filters = req.query;
+    
+    try {
+      const result = await incidentService.getIncidentsByVisitor(visitorId, filters);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
+
   getIncidentById = asyncHandler(async (req, res) => {
     if (!['ADMIN', 'AGENT_GESTION', 'CHEF_SERVICE', 'AGENT_CONTROLE'].includes(req.user.role)) {
       return res.status(403).json({

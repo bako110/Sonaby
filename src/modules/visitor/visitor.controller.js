@@ -3,6 +3,45 @@ const { createVisitorWithTransform, updateVisitorSchema, visitorIdSchema, visito
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class VisitorController {
+    getFilteredVisitors = asyncHandler(async (req, res) => {
+        const filters = {
+            ...req.query,
+            page: parseInt(req.query.page) || 1,
+            limit: parseInt(req.query.limit) || 10
+        };
+
+        const result = await visitorService.getFilteredVisitors(filters);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Visiteurs filtrés récupérés avec succès',
+            data: result.visitors,
+            pagination: result.pagination,
+            filterOptions: result.filterOptions,
+            filters: filters
+        });
+    });
+
+    getFilterOptions = asyncHandler(async (req, res) => {
+        try {
+            // Construire les filtres à partir des query params (sauf les options)
+            const { page, limit, ...currentFilters } = req.query;
+            
+            const filterOptions = await visitorService.getFilterOptions(currentFilters);
+            
+            res.status(200).json({
+                success: true,
+                message: 'Options de filtre récupérées avec succès',
+                data: filterOptions
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    });
+
     createVisitor = asyncHandler(async (req, res) => {
     // 🔹 Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE, CHEF_SERVICE
       if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {

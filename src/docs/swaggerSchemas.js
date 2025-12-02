@@ -49,6 +49,421 @@ const blacklistQuerySchema = baseQuerySchema.extend({
   incidentDate: z.string().optional().describe("Incident date filter")
 });
 
+// =====================================================================================
+// SCHÉMAS POUR LES OPTIONS DE FILTRE AUTOMATIQUES
+// =====================================================================================
+
+const FilterOptionSchema = {
+  type: "object",
+  properties: {
+    value: { type: "string", description: "Valeur de l'option" },
+    label: { type: "string", description: "Libellé affiché pour l'option" },
+    count: { type: "integer", description: "Nombre d'éléments disponibles pour cette option" }
+  },
+  required: ["value", "label", "count"],
+  example: {
+    value: "Paris",
+    label: "Paris",
+    count: 15
+  }
+};
+
+const SiteFilterOptionSchema = {
+  type: "object",
+  properties: {
+    value: { type: "string", format: "uuid", description: "ID du site" },
+    label: { type: "string", description: "Libellé du site avec code" },
+    count: { type: "integer", description: "Nombre de checkpoints sur ce site" },
+    city: { type: "string", description: "Ville du site" }
+  },
+  required: ["value", "label", "count"],
+  example: {
+    value: "550e8400-e29b-41d4-a716-446655440001",
+    label: "Siège Social (PAR001)",
+    count: 5,
+    city: "Paris"
+  }
+};
+
+const AgentFilterOptionSchema = {
+  type: "object",
+  properties: {
+    value: { type: "string", format: "uuid", description: "ID de l'agent" },
+    label: { type: "string", description: "Nom complet de l'agent" },
+    count: { type: "integer", description: "Nombre de checkpoints assignés à cet agent" },
+    email: { type: "string", format: "email", description: "Email de l'agent" }
+  },
+  required: ["value", "label", "count"],
+  example: {
+    value: "660e8400-e29b-41d4-a716-446655440002",
+    label: "Jean Dupont",
+    count: 3,
+    email: "jean.dupont@example.com"
+  }
+};
+
+const SiteFilterOptionsSchema = {
+  type: "object",
+  properties: {
+    cities: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des villes disponibles avec leurs compteurs"
+    },
+    managers: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des managers disponibles avec leurs compteurs"
+    },
+    activityTypes: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des types d'activité disponibles avec leurs compteurs"
+    },
+    statuses: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des statuts disponibles avec leurs compteurs"
+    }
+  },
+  required: ["cities", "managers", "activityTypes", "statuses"],
+  example: {
+    cities: [
+      { value: "Paris", label: "Paris", count: 15 },
+      { value: "Lyon", label: "Lyon", count: 8 }
+    ],
+    managers: [
+      { value: "Jean Dupont", label: "Jean Dupont", count: 5 },
+      { value: "Marie Martin", label: "Marie Martin", count: 3 }
+    ],
+    activityTypes: [
+      { value: "headquarters", label: "headquarters", count: 4 },
+      { value: "branch", label: "branch", count: 12 }
+    ],
+    statuses: [
+      { value: "active", label: "active", count: 18 },
+      { value: "inactive", label: "inactive", count: 2 }
+    ]
+  }
+};
+
+const CheckpointFilterOptionsSchema = {
+  type: "object",
+  properties: {
+    zones: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des zones disponibles avec leurs compteurs"
+    },
+    checkpointTypes: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des types de checkpoints disponibles avec leurs compteurs"
+    },
+    statuses: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des statuts disponibles avec leurs compteurs"
+    },
+    priorities: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des priorités disponibles avec leurs compteurs"
+    },
+    sites: {
+      type: "array",
+      items: SiteFilterOptionSchema,
+      description: "Liste des sites disponibles avec leurs compteurs de checkpoints"
+    },
+    agents: {
+      type: "array",
+      items: AgentFilterOptionSchema,
+      description: "Liste des agents disponibles avec leurs compteurs de checkpoints"
+    }
+  },
+  required: ["zones", "checkpointTypes", "statuses", "priorities", "sites", "agents"],
+  example: {
+    zones: [
+      { value: "Zone A", label: "Zone A", count: 8 },
+      { value: "Zone B", label: "Zone B", count: 12 }
+    ],
+    checkpointTypes: [
+      { value: "internal", label: "internal", count: 15 },
+      { value: "external", label: "external", count: 5 }
+    ],
+    statuses: [
+      { value: "active", label: "active", count: 18 },
+      { value: "maintenance", label: "maintenance", count: 2 }
+    ],
+    priorities: [
+      { value: "medium", label: "medium", count: 12 },
+      { value: "high", label: "high", count: 6 }
+    ],
+    sites: [
+      {
+        value: "550e8400-e29b-41d4-a716-446655440001",
+        label: "Siège Social (PAR001)",
+        count: 5,
+        city: "Paris"
+      }
+    ],
+    agents: [
+      {
+        value: "660e8400-e29b-41d4-a716-446655440002",
+        label: "Jean Dupont",
+        count: 3,
+        email: "jean.dupont@example.com"
+      }
+    ]
+  }
+};
+
+// =====================================================================================
+// SCHÉMAS POUR LES VISITES ET VISITEURS
+// =====================================================================================
+
+const VisitFilterOptionsSchema = {
+  type: "object",
+  properties: {
+    statuses: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des statuts de visites disponibles avec leurs compteurs"
+    },
+    origins: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des origines de visites disponibles avec leurs compteurs"
+    },
+    reasons: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des raisons de visites disponibles avec leurs compteurs"
+    },
+    sites: {
+      type: "array",
+      items: SiteFilterOptionSchema,
+      description: "Liste des sites visités avec leurs compteurs de visites"
+    },
+    services: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          value: { type: "string", format: "uuid", description: "ID du service" },
+          label: { type: "string", description: "Libellé du service avec type" },
+          count: { type: "integer", description: "Nombre de visites pour ce service" },
+          type: { type: "string", description: "Type du service" }
+        },
+        required: ["value", "label", "count", "type"],
+        example: {
+          value: "550e8400-e29b-41d4-a716-446655440003",
+          label: "IT Support (technical)",
+          count: 5,
+          type: "technical"
+        }
+      },
+      description: "Liste des services visités avec leurs compteurs"
+    },
+    checkpoints: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          value: { type: "string", format: "uuid", description: "ID du checkpoint" },
+          label: { type: "string", description: "Libellé du checkpoint avec zone" },
+          count: { type: "integer", description: "Nombre de visites pour ce checkpoint" },
+          zone: { type: "string", description: "Zone du checkpoint" },
+          checkpointType: { type: "string", description: "Type du checkpoint" },
+          site: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              name: { type: "string" },
+              code: { type: "string" }
+            }
+          }
+        },
+        required: ["value", "label", "count", "zone", "checkpointType"],
+        example: {
+          value: "660e8400-e29b-41d4-a716-446655440004",
+          label: "Portail Principal (Zone A)",
+          count: 8,
+          zone: "Zone A",
+          checkpointType: "entry",
+          site: {
+            id: "550e8400-e29b-41d4-a716-446655440001",
+            name: "Siège Social",
+            code: "PAR001"
+          }
+        }
+      },
+      description: "Liste des checkpoints visités avec leurs compteurs"
+    }
+  },
+  required: ["statuses", "origins", "reasons", "sites", "services", "checkpoints"],
+  example: {
+    statuses: [
+      { value: "present", label: "present", count: 25 },
+      { value: "left", label: "left", count: 45 }
+    ],
+    origins: [
+      { value: "Entreprise", label: "Entreprise", count: 15 },
+      { value: "Personnel", label: "Personnel", count: 8 }
+    ],
+    reasons: [
+      { value: "Réunion", label: "Réunion", count: 12 },
+      { value: "Livraison", label: "Livraison", count: 6 }
+    ],
+    sites: [
+      {
+        value: "550e8400-e29b-41d4-a716-446655440001",
+        label: "Siège Social (PAR001)",
+        count: 20,
+        city: "Paris"
+      }
+    ],
+    services: [
+      {
+        value: "550e8400-e29b-41d4-a716-446655440003",
+        label: "IT Support (technical)",
+        count: 5,
+        type: "technical"
+      }
+    ],
+    checkpoints: [
+      {
+        value: "660e8400-e29b-41d4-a716-446655440004",
+        label: "Portail Principal (Zone A)",
+        count: 8,
+        zone: "Zone A",
+        checkpointType: "entry",
+        site: {
+          id: "550e8400-e29b-41d4-a716-446655440001",
+          name: "Siège Social",
+          code: "PAR001"
+        }
+      }
+    ]
+  }
+};
+
+const VisitorFilterOptionsSchema = {
+  type: "object",
+  properties: {
+    idTypes: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des types d'ID disponibles avec leurs compteurs"
+    },
+    companies: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Liste des entreprises disponibles avec leurs compteurs"
+    },
+    sites: {
+      type: "array",
+      items: SiteFilterOptionSchema,
+      description: "Liste des sites visités avec leurs compteurs de visiteurs"
+    },
+    checkpoints: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          value: { type: "string", format: "uuid", description: "ID du checkpoint" },
+          label: { type: "string", description: "Libellé du checkpoint avec zone" },
+          count: { type: "integer", description: "Nombre de visiteurs pour ce checkpoint" },
+          zone: { type: "string", description: "Zone du checkpoint" },
+          checkpointType: { type: "string", description: "Type du checkpoint" },
+          site: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              name: { type: "string" },
+              code: { type: "string" }
+            }
+          }
+        },
+        required: ["value", "label", "count", "zone", "checkpointType"],
+        example: {
+          value: "660e8400-e29b-41d4-a716-446655440004",
+          label: "Portail Principal (Zone A)",
+          count: 5,
+          zone: "Zone A",
+          checkpointType: "entry",
+          site: {
+            id: "550e8400-e29b-41d4-a716-446655440001",
+            name: "Siège Social",
+            code: "PAR001"
+          }
+        }
+      },
+      description: "Liste des checkpoints visités avec leurs compteurs de visiteurs"
+    },
+    blacklistOptions: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Options pour le statut blacklist"
+    },
+    badgeOptions: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Options pour la présence de badge"
+    },
+    incidentOptions: {
+      type: "array",
+      items: FilterOptionSchema,
+      description: "Options pour la présence d'incidents"
+    }
+  },
+  required: ["idTypes", "companies", "sites", "checkpoints", "blacklistOptions", "badgeOptions", "incidentOptions"],
+  example: {
+    idTypes: [
+      { value: "CNIB", label: "CNIB", count: 45 },
+      { value: "PASSEPORT", label: "PASSEPORT", count: 12 }
+    ],
+    companies: [
+      { value: "TechCorp", label: "TechCorp", count: 8 },
+      { value: "ServicePlus", label: "ServicePlus", count: 5 }
+    ],
+    sites: [
+      {
+        value: "550e8400-e29b-41d4-a716-446655440001",
+        label: "Siège Social (PAR001)",
+        count: 15,
+        city: "Paris"
+      }
+    ],
+    checkpoints: [
+      {
+        value: "660e8400-e29b-41d4-a716-446655440004",
+        label: "Portail Principal (Zone A)",
+        count: 5,
+        zone: "Zone A",
+        checkpointType: "entry",
+        site: {
+          id: "550e8400-e29b-41d4-a716-446655440001",
+          name: "Siège Social",
+          code: "PAR001"
+        }
+      }
+    ],
+    blacklistOptions: [
+      { value: "true", label: "Oui", count: 3 },
+      { value: "false", label: "Non", count: 52 }
+    ],
+    badgeOptions: [
+      { value: "true", label: "Avec badge", count: 25 },
+      { value: "false", label: "Sans badge", count: 30 }
+    ],
+    incidentOptions: [
+      { value: "true", label: "Avec incidents", count: 4 },
+      { value: "false", label: "Sans incidents", count: 51 }
+    ]
+  }
+};
+
 const visitQuerySchema = baseQuerySchema.extend({
   visitorId: z.string().optional().describe("Visitor ID filter"),
   checkpointId: z.string().optional().describe("Checkpoint ID filter"),
@@ -358,6 +773,7 @@ const Checkpoint = {
     
     // Equipment and Materials
     equipment: { type: "array", items: { type: "string" }, nullable: true },
+    devicesId: { type: "array", items: { type: "string" }, nullable: true, description: "Liste des IDs des dispositifs associés au checkpoint" },
     requiredMaterial: { type: "array", items: { type: "string" }, nullable: true },
     specialInstructions: { type: "string", nullable: true },
     
@@ -673,6 +1089,12 @@ const CreateCheckpointInput = {
       enum: ["hourly", "daily", "weekly", "monthly", "on_demand"],
       description: "Fréquence de contrôle"
     },
+    devicesId: {
+      type: "array",
+      items: { type: "string" },
+      description: "Liste des IDs des dispositifs associés au checkpoint",
+      example: ["device-001", "device-002", "device-003"]
+    },
     specialInstructions: { 
       type: "string",
       description: "Instructions spéciales"
@@ -683,6 +1105,14 @@ const CreateCheckpointInput = {
       description: "Checkpoint actif"
     }
   }
+};
+
+const UpdateCheckpointInput = {
+  type: "object",
+  properties: {
+    ...CreateCheckpointInput.properties
+  },
+  description: "Schéma de mise à jour de checkpoint (tous les champs optionnels)"
 };
 
 const CreateVisitInput = {
@@ -801,24 +1231,18 @@ const CreateGeneralSOSInput = {
     checkpointId: { 
       type: "string", 
       format: "uuid",
-      description: "ID du checkpoint pour l'alerte générale",
+      description: "ID du checkpoint pour l'alerte générale automatique",
       example: "770e8400-e29b-41d4-a716-446655440002"
-    },
-    message: { 
-      type: "string",
-      description: "Message optionnel décrivant la situation d'urgence",
-      example: "Alerte générale - Situation d'urgence"
     },
     triggeredBy: {
       type: "string",
       format: "uuid",
-      description: "ID de l'utilisateur qui déclenche l'alerte (optionnel)",
+      description: "ID de l'utilisateur qui déclenche l'alerte (optionnel, auto-rempli si non fourni)",
       example: "550e8400-e29b-41d4-a716-446655440000"
     }
   },
   example: {
-    checkpointId: "770e8400-e29b-41d4-a716-446655440002",
-    message: "Alerte générale - Situation d'urgence"
+    checkpointId: "770e8400-e29b-41d4-a716-446655440002"
   }
 };
 
@@ -855,11 +1279,93 @@ const Incident = {
       description: "Identifiant unique de l'incident",
       example: "bb0e8400-e29b-41d4-a716-446655440001"
     },
+    titre: {
+      type: "string",
+      description: "Titre de l'incident",
+      example: "Comportement suspect"
+    },
+    description: { 
+      type: "string",
+      description: "Description détaillée de l'incident",
+      example: "Le visiteur a été vu dans une zone restreinte sans autorisation"
+    },
+    typeIncident: { 
+      type: "string",
+      enum: ["ACCIDENT", "REFUS", "FRAUDE", "VOL", "AGRESSION", "AUTRE"],
+      default: "AUTRE",
+      description: "Type d'incident",
+      example: "AUTRE"
+    },
+    severite: { 
+      type: "string",
+      enum: ["FAIBLE", "MOYENNE", "ELEVEE", "CRITIQUE"],
+      default: "MOYENNE",
+      description: "Niveau de sévérité",
+      example: "MOYENNE"
+    },
+    priorite: { 
+      type: "string",
+      enum: ["BASSE", "NORMALE", "HAUTE", "URGENTE"],
+      default: "NORMALE",
+      description: "Niveau de priorité",
+      example: "NORMALE"
+    },
+    source: { 
+      type: "string",
+      enum: ["VISITEUR", "AGENT", "SYSTEME", "AUTRE"],
+      default: "AGENT",
+      description: "Source de l'incident",
+      example: "AGENT"
+    },
+    dateIncident: { 
+      type: "string", 
+      format: "date",
+      description: "Date de l'incident",
+      example: "2024-11-24"
+    },
+    heureIncident: { 
+      type: "string", 
+      format: "date-time",
+      description: "Heure de l'incident",
+      example: "2024-11-24T14:30:00Z"
+    },
+    siteId: { 
+      type: "string", 
+      format: "uuid",
+      description: "ID du site où l'incident s'est produit",
+      example: "550e8400-e29b-41d4-a716-446655440001"
+    },
     visitId: { 
       type: "string", 
       format: "uuid",
+      nullable: true,
       description: "ID de la visite concernée",
       example: "aa0e8400-e29b-41d4-a716-446655440001"
+    },
+    visiteurId: { 
+      type: "string", 
+      format: "uuid",
+      nullable: true,
+      description: "ID du visiteur concerné",
+      example: "aa0e8400-e29b-41d4-a716-446655440001"
+    },
+    actionsImmediates: { 
+      type: "string", 
+      nullable: true,
+      description: "Actions immédiates prises",
+      example: "Le visiteur a été raccompagné à la sortie"
+    },
+    temoinPresent: { 
+      type: "boolean", 
+      default: false,
+      description: "Y avait-il des témoins ?",
+      example: true
+    },
+    notifierAgents: { 
+      type: "boolean", 
+      default: false,
+      description: "Agents notifiés ?",
+      example: true
     },
     reportedBy: { 
       type: "string", 
@@ -867,61 +1373,101 @@ const Incident = {
       description: "ID de l'agent qui a signalé l'incident",
       example: "e5c397cd-c586-11f0-aa39-0242ac140013"
     },
-    title: { 
-      type: "string",
-      description: "Titre court de l'incident",
-      example: "Badge visiteur défaillant"
-    },
-    description: { 
-      type: "string",
-      description: "Description détaillée de l'incident",
-      example: "Le badge temporaire du visiteur ne fonctionnait pas sur les lecteurs du 2ème étage"
-    },
-    severityLevel: { 
-      type: "integer", 
-      minimum: 1, 
-      maximum: 3, 
-      default: 1,
-      description: "Niveau de gravité: 1=Faible, 2=Moyen, 3=Élevé",
-      example: 1
-    },
-    isResolved: { 
-      type: "boolean", 
-      default: false,
-      description: "L'incident est-il résolu ?",
-      example: true
-    },
-    resolvedAt: { 
-      type: "string", 
-      format: "date-time", 
-      nullable: true,
-      description: "Date et heure de résolution",
-      example: "2024-11-24T10:30:00Z"
-    },
-    resolutionNotes: { 
-      type: "string", 
-      nullable: true,
-      description: "Notes sur la résolution de l'incident",
-      example: "Badge remplacé, problème résolu"
-    },
     createdAt: { 
       type: "string", 
       format: "date-time",
       description: "Date de création de l'incident",
       example: "2024-11-24T09:15:00Z"
+    },
+    updatedAt: { 
+      type: "string", 
+      format: "date-time",
+      description: "Date de mise à jour de l'incident",
+      example: "2024-11-24T09:15:00Z"
+    },
+    // Relations incluses
+    site: {
+      type: "object",
+      description: "Informations du site",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        name: { type: "string", example: "Siège Principal" }
+      }
+    },
+    visit: {
+      type: "object",
+      nullable: true,
+      description: "Informations de la visite",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        entryTime: { type: "string", format: "date-time" },
+        visitor: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            firstName: { type: "string", example: "Jean" },
+            lastName: { type: "string", example: "Dupont" }
+          }
+        }
+      }
+    },
+    visiteur: {
+      type: "object",
+      nullable: true,
+      description: "Informations du visiteur",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        firstName: { type: "string", example: "Jean" },
+        lastName: { type: "string", example: "Dupont" }
+      }
+    },
+    reporter: {
+      type: "object",
+      description: "Informations de l'agent rapporteur",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        firstName: { type: "string", example: "Agent" },
+        lastName: { type: "string", example: "Security" }
+      }
     }
   },
   example: {
     id: "bb0e8400-e29b-41d4-a716-446655440001",
+    titre: "Comportement suspect",
+    description: "Le visiteur a été vu dans une zone restreinte sans autorisation",
+    typeIncident: "AUTRE",
+    severite: "MOYENNE",
+    priorite: "NORMALE",
+    source: "AGENT",
+    dateIncident: "2024-11-24",
+    heureIncident: "2024-11-24T14:30:00Z",
+    siteId: "550e8400-e29b-41d4-a716-446655440001",
     visitId: "aa0e8400-e29b-41d4-a716-446655440001",
+    visiteurId: "aa0e8400-e29b-41d4-a716-446655440001",
+    actionsImmediates: "Le visiteur a été raccompagné à la sortie",
+    temoinPresent: true,
+    notifierAgents: true,
     reportedBy: "e5c397cd-c586-11f0-aa39-0242ac140013",
-    title: "Badge visiteur défaillant",
-    description: "Le badge temporaire du visiteur ne fonctionnait pas sur les lecteurs du 2ème étage",
-    severityLevel: 1,
-    isResolved: true,
-    resolvedAt: "2024-11-24T10:30:00Z",
-    resolutionNotes: "Badge remplacé, problème résolu",
-    createdAt: "2024-11-24T09:15:00Z"
+    createdAt: "2024-11-24T09:15:00Z",
+    updatedAt: "2024-11-24T09:15:00Z",
+    site: {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      name: "Siège Principal"
+    },
+    visit: {
+      id: "aa0e8400-e29b-41d4-a716-446655440001",
+      entryTime: "2024-11-24T09:00:00Z",
+      visitor: {
+        id: "aa0e8400-e29b-41d4-a716-446655440001",
+        firstName: "Jean",
+        lastName: "Dupont"
+      }
+    },
+    reporter: {
+      id: "e5c397cd-c586-11f0-aa39-0242ac140013",
+      firstName: "Agent",
+      lastName: "Security"
+    }
   }
 };
 
@@ -1249,6 +1795,7 @@ module.exports = {
   
   // Checkpoint
   CreateCheckpointInput,
+  UpdateCheckpointInput,
   
   // Visit
   CreateVisitInput,
@@ -1389,6 +1936,7 @@ module.exports = {
   BlacklistHistory,
   SosAlert,
   CreateSosInput,
+  CreateGeneralSOSInput,
   Incident,
   CreateIncidentInput,
   
@@ -2362,6 +2910,15 @@ module.exports = {
       }
     }
   },
+
+  // ===== SCHÉMAS POUR LES OPTIONS DE FILTRE AUTOMATIQUES =====
+  FilterOptionSchema,
+  SiteFilterOptionSchema,
+  AgentFilterOptionSchema,
+  SiteFilterOptionsSchema,
+  CheckpointFilterOptionsSchema,
+  VisitFilterOptionsSchema,
+  VisitorFilterOptionsSchema,
 
   // ===== TYPES DE RÉPONSE API =====
   ApiResponse,

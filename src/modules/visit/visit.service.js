@@ -1,6 +1,354 @@
 const { prisma } = require('../../config/prisma');
 
 class VisitService {
+  async getFilteredVisits(filters = {}) {
+    try {
+      const {
+        search,
+        status,
+        visitorId,
+        checkpointId,
+        siteId,
+        serviceId,
+        dateFrom,
+        dateTo,
+        dateCreationDebut,
+        dateCreationFin,
+        withIncidents,
+        overdue,
+        page = 1,
+        limit = 10
+      } = filters;
+
+      const skip = (page - 1) * limit;
+      
+      // Construction de la clause WHERE
+      const whereClause = {};
+
+      // Filtres de base
+      if (search) {
+        whereClause.OR = [
+          { entityVisited: { contains: search, mode: 'insensitive' } },
+          { contactPerson: { contains: search, mode: 'insensitive' } },
+          { origin: { contains: search, mode: 'insensitive' } },
+          { reason: { contains: search, mode: 'insensitive' } },
+          { notes: { contains: search, mode: 'insensitive' } },
+          {
+            visitor: {
+              OR: [
+                { firstName: { contains: search, mode: 'insensitive' } },
+                { lastName: { contains: search, mode: 'insensitive' } },
+                { company: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } }
+              ]
+            }
+          }
+        ];
+      }
+
+      if (status) {
+        whereClause.status = status;
+      }
+
+      if (visitorId) {
+        whereClause.visitorId = visitorId;
+      }
+
+      if (checkpointId) {
+        whereClause.checkpointId = checkpointId;
+      }
+
+      if (siteId) {
+        whereClause.checkpoint = {
+          siteId: siteId
+        };
+      }
+
+      if (serviceId) {
+        whereClause.rendezvous = {
+          some: {
+            serviceId: serviceId
+          }
+        };
+      }
+
+      // Filtres avancés
+      if (dateFrom || dateTo) {
+        whereClause.entryTime = {};
+        if (dateFrom) {
+          whereClause.entryTime.gte = new Date(dateFrom);
+        }
+        if (dateTo) {
+          whereClause.entryTime.lte = new Date(dateTo);
+        }
+      }
+
+      if (dateCreationDebut || dateCreationFin) {
+        whereClause.createdAt = {};
+        if (dateCreationDebut) {
+          whereClause.createdAt.gte = new Date(dateCreationDebut);
+        }
+        if (dateCreationFin) {
+          whereClause.createdAt.lte = new Date(dateCreationFin);
+        }
+      }
+
+      if (withIncidents !== undefined) {
+        if (withIncidents === 'true') {
+          whereClause.incidents = {
+            some: {}
+          };
+        } else if (withIncidents === 'false') {
+          whereClause.incidents = {
+            none: {}
+          };
+        }
+      }
+
+      if (overdue !== undefined) {
+        if (overdue === 'true') {
+          const expectedExitTime = new Date();
+          expectedExitTime.setHours(expectedExitTime.getHours() - 8); // 8 heures max
+          whereClause.entryTime = {
+            lt: expectedExitTime
+          };
+          whereClause.status = 'present';
+        }
+      }
+
+      const [visits, total] = await Promise.all([
+        prisma.visit.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          include: {
+            visitor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                email: true,
+                company: true,
+                emergencyContactPhone: true,
+                emergencyContactName: true,
+                isBlacklisted: true
+              }
+            },
+            checkpoint: {
+              select: {
+                id: true,
+                name: true,
+                zone: true,
+                checkpointType: true,
+                site: {
+                  select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                    city: true
+                  }
+                }
+              }
+            },
+            incidents: {
+              take: 3,
+              orderBy: { createdAt: 'desc' }
+            },
+            rendezvous: {
+              take: 1,
+              include: {
+                service: {
+                  select: {
+                    id: true,
+                    name: true,
+                    type: true
+                  }
+                }
+              }
+            },
+            _count: {
+              select: {
+                incidents: true
+              }
+            }
+          },
+          orderBy: [
+            { entryTime: 'desc' },
+            { createdAt: 'desc' }
+          ]
+        }),
+        prisma.visit.count({ where: whereClause })
+      ]);
+
+      return {
+        visits,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1
+        },
+        filterOptions: await this.getFilterOptions(whereClause)
+      };
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération des visites filtrées: ${error.message}`);
+    }
+  }
+
+  async getFilterOptions(currentFilters = {}) {
+    try {
+      // Récupérer tous les statuts uniques
+      const statuses = await prisma.visit.groupBy({
+        by: ['status'],
+        where: {
+          ...currentFilters,
+          status: { not: null }
+        },
+        _count: {
+          status: true
+        },
+        orderBy: {
+          status: 'asc'
+        }
+      });
+
+      // Récupérer toutes les origines uniques
+      const origins = await prisma.visit.groupBy({
+        by: ['origin'],
+        where: {
+          ...currentFilters,
+          origin: { not: null }
+        },
+        _count: {
+          origin: true
+        },
+        orderBy: {
+          origin: 'asc'
+        }
+      });
+
+      // Récupérer tous les types de raisons uniques
+      const reasons = await prisma.visit.groupBy({
+        by: ['reason'],
+        where: {
+          ...currentFilters,
+          reason: { not: null }
+        },
+        _count: {
+          reason: true
+        },
+        orderBy: {
+          reason: 'asc'
+        }
+      });
+
+      // Récupérer tous les sites pour le filtre site
+      const sites = await prisma.site.findMany({
+        where: currentFilters.siteId ? { id: currentFilters.siteId } : {},
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          city: true,
+          _count: {
+            select: {
+              checkpoints: {
+                where: {
+                  visits: {
+                    some: currentFilters
+                  }
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+
+      // Récupérer tous les services pour le filtre service
+      const services = await prisma.service.findMany({
+        where: currentFilters.serviceId ? { id: currentFilters.serviceId } : {},
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          _count: {
+            select: {
+              rendezvous: {
+                where: {
+                  visit: {
+                    some: currentFilters
+                  }
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+
+      // Récupérer tous les checkpoints pour le filtre checkpoint
+      const checkpoints = await prisma.checkpoint.findMany({
+        where: currentFilters.checkpointId ? { id: currentFilters.checkpointId } : {},
+        select: {
+          id: true,
+          name: true,
+          zone: true,
+          checkpointType: true,
+          site: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
+          _count: {
+            select: {
+              visits: true
+            }
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        }
+      });
+
+      return {
+        statuses: statuses.map(s => ({ value: s.status, label: s.status, count: s._count.status })),
+        origins: origins.map(o => ({ value: o.origin, label: o.origin, count: o._count.origin })),
+        reasons: reasons.map(r => ({ value: r.reason, label: r.reason, count: r._count.reason })),
+        sites: sites.map(s => ({ 
+          value: s.id, 
+          label: `${s.name} (${s.code})`, 
+          count: s._count.checkpoints, 
+          city: s.city 
+        })),
+        services: services.map(srv => ({ 
+          value: srv.id, 
+          label: `${srv.name} (${srv.type})`, 
+          count: srv._count.rendezvous,
+          type: srv.type
+        })),
+        checkpoints: checkpoints.map(cp => ({ 
+          value: cp.id, 
+          label: `${cp.name} (${cp.zone})`, 
+          count: cp._count.visits,
+          zone: cp.zone,
+          checkpointType: cp.checkpointType,
+          site: cp.site
+        }))
+      };
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération des options de filtre: ${error.message}`);
+    }
+  }
   async createVisit(visitData) {
     try {
       const visit = await prisma.visit.create({
