@@ -1,11 +1,41 @@
 const express = require('express');
 const visitorController = require('./visitor.controller');
 const { authenticateToken } = require('../../middleware/authMiddleware');
+const multer = require('multer');
 
 const router = express.Router();
 
 // Middleware d'authentification pour toutes les routes
 router.use(authenticateToken);
+
+// Configuration Multer pour les uploads de fichiers
+const visitorUpload = multer({
+  storage: multer.memoryStorage(), // Utilise memoryStorage pour les buffers
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  },
+  fileFilter: (req, file, cb) => {
+    // Accepter les images et PDFs
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+    const allowedDocumentTypes = ['application/pdf', ...allowedImageTypes];
+    
+    if (file.fieldname === 'photo') {
+      if (allowedImageTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('La photo doit être une image (JPEG, PNG, JPG, GIF, WebP)'));
+      }
+    } else if (file.fieldname === 'idScan') {
+      if (allowedDocumentTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Le scan d\'ID doit être une image ou un PDF'));
+      }
+    } else {
+      cb(new Error('Type de fichier non autorisé'));
+    }
+  }
+});
 
 /**
  * @swagger
@@ -31,7 +61,7 @@ router.use(authenticateToken);
  *         name: idType
  *         schema:
  *           type: string
- *           enum: [CNIB, PASSEPORT, PERMIS_CONDUITE, CARTE_CONSULAIRE, AUTRE]
+ *           enum: [CNI, PASSEPORT, PERMIS_CONDUITE]
  *         description: Type d'identifiant
  *       - in: query
  *         name: company
@@ -213,10 +243,10 @@ router.get('/filter', visitorController.getFilteredVisitors);
  *                         properties:
  *                           value:
  *                             type: string
- *                             example: "CNIB"
+ *                             example: "CNI"
  *                           label:
  *                             type: string
- *                             example: "CNIB"
+ *                             example: "CNI"
  *                           count:
  *                             type: integer
  *                             example: 45
@@ -344,10 +374,10 @@ router.get('/filter-options', visitorController.getFilterOptions);
  *         id:
  *           type: string
  *           description: ID unique du visiteur
- *         firstname:
+ *         firstName:
  *           type: string
  *           description: Prénom du visiteur
- *         lastname:
+ *         lastName:
  *           type: string
  *           description: Nom du visiteur
  *         email:
@@ -363,10 +393,28 @@ router.get('/filter-options', visitorController.getFilterOptions);
  *           type: string
  *           nullable: true
  *           description: Entreprise du visiteur
- *         fileId:
+ *         idType:
+ *           type: string
+ *           enum: [CNI, PASSEPORT, PERMIS_CONDUITE]
+ *           description: Type d'identité
+ *         idNumber:
+ *           type: string
+ *           description: Numéro d'identité
+ *         idScanUrl:
  *           type: string
  *           nullable: true
- *           description: ID du fichier justificatif
+ *           description: URL du scan de la pièce d'identité
+ *         photoUrl:
+ *           type: string
+ *           nullable: true
+ *           description: URL de la photo du visiteur
+ *         isBlacklisted:
+ *           type: boolean
+ *           description: Statut blacklist
+ *         blacklistReason:
+ *           type: string
+ *           nullable: true
+ *           description: Raison du blacklist
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -375,62 +423,81 @@ router.get('/filter-options', visitorController.getFilterOptions);
  *           type: string
  *           format: date-time
  *           description: Date de mise à jour
- *         file:
- *           $ref: '#/components/schemas/File'
  *     CreateVisitorRequest:
  *       type: object
  *       required:
- *         - firstname
- *         - lastname
+ *         - firstName
+ *         - lastName
+ *         - idType
+ *         - idNumber
  *       properties:
- *         firstname:
+ *         firstName:
  *           type: string
  *           description: Prénom du visiteur
- *           maxLength: 50
- *         lastname:
+ *         lastName:
  *           type: string
  *           description: Nom du visiteur
- *           maxLength: 50
- *         email:
- *           type: string
- *           format: email
- *           description: Email du visiteur
- *         phone:
- *           type: string
- *           description: Téléphone du visiteur
- *         company:
- *           type: string
- *           description: Entreprise du visiteur
- *           maxLength: 100
- *         fileId:
- *           type: string
- *           description: ID du fichier justificatif
- *     UpdateVisitorRequest:
- *       type: object
- *       properties:
- *         firstname:
- *           type: string
- *           description: Prénom du visiteur
- *           maxLength: 50
- *         lastname:
- *           type: string
- *           description: Nom du visiteur
- *           maxLength: 50
- *         email:
- *           type: string
- *           format: email
- *           description: Email du visiteur
- *         phone:
- *           type: string
- *           description: Téléphone du visiteur
- *         company:
- *           type: string
- *           description: Entreprise du visiteur
- *           maxLength: 100
- *         fileId:
+ *         birthDate:
  *           type: string
  *           nullable: true
- *           description: ID du fichier justificatif
+ *           description: Date de naissance
+ *         birthPlace:
+ *           type: string
+ *           nullable: true
+ *           description: Lieu de naissance
+ *         residence:
+ *           type: string
+ *           nullable: true
+ *           description: Résidence
+ *         sexe:
+ *           type: string
+ *           enum: [M, F, HOMME, FEMME]
+ *           nullable: true
+ *           description: Sexe
+ *         givingDate:
+ *           type: string
+ *           nullable: true
+ *           description: Date de délivrance
+ *         expirationDate:
+ *           type: string
+ *           nullable: true
+ *           description: Date d'expiration
+ *         phone:
+ *           type: string
+ *           nullable: true
+ *           description: Téléphone
+ *         email:
+ *           type: string
+ *           format: email
+ *           nullable: true
+ *           description: Email
+ *         idType:
+ *           type: string
+ *           enum: [CNI, PASSEPORT, PERMIS_CONDUITE]
+ *           description: Type d'identité
+ *         idNumber:
+ *           type: string
+ *           description: Numéro d'identité
+ *         idScanUrl:
+ *           type: string
+ *           nullable: true
+ *           description: URL du scan d'ID
+ *         photoUrl:
+ *           type: string
+ *           nullable: true
+ *           description: URL de la photo
+ *         company:
+ *           type: string
+ *           nullable: true
+ *           description: Entreprise
+ *         emergencyContactPhone:
+ *           type: string
+ *           nullable: true
+ *           description: Contact d'urgence - téléphone
+ *         emergencyContactName:
+ *           type: string
+ *           nullable: true
+ *           description: Contact d'urgence - nom
  */
 
 /**
@@ -485,59 +552,54 @@ router.get('/filter-options', visitorController.getFilterOptions);
  */
 router.get('/', visitorController.getAllVisitors);
 
-/**
- * @swagger
- * /api/visitors/site/{siteId}:
- *   get:
- *     summary: Récupérer les visiteurs d'un site spécifique
- *     tags: [Visiteurs]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: siteId
- *         required: true
- *         schema:
- *           type: string
- *         description: ID du site
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Numéro de page
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Nombre d'éléments par page
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Recherche par nom, prénom, email, téléphone ou entreprise
- *     responses:
- *       200:
- *         description: Liste des visiteurs du site
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/VisitorWithSiteCount'
- *                 pagination:
- *                   type: object
- *       403:
- *         description: Accès refusé
- */
-router.get('/site/:siteId', visitorController.getVisitorsBySite);
-
+// /**
+//  * @swagger
+//  * /api/visitors/site/{siteId}:
+//  *   get:
+//  *     summary: Récupérer les visiteurs d'un site spécifique
+//  *     tags: [Visiteurs]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: path
+//  *         name: siteId
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: ID du site
+//  *       - in: query
+//  *         name: page
+//  *         schema:
+//  *           type: integer
+//  *           default: 1
+//  *         description: Numéro de page
+//  *       - in: query
+//  *         name: limit
+//  *         schema:
+//  *           type: integer
+//  *           default: 10
+//  *         description: Nombre d'éléments par page
+//  *       - in: query
+//  *         name: search
+//  *         schema:
+//  *           type: string
+//  *         description: Recherche par nom, prénom, email, téléphone ou entreprise
+//  *     responses:
+//  *       200:
+//  *         description: Liste des visiteurs du site
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 success:
+//  *                   type: boolean
+//  *                 data:
+//  *                   type: array
+//  *                   items:
+//  *                     $ref: '#/components/schemas/Visitor'
+//  *                 pagination:
+//  *                   type: object
 /**
  * @swagger
  * /api/visitors/stats:
@@ -556,21 +618,36 @@ router.get('/stats', visitorController.getVisitorStats);
 
 /**
  * @swagger
- * /api/visitors:
- *   post:
- *     summary: Créer un nouveau visiteur
+ * /api/visitors/week-planning/{siteId}:
+ *   get:
+ *     summary: Récupérer le planning de la semaine automatique pour un site
  *     tags: [Visiteurs]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateVisitorRequest'
+ *     description: |
+ *       Retourne automatiquement le planning de la semaine actuelle (lundi à dimanche) 
+ *       avec les visiteurs uniques et les visites organisées par jour.
+ *       
+ *       **Fonctionnement automatique:**
+ *       - Calcul du lundi de la semaine actuelle
+ *       - Calcul du dimanche de la semaine actuelle  
+ *       - Pas besoin de saisir les dates
+ *       
+ *       **Données retournées:**
+ *       - Planning organisé par jour (YYYY-MM-DD)
+ *       - Liste des visiteurs uniques (sans duplication)
+ *       - Statistiques de la semaine
+ *     parameters:
+ *       - in: path
+ *         name: siteId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID du site concerné
  *     responses:
- *       201:
- *         description: Visiteur créé avec succès
+ *       200:
+ *         description: Planning de la semaine récupéré avec succès
  *         content:
  *           application/json:
  *             schema:
@@ -578,16 +655,222 @@ router.get('/stats', visitorController.getVisitorStats);
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 message:
  *                   type: string
+ *                   example: 'Planning de la semaine récupéré avec succès'
  *                 data:
- *                   $ref: '#/components/schemas/Visitor'
+ *                   type: object
+ *                   properties:
+ *                     weekPeriod:
+ *                       type: object
+ *                       description: Période automatique (semaine actuelle)
+ *                       properties:
+ *                         start:
+ *                           type: string
+ *                           format: date-time
+ *                           example: '2025-12-01T00:00:00.000Z'
+ *                           description: Début automatique (lundi)
+ *                         end:
+ *                           type: string
+ *                           format: date-time
+ *                           example: '2025-12-07T23:59:59.999Z'
+ *                           description: Fin automatique (dimanche)
+ *                         siteId:
+ *                           type: string
+ *                           format: uuid
+ *                           description: ID du site
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         totalVisits:
+ *                           type: integer
+ *                           example: 15
+ *                           description: Nombre total de visites
+ *                         totalVisitors:
+ *                           type: integer
+ *                           example: 12
+ *                           description: Nombre de visiteurs uniques
+ *                         visitsByDay:
+ *                           type: integer
+ *                           example: 5
+ *                           description: Nombre de jours avec visites
+ *                         averageVisitsPerDay:
+ *                           type: string
+ *                           example: '3.0'
+ *                           description: Moyenne de visites par jour
+ *                     planning:
+ *                       type: object
+ *                       description: Visites organisées par jour (format: YYYY-MM-DD)
+ *                       example:
+ *                         '2025-12-01':
+ *                           - id: 'visit-uuid-1'
+ *                             visitDate: '2025-12-01T09:00:00.000Z'
+ *                             exitDate: '2025-12-01T10:30:00.000Z'
+ *                             purpose: 'Réunion commerciale'
+ *                             status: 'COMPLETED'
+ *                             visitorId: 'visitor-uuid-1'
+ *                             agentId: 'agent-uuid-1'
+ *                             visitor:
+ *                               id: 'visitor-uuid-1'
+ *                               firstName: 'Jean'
+ *                               lastName: 'Dupont'
+ *                             agent:
+ *                               id: 'agent-uuid-1'
+ *                               firstName: 'Marie'
+ *                               lastName: 'Curie'
+ *                     visitors:
+ *                       type: array
+ *                       description: Liste des visiteurs uniques (sans duplication)
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                             description: ID du visiteur
+ *                           firstName:
+ *                             type: string
+ *                             example: 'Jean'
+ *                             description: Prénom du visiteur
+ *                           lastName:
+ *                             type: string
+ *                             example: 'Dupont'
+ *                             description: Nom du visiteur
+ *                           phone:
+ *                             type: string
+ *                             example: '+22612345678'
+ *                           email:
+ *                             type: string
+ *                             format: email
+ *                             example: 'jean.dupont@example.com'
+ *                           company:
+ *                             type: string
+ *                             example: 'Société ABC'
+ *                           photoUrl:
+ *                             type: string
+ *                             example: '/uploads/visitors/photo_jean_dupont.jpg'
+ *                           visitsCount:
+ *                             type: integer
+ *                             example: 2
+ *                             description: Nombre de visites cette semaine
+ *       403:
+ *         description: Accès refusé - permissions insuffisantes
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/week-planning/:siteId', visitorController.getWeekPlanning);
+
+/**
+ * @swagger
+ * /api/visitors:
+ *   post:
+ *     summary: Créer un nouveau visiteur avec upload de fichiers
+ *     tags: [Visiteurs]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               birthDate:
+ *                 type: string
+ *                 nullable: true
+ *               birthPlace:
+ *                 type: string
+ *                 nullable: true
+ *               residence:
+ *                 type: string
+ *                 nullable: true
+ *               sexe:
+ *                 type: string
+ *                 enum: [M, F, HOMME, FEMME]
+ *                 nullable: true
+ *               givingDate:
+ *                 type: string
+ *               expirationDate:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 nullable: true
+ *               idType:
+ *                 type: string
+ *                 enum: [CNI, PASSEPORT, PERMIS_CONDUITE]
+ *               idNumber:
+ *                 type: string
+ *               company:
+ *                 type: string
+ *                 nullable: true
+ *               emergencyContactPhone:
+ *                 type: string
+ *                 nullable: true
+ *               emergencyContactName:
+ *                 type: string
+ *                 nullable: true
+ * 
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *                 description: Photo du visiteur (image JPEG/PNG)
+ * 
+ *               idScan:
+ *                 type: string
+ *                 format: binary
+ *                 description: Scan de la pièce d'identité (PDF ou image)
+ * 
+ *     responses:
+ *       201:
+ *         description: Visiteur créé avec succès
+ *       400:
+ *         description: Données invalides
  *       403:
  *         description: Accès refusé
- *       400:
- *         description: Fichier non trouvé
+ *       409:
+ *         description: Visiteur existe déjà
  */
-router.post('/', visitorController.createVisitor);
+router.post(
+  '/',
+  visitorUpload.fields([
+    { name: 'photo', maxCount: 1 },
+    { name: 'idScan', maxCount: 1 }
+  ]),
+  visitorController.createVisitor
+);
+
+
+// /**
+//  * @swagger
+//  * /api/visitors/no-files:
+//  *   post:
+//  *     summary: Créer un visiteur sans fichiers
+//  *     tags: [Visiteurs]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             $ref: '#/components/schemas/CreateVisitorRequest'
+//  *     responses:
+//  *       201:
+//  *         description: Visiteur créé avec succès
+//  *       400:
+//  *         description: Données invalides
+//  *       403:
+//  *         description: Accès refusé
+//  */
+// router.post('/no-files', visitorController.createVisitor);
 
 /**
  * @swagger
@@ -622,6 +905,88 @@ router.post('/', visitorController.createVisitor);
  *         description: Visiteur non trouvé
  */
 router.get('/:id', visitorController.getVisitorById);
+
+// /**
+//  * @swagger
+//  * /api/visitors/{id}/photo:
+//  *   get:
+//  *     summary: Récupérer la photo d'un visiteur
+//  *     tags: [Visiteurs]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: ID du visiteur
+//  *     responses:
+//  *       200:
+//  *         description: Photo du visiteur
+//  *         content:
+//  *           image/*:
+//  *             schema:
+//  *               type: string
+//  *               format: binary
+//  *       404:
+//  *         description: Photo non trouvée
+//  */
+// router.get('/:id/photo', visitorController.getVisitorPhoto);
+
+// /**
+//  * @swagger
+//  * /api/visitors/{id}/idscan:
+//  *   get:
+//  *     summary: Récupérer le scan d'ID d'un visiteur
+//  *     tags: [Visiteurs]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: ID du visiteur
+//  *     responses:
+//  *       200:
+//  *         description: Scan d'ID du visiteur
+//  *         content:
+//  *           application/pdf:
+//  *             schema:
+//  *               type: string
+//  *               format: binary
+//  *           image/*:
+//  *             schema:
+//  *               type: string
+//  *               format: binary
+//  *       404:
+//  *         description: Scan d'ID non trouvé
+//  */
+// router.get('/:id/idscan', visitorController.getVisitorIdScan);
+
+// /**
+//  * @swagger
+//  * /api/visitors/{id}/download-idscan:
+//  *   get:
+//  *     summary: Télécharger le scan d'ID d'un visiteur
+//  *     tags: [Visiteurs]
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: ID du visiteur
+//  *     responses:
+//  *       200:
+//  *         description: Scan d'ID téléchargé
+//  *         content:
+//  *           application/octet-stream:
+//  *             schema:
+//  *               type: string
+//  *               format: binary
+//  *       404:
+//  *         description: Scan d'ID non trouvé
+//  */
+// router.get('/:id/download-idscan', visitorController.downloadIdScan);
 
 /**
  * @swagger
@@ -700,7 +1065,7 @@ router.get('/:id/history', visitorController.getVisitorHistory);
  * @swagger
  * /api/visitors/{id}:
  *   put:
- *     summary: Mettre à jour un visiteur
+ *     summary: Mettre à jour un visiteur (sans fichiers)
  *     tags: [Visiteurs]
  *     security:
  *       - bearerAuth: []
@@ -716,7 +1081,7 @@ router.get('/:id/history', visitorController.getVisitorHistory);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateVisitorRequest'
+ *             $ref: '#/components/schemas/CreateVisitorRequest'
  *     responses:
  *       200:
  *         description: Visiteur mis à jour avec succès
@@ -726,6 +1091,95 @@ router.get('/:id/history', visitorController.getVisitorHistory);
  *         description: Visiteur non trouvé
  */
 router.put('/:id', visitorController.updateVisitor);
+
+// /**
+//  * @swagger
+//  * /api/visitors/{id}/files:
+//  *   put:
+//  *     summary: Mettre à jour un visiteur avec fichiers
+//  *     tags: [Visiteurs]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: path
+//  *         name: id
+//  *         required: true
+//  *         schema:
+//  *           type: string
+//  *         description: ID du visiteur
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         multipart/form-data:
+//  *           schema:
+//  *             type: object
+//  *             properties:
+//  *               firstName:
+//  *                 type: string
+//  *                 nullable: true
+//  *               lastName:
+//  *                 type: string
+//  *                 nullable: true
+//  *               birthDate:
+//  *                 type: string
+//  *                 nullable: true
+//  *               birthPlace:
+//  *                 type: string
+//  *                 nullable: true
+//  *               residence:
+//  *                 type: string
+//  *                 nullable: true
+//  *               sexe:
+//  *                 type: string
+//  *                 enum: [M, F, HOMME, FEMME]
+//  *                 nullable: true
+//  *               givingDate:
+//  *                 type: string
+//  *                 nullable: true
+//  *               expirationDate:
+//  *                 type: string
+//  *                 nullable: true
+//  *               phone:
+//  *                 type: string
+//  *                 nullable: true
+//  *               email:
+//  *                 type: string
+//  *                 format: email
+//  *                 nullable: true
+//  *               company:
+//  *                 type: string
+//  *                 nullable: true
+//  *               emergencyContactPhone:
+//  *                 type: string
+//  *                 nullable: true
+//  *               emergencyContactName:
+//  *                 type: string
+//  *                 nullable: true
+//  *               photo:
+//  *                 type: string
+//  *                 format: binary
+//  *                 description: Nouvelle photo (image, max 5MB)
+//  *               idScan:
+//  *                 type: string
+//  *                 format: binary
+//  *                 description: Nouveau scan d'ID (PDF ou image, max 5MB)
+//  *     responses:
+//  *       200:
+//  *         description: Visiteur mis à jour avec succès
+//  *       400:
+//  *         description: Données invalides
+//  *       403:
+//  *         description: Accès refusé
+//  *       404:
+//  *         description: Visiteur non trouvé
+//  */
+// router.put('/:id/files',
+//   visitorUpload.fields([
+//     { name: 'photo', maxCount: 1 },
+//     { name: 'idScan', maxCount: 1 }
+//   ]),
+//   visitorController.updateVisitorWithFiles
+// );
 
 /**
  * @swagger

@@ -11,10 +11,13 @@ const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class CheckpointController {
   getFilteredCheckpoints = asyncHandler(async (req, res) => {
+    // Valider les filtres avec le schéma
+    const validatedFilters = checkpointQuerySchema.parse(req.query);
+    
     const filters = {
-      ...req.query,
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 10
+      ...validatedFilters,
+      page: validatedFilters.page || 1,
+      limit: validatedFilters.limit || 10
     };
 
     const result = await checkpointService.getFilteredCheckpoints(filters);

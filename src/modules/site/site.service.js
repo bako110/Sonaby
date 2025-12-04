@@ -135,7 +135,7 @@ class SiteService {
       ]);
 
       // Récupérer les options pour les filtres automatiques
-      const filterOptions = await this.getFilterOptions(whereClause);
+      const filterOptions = await this.getFilterOptionsSimple();
 
       return {
         sites,
@@ -154,78 +154,66 @@ class SiteService {
     }
   }
 
-  async getFilterOptions(currentFilters = {}) {
+  // services/site.service.js
+
+  async getFilterOptionsSimple() {
     try {
+      console.log('DEBUG - Début récupération des options de filtre');
+      
       // Récupérer toutes les villes uniques
       const cities = await prisma.site.groupBy({
         by: ['city'],
-        where: {
-          ...currentFilters,
-          city: { not: null }
-        },
-        _count: {
-          city: true
-        },
-        orderBy: {
-          city: 'asc'
-        }
+        where: { city: { not: null } },
+        _count: { city: true },
+        orderBy: { city: 'asc' }
       });
+      console.log('DEBUG - Cities récupérées:', cities);
 
-      // Récupérer tous les managers uniques
       const managers = await prisma.site.groupBy({
         by: ['manager'],
-        where: {
-          ...currentFilters,
-          manager: { not: null }
-        },
-        _count: {
-          manager: true
-        },
-        orderBy: {
-          manager: 'asc'
-        }
+        where: { manager: { not: null } },
+        _count: { manager: true },
+        orderBy: { manager: 'asc' }
       });
+      console.log('DEBUG - Managers récupérés:', managers);
 
-      // Récupérer tous les types d'activité uniques
       const activityTypes = await prisma.site.groupBy({
         by: ['activityType'],
-        where: {
-          ...currentFilters,
-          activityType: { not: null }
-        },
-        _count: {
-          activityType: true
-        },
-        orderBy: {
-          activityType: 'asc'
-        }
+        where: { activityType: { not: null } },
+        _count: { activityType: true },
+        orderBy: { activityType: 'asc' }
       });
+      console.log('DEBUG - ActivityTypes récupérés:', activityTypes);
 
-      // Récupérer tous les statuts uniques
       const statuses = await prisma.site.groupBy({
         by: ['status'],
-        where: {
-          ...currentFilters,
-          status: { not: null }
-        },
-        _count: {
-          status: true
-        },
-        orderBy: {
-          status: 'asc'
-        }
+        where: { status: { not: null } },
+        _count: { status: true },
+        orderBy: { status: 'asc' }
       });
+      console.log('DEBUG - Statuses récupérés:', statuses);
 
-      return {
-        cities: cities.map(c => ({ value: c.city, label: c.city, count: c._count.city })),
-        managers: managers.map(m => ({ value: m.manager, label: m.manager, count: m._count.manager })),
-        activityTypes: activityTypes.map(at => ({ value: at.activityType, label: at.activityType, count: at._count.activityType })),
-        statuses: statuses.map(s => ({ value: s.status, label: s.status, count: s._count.status }))
+      const result = {
+        success: true,
+        data: {
+          cities: cities.map(c => ({ value: c.city, label: c.city, count: c._count.city })),
+          managers: managers.map(m => ({ value: m.manager, label: m.manager, count: m._count.manager })),
+          activityTypes: activityTypes.map(at => ({ value: at.activityType, label: at.activityType, count: at._count.activityType })),
+          statuses: statuses.map(s => ({ value: s.status, label: s.status, count: s._count.status }))
+        }
       };
+      
+      console.log('DEBUG - Résultat final:', result);
+      return result;
     } catch (error) {
-      throw new Error(`Erreur lors de la récupération des options de filtre: ${error.message}`);
+      console.log('DEBUG - Erreur:', error);
+      return {
+        success: false,
+        message: `Erreur: ${error.message}`
+      };
     }
   }
+
   async createSite(siteData) {
     try {
       // Générer un code unique si aucun n'est fourni

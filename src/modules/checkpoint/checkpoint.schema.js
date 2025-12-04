@@ -53,11 +53,17 @@ const checkpointQuerySchema = z.object({
   limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
   search: z.string().optional(),
   siteId: z.string().optional(),
+  name: z.string().optional(),
   status: z.string().optional(),
   checkpointType: z.string().optional(),
   priority: z.string().optional(),
   agentId: z.string().optional(),
-  active: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
+  active: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+  // Filtres avancés
+  dateCreationStart: z.string().datetime().optional(),
+  dateCreationEnd: z.string().datetime().optional(),
+  hasAgent: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+  inAlert: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
 });
 
 // Schéma pour l'assignation d'agent(s) à checkpoint

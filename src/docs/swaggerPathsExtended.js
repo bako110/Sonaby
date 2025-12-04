@@ -442,6 +442,237 @@ const swaggerPathsExtended = {
     }
   },
 
+  '/api/v1/visitors/week-planning/{siteId}': {
+    get: {
+      tags: ['Visitors'],
+      summary: 'Récupérer le planning de la semaine automatique pour un site',
+      description: 'Retourne automatiquement le planning de la semaine actuelle (lundi à dimanche) avec les visiteurs uniques et les visites organisées par jour',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { 
+          name: 'siteId', 
+          in: 'path', 
+          required: true, 
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID du site concerné'
+        }
+      ],
+      responses: {
+        200: {
+          description: 'Planning de la semaine récupéré avec succès',
+          content: { 
+            'application/json': { 
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { 
+                    type: 'boolean', 
+                    example: true,
+                    description: 'Statut de la requête'
+                  },
+                  message: { 
+                    type: 'string', 
+                    example: 'Planning de la semaine récupéré avec succès',
+                    description: 'Message informatif'
+                  },
+                  data: {
+                    type: 'object',
+                    properties: {
+                      weekPeriod: {
+                        type: 'object',
+                        description: 'Période automatique (semaine actuelle: lundi à dimanche)',
+                        properties: {
+                          start: { 
+                            type: 'string', 
+                            format: 'date-time',
+                            example: '2025-12-01T00:00:00.000Z',
+                            description: 'Début automatique (lundi de la semaine actuelle)'
+                          },
+                          end: { 
+                            type: 'string', 
+                            format: 'date-time',
+                            example: '2025-12-07T23:59:59.999Z',
+                            description: 'Fin automatique (dimanche de la semaine actuelle)'
+                          },
+                          siteId: { 
+                            type: 'string', 
+                            format: 'uuid',
+                            description: 'ID du site concerné'
+                          }
+                        }
+                      },
+                      stats: {
+                        type: 'object',
+                        description: 'Statistiques de la semaine',
+                        properties: {
+                          totalVisits: { 
+                            type: 'integer', 
+                            example: 15,
+                            description: 'Nombre total de visites'
+                          },
+                          totalVisitors: { 
+                            type: 'integer', 
+                            example: 12,
+                            description: 'Nombre de visiteurs uniques'
+                          },
+                          visitsByDay: { 
+                            type: 'integer', 
+                            example: 5,
+                            description: 'Nombre de jours avec des visites'
+                          },
+                          averageVisitsPerDay: { 
+                            type: 'string', 
+                            example: '3.0',
+                            description: 'Moyenne de visites par jour'
+                          }
+                        }
+                      },
+                      planning: {
+                        type: 'object',
+                        description: 'Visites organisées par jour (format: YYYY-MM-DD)',
+                        example: {
+                          '2025-12-01': [
+                            {
+                              id: 'visit-uuid-1',
+                              visitDate: '2025-12-01T09:00:00.000Z',
+                              exitDate: '2025-12-01T10:30:00.000Z',
+                              purpose: 'Réunion commerciale',
+                              status: 'COMPLETED',
+                              visitorId: 'visitor-uuid-1',
+                              agentId: 'agent-uuid-1',
+                              visitor: {
+                                id: 'visitor-uuid-1',
+                                firstName: 'Jean',
+                                lastName: 'Dupont'
+                              },
+                              agent: {
+                                id: 'agent-uuid-1',
+                                firstName: 'Marie',
+                                lastName: 'Curie'
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      visitors: {
+                        type: 'array',
+                        description: 'Liste des visiteurs uniques (sans duplication)',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { 
+                              type: 'string', 
+                              format: 'uuid',
+                              description: 'ID du visiteur'
+                            },
+                            firstName: { 
+                              type: 'string', 
+                              example: 'Jean',
+                              description: 'Prénom du visiteur'
+                            },
+                            lastName: { 
+                              type: 'string', 
+                              example: 'Dupont',
+                              description: 'Nom du visiteur'
+                            },
+                            phone: { 
+                              type: 'string', 
+                              example: '+22612345678',
+                              description: 'Téléphone du visiteur'
+                            },
+                            email: { 
+                              type: 'string', 
+                              format: 'email',
+                              example: 'jean.dupont@example.com',
+                              description: 'Email du visiteur'
+                            },
+                            company: { 
+                              type: 'string', 
+                              example: 'Société ABC',
+                              description: 'Entreprise du visiteur'
+                            },
+                            photoUrl: { 
+                              type: 'string', 
+                              example: '/uploads/visitors/photo_jean_dupont.jpg',
+                              description: 'URL de la photo du visiteur'
+                            },
+                            visitsCount: { 
+                              type: 'integer', 
+                              example: 2,
+                              description: 'Nombre de visites ce visiteur a effectuées cette semaine'
+                            }
+                          }
+                        }
+                      },
+                      visits: {
+                        type: 'array',
+                        description: 'Liste complète des visites (référence)',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string', format: 'uuid' },
+                            visitDate: { type: 'string', format: 'date-time' },
+                            exitDate: { type: 'string', format: 'date-time' },
+                            purpose: { type: 'string' },
+                            status: { type: 'string' },
+                            visitorId: { type: 'string', format: 'uuid' },
+                            agentId: { type: 'string', format: 'uuid' }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        403: {
+          description: 'Accès refusé - permissions insuffisantes',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Accès refusé. Permissions insuffisantes pour consulter le planning.' }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: 'Site non trouvé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Site non trouvé' }
+                }
+              }
+            }
+          }
+        },
+        500: {
+          description: 'Erreur serveur',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Erreur lors de la récupération du planning' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
   '/api/v1/visitors/{id}': {
     get: {
       tags: ['Visitors'],
@@ -479,37 +710,6 @@ const swaggerPathsExtended = {
       responses: {
         200: {
           description: 'Visiteur supprimé',
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiResponse' } } }
-        }
-      }
-    }
-  },
-
-  '/api/v1/visitors/{id}/blacklist': {
-    post: {
-      tags: ['Visitors'],
-      summary: 'Ajouter un visiteur à la liste noire',
-      security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-      requestBody: {
-        required: true,
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/BlacklistVisitorInput' } } }
-      },
-      responses: {
-        200: {
-          description: 'Visiteur ajouté à la liste noire',
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiResponse' } } }
-        }
-      }
-    },
-    delete: {
-      tags: ['Visitors'],
-      summary: 'Retirer un visiteur de la liste noire',
-      security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-      responses: {
-        200: {
-          description: 'Visiteur retiré de la liste noire',
           content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiResponse' } } }
         }
       }

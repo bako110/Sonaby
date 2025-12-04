@@ -103,8 +103,8 @@ class NonDesirableService {
           visitor: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               phone: true,
               email: true,
               company: true,
@@ -116,8 +116,8 @@ class NonDesirableService {
           reporter: {
             select: {
               id: true,
-              firstname: true,
-              lastname: true,
+              firstName: true,
+              lastName: true,
               email: true
             }
           }

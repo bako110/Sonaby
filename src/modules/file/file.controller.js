@@ -1,67 +1,62 @@
 const fileService = require('./file.service');
-const { fileQuerySchema, fileIdSchema, fileSearchSchema } = require('./file.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
-const path = require('path');
 
 class FileController {
+
   uploadSingle = asyncHandler(async (req, res) => {
     if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Aucun fichier fourni' 
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun fichier fourni'
       });
     }
 
-    try {
-      const file = await fileService.createFile(req.file);
-      res.status(201).json({
-        success: true,
-        message: 'Fichier uploadé avec succès',
-        data: {
-          id: file.id,
-          originalName: file.originalName,
-          mimeType: file.mimeType,
-          size: file.size,
-          createdAt: file.createdAt
-        }
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
-    }
+    const file = await fileService.createFile(req.file);
+
+    // Utiliser 'path' à la place de 'filename'
+    const fileUrl = `${req.protocol}://${req.get('host')}/${file.path.replace(/\\/g, '/')}`;
+
+    res.status(201).json({
+      success: true,
+      message: "Fichier uploadé avec succès",
+      data: {
+        id: file.id,
+        originalName: file.originalName,
+        mimeType: file.mimeType,
+        size: file.size,
+        createdAt: file.createdAt,
+        url: fileUrl
+      }
+    });
   });
 
   uploadMultiple = asyncHandler(async (req, res) => {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Aucun fichier fourni' 
+      return res.status(400).json({
+        success: false,
+        message: "Aucun fichier fourni"
       });
     }
 
-    try {
-      const files = await fileService.createMultipleFiles(req.files);
-      res.status(201).json({
-        success: true,
-        message: `${files.length} fichier(s) uploadé(s) avec succès`,
-        data: files.map(file => ({
-          id: file.id,
-          originalName: file.originalName,
-          mimeType: file.mimeType,
-          size: file.size,
-          createdAt: file.createdAt
-        }))
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
-    }
+    const files = await fileService.createMultipleFiles(req.files);
+
+    const filesWithUrl = files.map(f => ({
+      id: f.id,
+      originalName: f.originalName,
+      mimeType: f.mimeType,
+      size: f.size,
+      createdAt: f.createdAt,
+      url: `${req.protocol}://${req.get('host')}/${f.path.replace(/\\/g, '/')}`
+    }));
+
+    res.status(201).json({
+      success: true,
+      message: `${files.length} fichier(s) uploadé(s)`,
+      data: filesWithUrl
+    });
   });
 
+  
   getFileById = asyncHandler(async (req, res) => {
     const validated = fileIdSchema.parse(req.params);
     

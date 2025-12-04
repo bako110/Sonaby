@@ -1,54 +1,38 @@
 const { PrismaClient } = require('@prisma/client');
-const fs = require('fs');
-const path = require('path');
-
 const prisma = new PrismaClient();
 
 class FileService {
+
   async createFile(fileData) {
-    try {
-      const file = await prisma.file.create({
-        data: {
-          originalName: fileData.originalname,
-          mimeType: fileData.mimetype,
-          size: fileData.size,
-          path: fileData.path
-        }
-      });
-      return file;
-    } catch (error) {
-      throw new Error(`Erreur lors de la création du fichier: ${error.message}`);
-    }
+    const file = await prisma.file.create({
+      data: {
+        originalName: fileData.originalname,
+        mimeType: fileData.mimetype,
+        size: fileData.size,
+        path: fileData.path
+      }
+    });
+
+    return file;
   }
 
   async createMultipleFiles(filesData) {
-    try {
-      const files = await prisma.file.createMany({
-        data: filesData.map(file => ({
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-          path: file.path
-        }))
-      });
+    await prisma.file.createMany({
+      data: filesData.map(f => ({
+        originalName: f.originalname,
+        mimeType: f.mimetype,
+        size: f.size,
+        path: f.path
+      }))
+    });
 
-      // Récupérer les fichiers créés avec leurs IDs
-      const createdFiles = await prisma.file.findMany({
-        where: {
-          path: {
-            in: filesData.map(file => file.path)
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
-        take: filesData.length
-      });
-
-      return createdFiles;
-    } catch (error) {
-      throw new Error(`Erreur lors de la création des fichiers: ${error.message}`);
-    }
+    return prisma.file.findMany({
+      where: {
+        path: {
+          in: filesData.map(f => f.path)
+        }
+      }
+    });
   }
 
   async getFileById(id) {

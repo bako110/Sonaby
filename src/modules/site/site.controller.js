@@ -22,25 +22,26 @@ class SiteController {
     });
   });
 
-  getFilterOptions = asyncHandler(async (req, res) => {
-    try {
-      // Construire les filtres à partir des query params (sauf les options)
-      const { page, limit, ...currentFilters } = req.query;
-      
-      const filterOptions = await siteService.getFilterOptions(currentFilters);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Options de filtre récupérées avec succès',
-        data: filterOptions
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
-    }
-  });
+  // controllers/site.controller.js
+
+getFilterOptions = asyncHandler(async (req, res) => {
+  try {
+    const filterOptions = await siteService.getFilterOptionsSimple();
+
+    return res.status(200).json({
+      success: true,
+      message: "Options de filtre récupérées avec succès",
+      data: filterOptions.data
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 
   createSite = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN

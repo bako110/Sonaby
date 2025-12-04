@@ -8,15 +8,16 @@ class CheckpointService {
       const {
         search,
         siteId,
+        name,
         zone,
         checkpointType,
         status,
         priority,
         agentId,
-        dateCreationDebut,
-        dateCreationFin,
-        avecAgent,
-        enAlerte,
+        dateCreationStart,
+        dateCreationEnd,
+        hasAgent,
+        inAlert,
         page = 1,
         limit = 10
       } = filters;
@@ -33,6 +34,10 @@ class CheckpointService {
           { description: { contains: search, mode: 'insensitive' } },
           { sosId: { contains: search, mode: 'insensitive' } }
         ];
+      }
+
+      if (name) {
+        whereClause.name = { contains: name, mode: 'insensitive' };
       }
 
       if (siteId) {
@@ -60,26 +65,26 @@ class CheckpointService {
       }
 
       // Filtres avancés
-      if (dateCreationDebut || dateCreationFin) {
+      if (dateCreationStart || dateCreationEnd) {
         whereClause.createdAt = {};
-        if (dateCreationDebut) {
-          whereClause.createdAt.gte = new Date(dateCreationDebut);
+        if (dateCreationStart) {
+          whereClause.createdAt.gte = new Date(dateCreationStart);
         }
-        if (dateCreationFin) {
-          whereClause.createdAt.lte = new Date(dateCreationFin);
+        if (dateCreationEnd) {
+          whereClause.createdAt.lte = new Date(dateCreationEnd);
         }
       }
 
-      if (avecAgent !== undefined) {
-        if (avecAgent === 'true') {
+      if (hasAgent !== undefined) {
+        if (hasAgent === true) {
           whereClause.agentId = { not: null };
-        } else if (avecAgent === 'false') {
+        } else if (hasAgent === false) {
           whereClause.agentId = null;
         }
       }
 
-      if (enAlerte !== undefined) {
-        if (enAlerte === 'true') {
+      if (inAlert !== undefined) {
+        if (inAlert === true) {
           // Vérifier s'il y a des SOS actifs pour ce checkpoint
           const checkpointsWithActiveSOS = await prisma.checkpoint.findMany({
             where: {
@@ -94,7 +99,7 @@ class CheckpointService {
           whereClause.id = {
             in: checkpointsWithActiveSOS.map(cp => cp.id)
           };
-        } else if (enAlerte === 'false') {
+        } else if (inAlert === false) {
           // Checkpoints sans SOS actif
           const checkpointsWithActiveSOS = await prisma.checkpoint.findMany({
             where: {
@@ -107,7 +112,7 @@ class CheckpointService {
             select: { id: true }
           });
           whereClause.id = {
-            notIn: checkpointsWithActiveSOS.map(cp => cp.id)
+            not: checkpointsWithActiveSOS.map(cp => cp.id)
           };
         }
       }
@@ -182,7 +187,6 @@ class CheckpointService {
       const zones = await prisma.checkpoint.groupBy({
         by: ['zone'],
         where: {
-          ...currentFilters,
           zone: { not: null }
         },
         _count: {
@@ -197,7 +201,6 @@ class CheckpointService {
       const checkpointTypes = await prisma.checkpoint.groupBy({
         by: ['checkpointType'],
         where: {
-          ...currentFilters,
           checkpointType: { not: null }
         },
         _count: {
@@ -212,7 +215,6 @@ class CheckpointService {
       const statuses = await prisma.checkpoint.groupBy({
         by: ['status'],
         where: {
-          ...currentFilters,
           status: { not: null }
         },
         _count: {
@@ -227,7 +229,6 @@ class CheckpointService {
       const priorities = await prisma.checkpoint.groupBy({
         by: ['priority'],
         where: {
-          ...currentFilters,
           priority: { not: null }
         },
         _count: {
