@@ -231,109 +231,104 @@ class NonDesirableService {
     }
   }
 
-  async createUnknownNonDesirable(nonDesirableData, reportedBy) {
-    try {
-      const {
-        firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
-        givingDate, expirationDate, phone, email, company, nationality,
-        idScanUrl, photoUrl, reason, incidentDate, incidentLocation, severityLevel
-      } = nonDesirableData;
+async createUnknownNonDesirable(nonDesirableData, reportedBy) {
+  try {
+    const {
+      firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
+      givingDate, expirationDate, phone, email, company, nationality,
+      idScanUrl, photoUrl, reason, incidentDate, incidentLocation, severityLevel,
+      attachedFileUrl, attachedFileName, attachedFileType, attachedFileSize
+    } = nonDesirableData;
 
-      // Fonction pour parser les dates en format DD/MM/YYYY ou YYYY-MM-DD
-      const parseDate = (dateString) => {
-        if (!dateString) return null;
-        
-        // Format DD/MM/YYYY
-        if (dateString.includes('/')) {
-          const [day, month, year] = dateString.split('/');
-          return new Date(year, month - 1, day); // month - 1 car les mois commencent à 0
-        }
-        
-        // Format YYYY-MM-DD ou autres formats standards
-        const date = new Date(dateString);
-        return isNaN(date.getTime()) ? null : date;
-      };
+    // Fonction pour parser les dates en format DD/MM/YYYY ou YYYY-MM-DD
+    const parseDate = (dateString) => {
+      if (!dateString) return null;
+      if (dateString.includes('/')) {
+        const [day, month, year] = dateString.split('/');
+        return new Date(year, month - 1, day);
+      }
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    };
 
-      // Construire un reason structuré avec toutes les informations
-      const fullReason = {
-        mainReason: reason,
-        personalInfo: {
-          firstName,
-          lastName,
-          birthDate,
-          birthPlace,
-          sexe,
-          nationality
-        },
-        identification: {
-          idType,
-          idNumber,
-          idScanUrl,
-          givingDate,
-          expirationDate
-        },
-        contact: {
-          phone,
-          email,
-          company
-        },
-        incident: {
-          incidentDate,
-          incidentLocation,
-          severityLevel
-        },
-        photos: {
-          photoUrl
-        }
-      };
+    // Construire la structure reason pour le JSON
+    const fullReason = {
+      mainReason: reason,
+      personalInfo: { firstName, lastName, birthDate, birthPlace, sexe, nationality },
+      identification: { idType, idNumber, idScanUrl, givingDate, expirationDate },
+      contact: { phone, email, company },
+      incident: { incidentDate, incidentLocation, severityLevel },
+      photos: { photoUrl }
+    };
 
-      // Créer directement dans NonDesirable (plus simple, pas de contraintes)
-      const nonDesirableEntry = await prisma.nonDesirable.create({
-        data: {
-          // Pas de visitorId car c'est un inconnu - on utilise NULL
-          visitorId: null,
-          reason: JSON.stringify(fullReason),
-          reportedBy
-        }
-      });
-
-      // Retourner les données formatées pour le frontend
-      return {
-        id: nonDesirableEntry.id,
-        type: 'unknown',
+    // Créer l'entrée NonDesirable avec **tous les champs remplis**
+    const nonDesirableEntry = await prisma.nonDesirable.create({
+      data: {
         visitorId: null,
-        reason: reason,
-        createdAt: nonDesirableEntry.createdAt,
-        updatedAt: nonDesirableEntry.updatedAt,
-        firstName,
-        lastName,
-        birthDate,
-        birthPlace,
-        sexe,
-        nationality,
-        phone,
-        email,
-        company,
-        idType,
-        idNumber,
-        idScanUrl,
-        givingDate,
-        expirationDate,
-        photoUrl,
-        isBlacklisted: true,
-        blacklistReason: reason,
+        reason: JSON.stringify(fullReason),
+        reportedBy,
+        firstName: firstName || "Inconnu",
+        lastName: lastName || "Inconnu",
+        birthDate: parseDate(birthDate),
+        birthPlace: birthPlace || "",
+        sexe: sexe || "",
+        nationality: nationality || "",
+        phone: phone || "",
+        email: email || "",
+        company: company || "",
+        idType: idType || "",
+        idNumber: idNumber || "",
+        idScanUrl: idScanUrl || "",
+        photoUrl: photoUrl || "",
+        givingDate: parseDate(givingDate),
+        expirationDate: parseDate(expirationDate),
+        incidentDate: parseDate(incidentDate),
+        incidentLocation: incidentLocation || "",
         severityLevel: severityLevel || 2,
-        incidentDate,
-        incidentLocation,
-        reporter: {
-          id: reportedBy,
-          // Note: Vous pourriez vouloir récupérer les infos complètes du reporter ici
-        }
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la création de l'indésirable inconnu: ${error.message}`);
-    }
+        attachedFileUrl: attachedFileUrl || "",
+        attachedFileName: attachedFileName || "",
+        attachedFileType: attachedFileType || "",
+        attachedFileSize: attachedFileSize || 0,
+        createdBy: reportedBy || "system"
+      }
+    });
+
+    // Retourner les données pour le frontend
+    return {
+      id: nonDesirableEntry.id,
+      type: 'unknown',
+      visitorId: null,
+      reason,
+      createdAt: nonDesirableEntry.createdAt,
+      updatedAt: nonDesirableEntry.updatedAt,
+      firstName,
+      lastName,
+      birthDate,
+      birthPlace,
+      sexe,
+      nationality,
+      phone,
+      email,
+      company,
+      idType,
+      idNumber,
+      idScanUrl,
+      givingDate,
+      expirationDate,
+      photoUrl,
+      isBlacklisted: true,
+      blacklistReason: reason,
+      severityLevel: severityLevel || 2,
+      incidentDate,
+      incidentLocation,
+      reporter: { id: reportedBy }
+    };
+  } catch (error) {
+    throw new Error(`Erreur lors de la création de l'indésirable inconnu: ${error.message}`);
   }
+}
+
+
 
   async removeNonDesirable(visitorId, removedBy) {
     try {
@@ -406,6 +401,54 @@ class NonDesirableService {
       throw new Error(`Erreur lors de la suppression de l'entrée indésirable: ${error.message}`);
     }
   }
+
+  async getAllNonDesirablesKnown(page = 1, limit = 10, search = null) {
+  const skip = (page - 1) * limit;
+
+  return await prisma.nonDesirable.findMany({
+    where: { visitorId: { not: null } },
+    skip,
+    take: limit,
+    include: {
+      visitor: true,
+      reporter: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+async getAllNonDesirablesUnknown(page = 1, limit = 10, search = null) {
+  const skip = (page - 1) * limit;
+
+  const list = await prisma.nonDesirable.findMany({
+    where: { visitorId: null },
+    skip,
+    take: limit,
+    include: { reporter: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return list.map((item) => {
+    try {
+      const data = JSON.parse(item.reason);
+
+      return {
+        id: item.id,
+        ...data.personalInfo,
+        ...data.contact,
+        ...data.identification,
+        incidentDate: data.incident?.incidentDate,
+        incidentLocation: data.incident?.incidentLocation,
+        severityLevel: data.incident?.severityLevel,
+        reporter: item.reporter,
+      };
+    } catch (e) {
+      return item;
+    }
+  });
+}
+
+
 }
 
 module.exports = new NonDesirableService();

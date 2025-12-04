@@ -926,33 +926,32 @@ const swaggerPathsFinal = {
   },
   // ==================== NONDESIRABLES ENDPOINTS ====================
   '/api/v1/nondesirables': {
-    get: {
-      tags: ['Nondesirables'],
-      summary: 'Lister tous les visiteurs indésirables',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
-        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
-        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Terme de recherche' }
-      ],
-      responses: {
-        200: {
-          description: 'Liste des visiteurs indésirables',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  data: {
-                    type: 'object',
-                    properties: {
-                      nondesirables: {
-                        type: 'array',
-                        items: { $ref: '#/components/schemas/Nondesirable' }
-                      },
-                      pagination: { type: 'object' }
-                    }
+  get: {
+    tags: ['Nondesirables'],
+    summary: 'Lister tous les visiteurs indésirables (connus + inconnus)',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+      { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
+      { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Terme de recherche' }
+    ],
+    responses: {
+      200: {
+        description: 'Liste des visiteurs indésirables',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: {
+                  type: 'object',
+                  properties: {
+                    nondesirables: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Nondesirable' }
+                    },
+                    pagination: { type: 'object' }
                   }
                 }
               }
@@ -960,129 +959,210 @@ const swaggerPathsFinal = {
           }
         }
       }
+    }
+  },
+  post: {
+    tags: ['Nondesirables'],
+    summary: 'Ajouter un visiteur à la liste des indésirables',
+    description:
+      'Ajouter un visiteur existant à la liste des indésirables. Cette action active isBlacklisted=true, ajoute la raison, crée un historique dans BlacklistHistory et une entrée dans NonDesirable.',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/CreateNondesirableInput' },
+          example: {
+            visitorId: '880e8400-e29b-41d4-a716-446655440001',
+            reason: 'Comportement inapproprié lors de la dernière visite'
+          }
+        }
+      }
     },
-    post: {
-      tags: ['Nondesirables'],
-      summary: 'Ajouter un visiteur à la liste des indésirables',
-      description: 'Ajouter un visiteur existant à la liste des indésirables. Cette action va automatiquement activer isBlacklisted=true sur le visiteur, ajouter la raison dans blacklistReason, créer un historique dans BlacklistHistory et une entrée dans NonDesirable.',
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
+    responses: {
+      201: {
+        description: 'Visiteur ajouté à la liste des indésirables avec succès',
         content: {
           'application/json': {
-            schema: { $ref: '#/components/schemas/CreateNondesirableInput' },
-            example: {
-              visitorId: '880e8400-e29b-41d4-a716-446655440001',
-              reason: 'Comportement inapproprié lors de la dernière visite'
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+                data: { $ref: '#/components/schemas/Nondesirable' }
+              }
             }
           }
         }
       },
-      responses: {
-        201: {
-          description: 'Visiteur ajouté à la liste des indésirables avec succès',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  message: { type: 'string' },
-                  data: { $ref: '#/components/schemas/Nondesirable' }
+      400: { description: 'Erreur de validation ou visiteur déjà dans la liste' },
+      404: { description: 'Visiteur non trouvé' }
+    }
+  }
+},
+
+/* =============================================
+   ⚠️ NOUVEAU ENDPOINT : INDÉSIRABLES CONNUS
+   ============================================= */
+'/api/v1/nondesirables/known': {
+  get: {
+    tags: ['Nondesirables'],
+    summary: 'Lister uniquement les visiteurs indésirables connus',
+    description: 'Retourne les visiteurs enregistrés dans la base et marqués comme indésirables.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Liste des indésirables connus',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Nondesirable' }
                 }
               }
             }
           }
-        },
-        400: { description: 'Erreur de validation ou visiteur déjà dans la liste' },
-        404: { description: 'Visiteur non trouvé' }
+        }
       }
     }
-  },
-  '/api/v1/nondesirables/unknown': {
-    post: {
-      tags: ['Nondesirables'],
-      summary: 'Ajouter un indésirable inconnu (ADMIN seulement)',
-      description: 'Permet à l\'administrateur d\'ajouter une personne à la liste des indésirables même si elle n\'est pas enregistrée comme visiteur dans le système. Cette action crée directement un historique dans BlacklistHistory sans créer de visiteur.',
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
+  }
+},
+
+/* =============================================
+   ⚠️ NOUVEAU ENDPOINT : INDÉSIRABLES INCONNUS
+   ============================================= */
+'/api/v1/nondesirables/unknown/list': {
+  get: {
+    tags: ['Nondesirables'],
+    summary: 'Lister uniquement les visiteurs indésirables inconnus',
+    description: 'Individus sans fiche visiteur mais inscrits comme indésirables.',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Liste des indésirables inconnus',
         content: {
           'application/json': {
-            schema: { $ref: '#/components/schemas/CreateUnknownNondesirableInput' },
-            example: {
-              firstName: 'Jean',
-              lastName: 'SUSPECT',
-              birthDate: '15/06/1980',
-              birthPlace: 'Ouagadougou',
-              sexe: 'M',
-              givingDate: '01/01/2020',
-              expirationDate: '01/01/2030',
-              phone: '+226 70 11 22 33',
-              email: 'suspect@example.com',
-              idType: 'CNI',
-              idNumber: 'B1234567890',
-              idScanUrl: 'https://example.com/scans/suspect123.jpg',
-              photoUrl: 'https://example.com/photos/suspect123.jpg',
-              company: 'Entreprise Suspecte SARL',
-              nationality: 'Burkinabé',
-              reason: 'Comportement suspect signalé par les autorités',
-              incidentDate: '2024-11-20',
-              incidentLocation: 'Entrée principale',
-              severityLevel: 3
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/UnknownNondesirable' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+},
+
+/* =============================================
+   POST UNKNOWN NON-DESIRABLE
+   ============================================= */
+'/api/v1/nondesirables/unknown': {
+  post: {
+    tags: ['Nondesirables'],
+    summary: 'Ajouter un indésirable inconnu (ADMIN seulement)',
+    description:
+      'Ajoute un indésirable non enregistré comme visiteur. Crée un historique dans BlacklistHistory.',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/CreateUnknownNondesirableInput' },
+          example: {
+            firstName: 'Jean',
+            lastName: 'SUSPECT',
+            birthDate: '1980-06-15',
+            birthPlace: 'Ouagadougou',
+            sexe: 'M',
+            givingDate: '2020-01-01',
+            expirationDate: '2030-01-01',
+            phone: '+22670112233',
+            email: 'suspect@example.com',
+            idType: 'CNI',
+            idNumber: 'B1234567890',
+            idScanUrl: 'https://example.com/scans/suspect123.jpg',
+            photoUrl: 'https://example.com/photos/suspect123.jpg',
+            company: 'Entreprise Suspecte SARL',
+            nationality: 'Burkinabé',
+            reason: 'Comportement suspect signalé par les autorités',
+            incidentDate: '2024-11-20',
+            incidentLocation: 'Entrée principale',
+            severityLevel: 3
+          }
+        }
+      }
+    },
+    responses: {
+      201: {
+        description: 'Indésirable inconnu ajouté avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+                data: { $ref: '#/components/schemas/UnknownNondesirable' }
+              }
             }
           }
         }
       },
-      responses: {
-        201: {
-          description: 'Indésirable inconnu ajouté avec succès',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  message: { type: 'string' },
-                  data: { $ref: '#/components/schemas/UnknownNondesirable' }
-                }
+      400: { description: 'Personne déjà dans la liste' },
+      403: { description: 'Accès refusé - ADMIN requis' }
+    }
+  }
+},
+
+/* =============================================
+   REMOVE VISITOR FROM BLACKLIST
+   ============================================= */
+'/api/v1/nondesirables/visitor/{visitorId}': {
+  delete: {
+    tags: ['Nondesirables'],
+    summary: 'Retirer un visiteur de la liste des indésirables',
+    description:
+      'Désactive isBlacklisted, nettoie la raison, crée un historique UNBLACKLIST et supprime l\'entrée NonDesirable.',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'visitorId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+        description: 'ID du visiteur à retirer'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Visiteur retiré avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' }
               }
             }
           }
-        },
-        400: { description: 'Personne déjà dans la liste' },
-        403: { description: 'Accès refusé - ADMIN requis' }
-      }
+        }
+      },
+      400: { description: 'Visiteur non trouvé ou pas blacklisté' }
     }
-  },
-  '/api/v1/nondesirables/visitor/{visitorId}': {
-    delete: {
-      tags: ['Nondesirables'],
-      summary: 'Retirer un visiteur de la liste des indésirables (recommandé)',
-      description: 'Retire complètement un visiteur de la liste des indésirables. Cette action va automatiquement désactiver isBlacklisted=false sur le visiteur, supprimer blacklistReason, créer un historique UNBLACKLIST dans BlacklistHistory et supprimer l\'entrée NonDesirable.',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: 'visitorId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID du visiteur à retirer de la blacklist' }
-      ],
-      responses: {
-        200: {
-          description: 'Visiteur retiré de la liste des indésirables avec succès',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  message: { type: 'string' }
-                }
-              }
-            }
-          }
-        },
-        400: { description: 'Visiteur non trouvé ou pas blacklisté' }
-      }
-    }
-  },
+  }
+},
+
   // ==================== SOS ENDPOINTS ====================
   '/api/v1/sos': {
     get: {

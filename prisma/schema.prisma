@@ -8,34 +8,35 @@ datasource db {
 }
 
 model User {
-  id                  String                      @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  matricule           String?                     @unique @db.VarChar(50)
-  email               String                      @unique(map: "email") @db.VarChar(255)
-  passwordHash        String                      @map("password_hash") @db.Text
-  firstName           String                      @map("first_name") @db.VarChar(100)
-  lastName            String                      @map("last_name") @db.VarChar(100)
-  role                String                      @default("AGENT_CONTROLE") @db.VarChar(20)
-  isActive            Boolean?                    @default(true) @map("is_active")
-  phone               String?                     @db.VarChar(20)
-  createdAt           DateTime?                   @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt           DateTime?                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  agentAssignments    AgentCheckpointAssignment[]
-  assignedCheckpoints Checkpoint[]                @relation("CheckpointAgent")
-  assignedSites       UserSite[]
-  permissions         UserPermission[]
-  auditLogs           AuditLog[]
-  blacklistActions    BlacklistHistory[]
-  organizedRendezvous Rendezvous[]                @relation("RendezvousOrganizer")
-  serviceChef         Service[]                   @relation("ServiceChef")
-  triggeredSosAlerts  SosAlert[]                  @relation("SosTriggerer")
-  resolvedSosAlerts   SosAlert[]                  @relation("SosResolver")
-  user_roles          user_roles                  @relation(fields: [role], references: [role_name], onDelete: NoAction, onUpdate: NoAction, map: "users_ibfk_1")
-  reportedIncidents   VisitIncident[]             @relation("IncidentReporter")
-  incidents           Incident[]                  @relation("IncidentReporter")
-  organizedGroups     VisitorGroup[]
-  createdVisits       Visit[]                     @relation("VisitCreator")
-  refreshTokens       RefreshToken[]
-  reportedNonDesirables NonDesirable[]            @relation("NonDesirableReporter")
+  id                    String                      @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  matricule             String?                     @unique @db.VarChar(50)
+  email                 String                      @unique(map: "email") @db.VarChar(255)
+  passwordHash          String                      @map("password_hash") @db.Text
+  firstName             String                      @map("first_name") @db.VarChar(100)
+  lastName              String                      @map("last_name") @db.VarChar(100)
+  role                  String                      @default("AGENT_CONTROLE") @db.VarChar(20)
+  isActive              Boolean?                    @default(true) @map("is_active")
+  phone                 String?                     @db.VarChar(20)
+  createdAt             DateTime?                   @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt             DateTime?                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  agentAssignments      AgentCheckpointAssignment[]
+  auditLogs             AuditLog[]
+  blacklistActions      BlacklistHistory[]
+  assignedCheckpoints   Checkpoint[]                @relation("CheckpointAgent")
+  incidents             Incident[]                  @relation("IncidentReporter")
+  reportedNonDesirables NonDesirable[]              @relation("NonDesirableReporter")
+  refreshTokens         RefreshToken[]
+  organizedRendezvous   Rendezvous[]                @relation("RendezvousOrganizer")
+  serviceChef           Service[]                   @relation("ServiceChef")
+  triggeredSosAlerts    SosAlert[]                  @relation("SosTriggerer")
+  resolvedSosAlerts     SosAlert[]                  @relation("SosResolver")
+  permissions           UserPermission[]
+  assignedSites         UserSite[]
+  user_roles            user_roles                  @relation(fields: [role], references: [role_name], onDelete: NoAction, onUpdate: NoAction, map: "users_ibfk_1")
+  reportedIncidents     VisitIncident[]             @relation("IncidentReporter")
+  organizedGroups       VisitorGroup[]
+  createdVisits         Visit[]                     @relation("VisitCreator")
+
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
   @@index([matricule], map: "idx_users_matricule")
@@ -43,54 +44,55 @@ model User {
 }
 
 model Site {
-  id                     String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  name                   String       @db.VarChar(255)
-  address                String       @db.Text
-  city                   String       @db.VarChar(100)
-  postalCode             String       @map("postal_code") @db.VarChar(20)
-  country                String       @db.VarChar(100)
-  activityType           String       @map("activity_type") @db.VarChar(50)
-  status                 String       @db.VarChar(50)
-  code                   String?      @unique @db.VarChar(50)
-  region                 String?      @db.VarChar(100)
-  phone                  String?      @db.VarChar(20)
-  fax                    String?      @db.VarChar(20)
-  email                  String?      @db.VarChar(255)
-  website                String?      @db.VarChar(255)
-  manager                String?      @db.VarChar(255)
-  managerEmail           String?      @map("manager_email") @db.VarChar(255)
-  managerPhone           String?      @map("manager_phone") @db.VarChar(20)
-  area                   Decimal?     @db.Decimal(10, 2)
-  usableArea             Decimal?     @map("usable_area") @db.Decimal(10, 2)
-  employeeCount          Int?         @map("employee_count")
-  maxEmployeeCapacity    Int?         @map("max_employee_capacity")
-  buildingCount          Int?         @map("building_count")
-  creationDate           DateTime     @default(now()) @map("creation_date") @db.Timestamp(0)
-  modificationDate       DateTime?    @updatedAt @map("modification_date") @db.Timestamp(0)
-  openingDate            DateTime?    @map("opening_date") @db.Timestamp(0)
-  closingDate            DateTime?    @map("closing_date") @db.Timestamp(0)
-  coordinates            Json?
-  description            String?      @db.Text
-  monthlyCost            Decimal?     @map("monthly_cost") @db.Decimal(15, 2)
-  annualBudget           Decimal?     @map("annual_budget") @db.Decimal(15, 2)
-  certifications         Json?
-  lastInspection         DateTime?    @map("last_inspection") @db.Timestamp(0)
-  nextInspection         DateTime?    @map("next_inspection") @db.Timestamp(0)
-  equipment              Json?
-  services               Json?
-  wheelchairAccessible   Boolean?     @map("wheelchair_accessible")
-  parkingAvailable       Boolean?     @map("parking_available")
-  parkingSpaces          Int?         @map("parking_spaces")
-  securitySystem         Boolean?     @map("security_system")
-  securityGuard          Boolean?     @map("security_guard")
-  environmentalCertification String?  @map("environmental_certification") @db.VarChar(255)
-  energyConsumption      Decimal?     @map("energy_consumption") @db.Decimal(10, 2)
-  createdBy              String?      @map("created_by") @db.VarChar(255)
-  modifiedBy             String?      @map("modified_by") @db.VarChar(255)
-  checkpoints            Checkpoint[]
-  assignedUsers          UserSite[]
-  rendezvous             Rendezvous[] @relation("SiteRendezvous")
-  incidents              Incident[]
+  id                         String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name                       String       @db.VarChar(255)
+  address                    String       @db.Text
+  city                       String       @db.VarChar(100)
+  postalCode                 String       @map("postal_code") @db.VarChar(20)
+  country                    String       @db.VarChar(100)
+  activityType               String       @map("activity_type") @db.VarChar(50)
+  status                     String       @db.VarChar(50)
+  code                       String?      @unique @db.VarChar(50)
+  region                     String?      @db.VarChar(100)
+  phone                      String?      @db.VarChar(20)
+  fax                        String?      @db.VarChar(20)
+  email                      String?      @db.VarChar(255)
+  website                    String?      @db.VarChar(255)
+  manager                    String?      @db.VarChar(255)
+  managerEmail               String?      @map("manager_email") @db.VarChar(255)
+  managerPhone               String?      @map("manager_phone") @db.VarChar(20)
+  area                       Decimal?     @db.Decimal(10, 2)
+  usableArea                 Decimal?     @map("usable_area") @db.Decimal(10, 2)
+  employeeCount              Int?         @map("employee_count")
+  maxEmployeeCapacity        Int?         @map("max_employee_capacity")
+  buildingCount              Int?         @map("building_count")
+  creationDate               DateTime     @default(now()) @map("creation_date") @db.Timestamp(0)
+  modificationDate           DateTime?    @updatedAt @map("modification_date") @db.Timestamp(0)
+  openingDate                DateTime?    @map("opening_date") @db.Timestamp(0)
+  closingDate                DateTime?    @map("closing_date") @db.Timestamp(0)
+  coordinates                Json?
+  description                String?      @db.Text
+  monthlyCost                Decimal?     @map("monthly_cost") @db.Decimal(15, 2)
+  annualBudget               Decimal?     @map("annual_budget") @db.Decimal(15, 2)
+  certifications             Json?
+  lastInspection             DateTime?    @map("last_inspection") @db.Timestamp(0)
+  nextInspection             DateTime?    @map("next_inspection") @db.Timestamp(0)
+  equipment                  Json?
+  services                   Json?
+  wheelchairAccessible       Boolean?     @map("wheelchair_accessible")
+  parkingAvailable           Boolean?     @map("parking_available")
+  parkingSpaces              Int?         @map("parking_spaces")
+  securitySystem             Boolean?     @map("security_system")
+  securityGuard              Boolean?     @map("security_guard")
+  environmentalCertification String?      @map("environmental_certification") @db.VarChar(255)
+  energyConsumption          Decimal?     @map("energy_consumption") @db.Decimal(10, 2)
+  createdBy                  String?      @map("created_by") @db.VarChar(255)
+  modifiedBy                 String?      @map("modified_by") @db.VarChar(255)
+  checkpoints                Checkpoint[]
+  incidents                  Incident[]
+  rendezvous                 Rendezvous[] @relation("SiteRendezvous")
+  assignedUsers              UserSite[]
+
   @@index([code], map: "idx_sites_code")
   @@index([status], map: "idx_sites_status")
   @@index([city], map: "idx_sites_city")
@@ -101,43 +103,38 @@ model Site {
 }
 
 model Checkpoint {
-  id                      String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  name                    String    @db.VarChar(255)
-  description             String?   @db.Text
-  siteId                  String    @map("site_id") @db.Char(36)
-  zone                    String?   @db.VarChar(100)
-  building                String?   @db.VarChar(100)
-  floor                   String?   @db.VarChar(50)
-  coordinatesLatitude     String?   @map("coordinates_latitude") @db.VarChar(50)
-  coordinatesLongitude    String?   @map("coordinates_longitude") @db.VarChar(50)
-  sosId                   String    @unique(map: "sos_id") @map("sos_id") @db.VarChar(100)
-  agentId                 String?   @map("agent_id") @db.Char(36)
-  checkpointType          String    @default("internal") @map("checkpoint_type") @db.VarChar(30)
-  status                  String    @default("active") @db.VarChar(20)
-  priority                String    @default("medium") @db.VarChar(20)
-  controlFrequency        String?   @map("control_frequency") @db.VarChar(20)
-  equipment               Json?
-  devicesId               Json?             @default("[]") @map("devices_id")
-  specialInstructions     String?           @map("special_instructions") @db.Text
-  active                  Boolean           @default(true)
-  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  
-  // Relations
-  site                    Site      @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  agent                   User?     @relation("CheckpointAgent", fields: [agentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  agentAssignments        AgentCheckpointAssignment[]
-  sosAlerts               SosAlert[]
-  visits                  Visit[]   // ← Garde seulement cette relation, pas besoin de visitors
-  
-  // ⚠️ SUPPRIMÉ : visitors Visitor[] ← Cette ligne était en trop
-  
+  id                   String                      @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name                 String                      @db.VarChar(255)
+  description          String?                     @db.Text
+  siteId               String                      @map("site_id") @db.Char(36)
+  zone                 String?                     @db.VarChar(100)
+  building             String?                     @db.VarChar(100)
+  floor                String?                     @db.VarChar(50)
+  coordinatesLatitude  String?                     @map("coordinates_latitude") @db.VarChar(50)
+  coordinatesLongitude String?                     @map("coordinates_longitude") @db.VarChar(50)
+  sosId                String                      @unique(map: "sos_id") @map("sos_id") @db.VarChar(100)
+  agentId              String?                     @map("agent_id") @db.Char(36)
+  checkpointType       String                      @default("internal") @map("checkpoint_type") @db.VarChar(30)
+  status               String                      @default("active") @db.VarChar(20)
+  priority             String                      @default("medium") @db.VarChar(20)
+  controlFrequency     String?                     @map("control_frequency") @db.VarChar(20)
+  equipment            Json?
+  specialInstructions  String?                     @map("special_instructions") @db.Text
+  active               Boolean                     @default(true)
+  createdAt            DateTime                    @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt            DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  devicesId            Json?                       @map("devices_id")
+  agentAssignments     AgentCheckpointAssignment[]
+  agent                User?                       @relation("CheckpointAgent", fields: [agentId], references: [id], onUpdate: NoAction)
+  site                 Site                        @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sosAlerts            SosAlert[]
+  visits               Visit[]
+
   @@index([siteId], map: "idx_checkpoints_site_id")
   @@index([sosId], map: "idx_checkpoints_sos_id")
   @@index([agentId], map: "idx_checkpoints_agent_id")
   @@map("checkpoints")
 }
-
 
 model AgentCheckpointAssignment {
   id           String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
@@ -148,6 +145,7 @@ model AgentCheckpointAssignment {
   createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamp(0)
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "agent_checkpoint_assignments_ibfk_1")
   checkpoint   Checkpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "agent_checkpoint_assignments_ibfk_2")
+
   @@unique([userId, checkpointId, startDate], map: "unique_assignment")
   @@index([checkpointId], map: "idx_agent_assignments_checkpoint_id")
   @@index([userId], map: "idx_agent_assignments_user_id")
@@ -155,34 +153,35 @@ model AgentCheckpointAssignment {
 }
 
 model Visitor {
-  id               String             @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  firstName        String             @map("first_name") @db.VarChar(100)
-  lastName         String             @map("last_name") @db.VarChar(100)
-  birthDate        String?            @map("birth_date") @db.VarChar(20)
-  birthPlace       String?            @map("birth_place") @db.VarChar(255)
-  residence        String?            @db.VarChar(255)
-  sexe             String?            @db.VarChar(10)
-  givingDate       String?            @map("giving_date") @db.VarChar(20)
-  expirationDate   String?            @map("expiration_date") @db.VarChar(20)
-  phone            String?            @db.VarChar(20)
-  email            String?            @db.VarChar(255)
-  idType           String             @map("id_type") @db.VarChar(20)
-  idNumber         String             @map("id_number") @db.VarChar(255)
-  idScanUrl        String?            @map("id_scan_url") @db.Text
-  photoUrl         String?            @map("photo_url") @db.Text
-  isBlacklisted    Boolean?           @default(false) @map("is_blacklisted")
-  blacklistReason  String?            @map("blacklist_reason") @db.Text
-  company          String?            @db.VarChar(255)
-  emergencyContactPhone String?        @map("emergency_contact_phone") @db.VarChar(20)
-  emergencyContactName  String?        @map("emergency_contact_name") @db.VarChar(255)
-  createdAt        DateTime?          @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt        DateTime?          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  blacklistHistory BlacklistHistory[]
-  groupMemberships GroupVisitor[]
-  id_types         id_types           @relation(fields: [idType], references: [type_name], onDelete: NoAction, onUpdate: NoAction, map: "visitors_ibfk_1")
-  visits           Visit[]
-  nonDesirables    NonDesirable[]
-  incidents        Incident[]
+  id                    String             @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  firstName             String             @map("first_name") @db.VarChar(100)
+  lastName              String             @map("last_name") @db.VarChar(100)
+  birthDate             String?            @map("birth_date") @db.VarChar(20)
+  birthPlace            String?            @map("birth_place") @db.VarChar(255)
+  sexe                  String?            @db.VarChar(10)
+  givingDate            String?            @map("giving_date") @db.VarChar(20)
+  expirationDate        String?            @map("expiration_date") @db.VarChar(20)
+  phone                 String?            @db.VarChar(20)
+  email                 String?            @db.VarChar(255)
+  idType                String             @map("id_type") @db.VarChar(20)
+  idNumber              String             @map("id_number") @db.VarChar(255)
+  idScanUrl             String?            @map("id_scan_url") @db.Text
+  photoUrl              String?            @map("photo_url") @db.Text
+  isBlacklisted         Boolean?           @default(false) @map("is_blacklisted")
+  blacklistReason       String?            @map("blacklist_reason") @db.Text
+  company               String?            @db.VarChar(255)
+  emergencyContactPhone String?            @map("emergency_contact_phone") @db.VarChar(20)
+  emergencyContactName  String?            @map("emergency_contact_name") @db.VarChar(255)
+  createdAt             DateTime?          @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt             DateTime?          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  residence             String?            @db.VarChar(255)
+  blacklistHistory      BlacklistHistory[]
+  groupMemberships      GroupVisitor[]
+  incidents             Incident[]
+  nonDesirables         NonDesirable[]
+  id_types              id_types           @relation(fields: [idType], references: [type_name], onDelete: NoAction, onUpdate: NoAction, map: "visitors_ibfk_1")
+  visits                Visit[]
+
   @@unique([idType, idNumber], map: "unique_identity")
   @@index([isBlacklisted], map: "idx_visitors_blacklisted")
   @@index([idNumber], map: "idx_visitors_id_number")
@@ -200,29 +199,31 @@ model Service {
   chef          User?          @relation("ServiceChef", fields: [chefId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "services_ibfk_1")
   visitorGroups VisitorGroup[]
   visits        Visit[]
+
   @@index([chefId], map: "chef_id")
   @@map("services")
 }
 
 model Rendezvous {
-  id                  String               @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  organizerId         String               @map("organizer_id") @db.Char(36)
-  siteId              String?              @map("site_id") @db.Char(36)
-  firstName           String?              @map("first_name") @db.VarChar(255)
-  lastName            String?              @map("last_name") @db.VarChar(255)
-  office              String?              @db.VarChar(255)
-  serviceName         String?              @map("service_name") @db.VarChar(255)
-  reason              String               @db.Text
-  visitDate           DateTime             @map("visit_date") @db.Date
-  startTime           DateTime?            @map("start_time") @db.Time(0)
-  endTime             DateTime?            @map("end_time") @db.Time(0)
-  status              String?              @default("pending") @db.VarChar(20)
-  notes               String?              @db.Text
-  createdAt           DateTime?            @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt           DateTime?            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  organizer           User                 @relation("RendezvousOrganizer", fields: [organizerId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "rendezvous_ibfk_1")
-  site                Site?                @relation("SiteRendezvous", fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "rendezvous_ibfk_site")
-  visits              Visit[]
+  id          String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  organizerId String    @map("organizer_id") @db.Char(36)
+  siteId      String?   @map("site_id") @db.Char(36)
+  firstName   String?   @map("first_name") @db.VarChar(255)
+  lastName    String?   @map("last_name") @db.VarChar(255)
+  office      String?   @db.VarChar(255)
+  serviceName String?   @map("service_name") @db.VarChar(255)
+  reason      String    @db.Text
+  visitDate   DateTime  @map("visit_date") @db.Date
+  startTime   DateTime? @map("start_time") @db.Time(0)
+  endTime     DateTime? @map("end_time") @db.Time(0)
+  status      String?   @default("pending") @db.VarChar(20)
+  notes       String?   @db.Text
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  organizer   User      @relation("RendezvousOrganizer", fields: [organizerId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "rendezvous_ibfk_1")
+  site        Site?     @relation("SiteRendezvous", fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "rendezvous_ibfk_site")
+  visits      Visit[]
+
   @@index([visitDate], map: "idx_rendezvous_visit_date")
   @@index([organizerId], map: "organizer_id")
   @@index([siteId], map: "site_id")
@@ -234,30 +235,31 @@ model Rendezvous {
 }
 
 model Visit {
-  id             String          @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  visitorId      String          @map("visitor_id") @db.Char(36)
-  checkpointId   String          @map("checkpoint_id") @db.Char(36)
-  createdBy      String?         @map("created_by") @db.Char(36)
-  serviceId      String?         @map("service_id") @db.Char(36)
-  rendezvousId   String?         @map("rendezvous_id") @db.Char(36)
-  statusName     String?         @map("status_name") @db.VarChar(20)
-  entryTime      DateTime        @map("entry_time") @db.Timestamp(0)
-  exitTime       DateTime?       @map("exit_time") @db.Timestamp(0)
-  entityVisited  String?         @map("entity_visited") @db.Text
-  contactPerson  String?         @map("contact_person") @db.VarChar(255)
-  origin         String?         @db.VarChar(255)
-  reason         String          @db.Text
-  notes          String?         @db.Text
-  status         String          @default("present") @db.VarChar(20)
-  createdAt      DateTime?       @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt      DateTime?       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  incidents      VisitIncident[]
-  visitor        Visitor         @relation(fields: [visitorId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "visits_ibfk_1")
-  checkpoint     Checkpoint      @relation(fields: [checkpointId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_2")
-  creator        User?           @relation("VisitCreator", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_creator")
-  service        Service?        @relation(fields: [serviceId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_service")
-  rendezvous     Rendezvous?     @relation(fields: [rendezvousId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_rendezvous")
-  visitStatus    visit_statuses? @relation("VisitStatus", fields: [statusName], references: [status_name], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_status")
+  id            String          @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  visitorId     String          @map("visitor_id") @db.Char(36)
+  checkpointId  String          @map("checkpoint_id") @db.Char(36)
+  createdBy     String?         @map("created_by") @db.Char(36)
+  serviceId     String?         @map("service_id") @db.Char(36)
+  rendezvousId  String?         @map("rendezvous_id") @db.Char(36)
+  statusName    String?         @map("status_name") @db.VarChar(20)
+  entryTime     DateTime        @map("entry_time") @db.Timestamp(0)
+  exitTime      DateTime?       @map("exit_time") @db.Timestamp(0)
+  entityVisited String?         @map("entity_visited") @db.Text
+  contactPerson String?         @map("contact_person") @db.VarChar(255)
+  origin        String?         @db.VarChar(255)
+  reason        String          @db.Text
+  notes         String?         @db.Text
+  status        String          @default("present") @db.VarChar(20)
+  createdAt     DateTime?       @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt     DateTime?       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  incidents     VisitIncident[]
+  visitor       Visitor         @relation(fields: [visitorId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "visits_ibfk_1")
+  checkpoint    Checkpoint      @relation(fields: [checkpointId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_2")
+  creator       User?           @relation("VisitCreator", fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_creator")
+  rendezvous    Rendezvous?     @relation(fields: [rendezvousId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_rendezvous")
+  service       Service?        @relation(fields: [serviceId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_service")
+  visitStatus   visit_statuses? @relation("VisitStatus", fields: [statusName], references: [status_name], onDelete: NoAction, onUpdate: NoAction, map: "visits_ibfk_status")
+
   @@index([visitorId], map: "idx_visits_visitor")
   @@index([checkpointId], map: "idx_visits_checkpoint")
   @@index([createdBy], map: "idx_visits_creator")
@@ -290,9 +292,10 @@ model Incident {
   reportedBy        String    @map("reported_by") @db.Char(36)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamp(0)
-  site             Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
-  visiteur         Visitor? @relation(fields: [visiteurId], references: [id], onDelete: SetNull)
-  reporter         User     @relation("IncidentReporter", fields: [reportedBy], references: [id], onDelete: NoAction)
+  reporter          User      @relation("IncidentReporter", fields: [reportedBy], references: [id], onDelete: NoAction)
+  site              Site?     @relation(fields: [siteId], references: [id])
+  visiteur          Visitor?  @relation(fields: [visiteurId], references: [id])
+
   @@index([siteId])
   @@index([visiteurId])
   @@index([reportedBy])
@@ -313,6 +316,7 @@ model VisitIncident {
   createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
   visit           Visit     @relation(fields: [visitId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "visit_incidents_ibfk_1")
   reporter        User      @relation("IncidentReporter", fields: [reportedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visit_incidents_ibfk_2")
+
   @@index([reportedBy], map: "reported_by")
   @@index([visitId], map: "visit_id")
   @@map("visit_incidents")
@@ -328,7 +332,6 @@ model File {
   updatedAt    DateTime @updatedAt
 }
 
-
 model SosAlert {
   id              String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
   checkpointId    String     @map("checkpoint_id") @db.Char(36)
@@ -342,6 +345,7 @@ model SosAlert {
   checkpoint      Checkpoint @relation(fields: [checkpointId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sos_alerts_ibfk_1")
   triggerer       User       @relation("SosTriggerer", fields: [triggeredBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sos_alerts_ibfk_2")
   resolver        User?      @relation("SosResolver", fields: [resolvedBy], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "sos_alerts_ibfk_3")
+
   @@index([checkpointId], map: "idx_sos_alerts_checkpoint_id")
   @@index([triggeredAt], map: "idx_sos_alerts_triggered_at")
   @@index([resolvedBy], map: "resolved_by")
@@ -369,16 +373,18 @@ model BlacklistHistory {
   createdBy         String            @map("created_by") @db.Char(36)
   createdAt         DateTime?         @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt         DateTime?         @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  visitor           Visitor?          @relation(fields: [visitorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   blacklist_actions blacklist_actions @relation(fields: [action], references: [action_name], onDelete: NoAction, onUpdate: NoAction)
   creator           User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
   idTypeRel         id_types?         @relation(fields: [idType], references: [type_name], onDelete: NoAction, onUpdate: NoAction)
+  visitor           Visitor?          @relation(fields: [visitorId], references: [id], onUpdate: NoAction)
+
   @@index([visitorId], map: "idx_blacklist_visitor_id")
   @@index([idNumber], map: "idx_blacklist_id_number")
   @@index([severityLevel], map: "idx_blacklist_severity")
   @@index([incidentDate], map: "idx_blacklist_incident_date")
   @@index([action], map: "action")
   @@index([createdBy], map: "created_by")
+  @@index([idType], map: "blacklist_history_id_type_fkey")
   @@map("blacklist_history")
 }
 
@@ -394,6 +400,7 @@ model AuditLog {
   userAgent String?   @map("user_agent") @db.Text
   createdAt DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
   user      User?     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "audit_logs_ibfk_1")
+
   @@index([createdAt], map: "idx_audit_logs_created_at")
   @@index([entity, entityId], map: "idx_audit_logs_entity")
   @@index([userId], map: "user_id")
@@ -413,6 +420,7 @@ model VisitorGroup {
   visitors      GroupVisitor[]
   organizer     User           @relation(fields: [organizerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visitor_groups_ibfk_1")
   service       Service        @relation(fields: [serviceId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "visitor_groups_ibfk_2")
+
   @@index([organizerId], map: "organizer_id")
   @@index([serviceId], map: "service_id")
   @@map("visitor_groups")
@@ -425,6 +433,7 @@ model GroupVisitor {
   createdAt DateTime?    @default(now()) @map("created_at") @db.Timestamp(0)
   group     VisitorGroup @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "group_visitors_ibfk_1")
   visitor   Visitor      @relation(fields: [visitorId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "group_visitors_ibfk_2")
+
   @@unique([groupId, visitorId], map: "unique_group_visitor")
   @@index([visitorId], map: "visitor_id")
   @@map("group_visitors")
@@ -437,12 +446,12 @@ model blacklist_actions {
 
 model id_types {
   type_name         String             @id @db.VarChar(20)
-  visitors          Visitor[]
   blacklist_history BlacklistHistory[]
+  visitors          Visitor[]
 }
 
 model rendezvous_statuses {
-  status_name String       @id @db.VarChar(20)
+  status_name String @id @db.VarChar(20)
 }
 
 model user_roles {
@@ -453,6 +462,7 @@ model user_roles {
 model visit_statuses {
   status_name String  @id @db.VarChar(20)
   visits      Visit[] @relation("VisitStatus")
+
   @@map("visit_statuses")
 }
 
@@ -463,6 +473,7 @@ model RefreshToken {
   expiresAt DateTime @map("expires_at") @db.Timestamp(0)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(0)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId], map: "idx_refresh_tokens_user_id")
   @@index([expiresAt], map: "idx_refresh_tokens_expires_at")
   @@map("refresh_tokens")
@@ -475,8 +486,9 @@ model NonDesirable {
   reportedBy String   @map("reported_by") @db.Char(36)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-  visitor    Visitor? @relation(fields: [visitorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  reporter    User     @relation("NonDesirableReporter", fields: [reportedBy], references: [id], onDelete: Cascade)
+  reporter   User     @relation("NonDesirableReporter", fields: [reportedBy], references: [id], onDelete: Cascade)
+  visitor    Visitor? @relation(fields: [visitorId], references: [id], onUpdate: NoAction)
+
   @@index([visitorId], map: "idx_non_desirables_visitor_id")
   @@index([reportedBy], map: "idx_non_desirables_reported_by")
   @@map("non_desirables")
@@ -489,6 +501,7 @@ model Permission {
   createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
   users       UserPermission[]
+
   @@index([name], map: "idx_permissions_name")
   @@map("permissions")
 }
@@ -498,8 +511,9 @@ model UserPermission {
   userId       String     @map("user_id") @db.Char(36)
   permissionId String     @map("permission_id") @db.Char(36)
   createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamp(0)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, permissionId], map: "unique_user_permission")
   @@index([userId], map: "idx_user_permissions_user")
   @@index([permissionId], map: "idx_user_permissions_permission")
@@ -511,8 +525,9 @@ model UserSite {
   userId    String   @map("user_id") @db.Char(36)
   siteId    String   @map("site_id") @db.Char(36)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(0)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, siteId], map: "unique_user_site")
   @@index([userId], map: "idx_user_sites_user")
   @@index([siteId], map: "idx_user_sites_site")

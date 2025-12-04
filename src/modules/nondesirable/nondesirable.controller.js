@@ -156,6 +156,29 @@ class NonDesirableController {
       });
     }
   });
+
+  getKnownNonDesirables = asyncHandler(async (req, res) => {
+  const data = await nonDesirableService.getAllNonDesirablesKnown(
+    req.query.page,
+    req.query.limit,
+    req.query.search
+  );
+
+  res.json({ success: true, data });
+});
+
+
+getUnknownNonDesirables = asyncHandler(async (req, res) => {
+  const data = await nonDesirableService.getAllNonDesirablesUnknown(
+    req.query.page,
+    req.query.limit,
+    req.query.search
+  );
+
+  res.json({ success: true, data });
+});
+
+
 }
 
 module.exports = new NonDesirableController();

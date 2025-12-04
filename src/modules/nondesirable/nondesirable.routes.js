@@ -221,5 +221,75 @@ router.delete('/visitor/:visitorId', nonDesirableController.removeNonDesirable);
  *         description: Entrée indésirable non trouvée
  */
 router.delete('/:id', nonDesirableController.deleteNonDesirable);
+/**
+ * @swagger
+ * /api/non-desirables/known:
+ *   get:
+ *     summary: Lister les visiteurs indésirables connus
+ *     description: Retourne tous les visiteurs indésirables liés à un visitorId existant.
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Numéro de la page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Nombre d’éléments par page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Recherche par nom, prénom ou matricule
+ *     responses:
+ *       200:
+ *         description: Liste récupérée avec succès
+ *       403:
+ *         description: Permissions insuffisantes
+ *       500:
+ *         description: Erreur interne du serveur
+ */
+router.get('/known', nonDesirableController.getKnownNonDesirables);
+
+/**
+ * @swagger
+ * /api/non-desirables/unknown:
+ *   get:
+ *     summary: Lister les visiteurs indésirables inconnus
+ *     description: Retourne les indésirables sans visitorId (créés manuellement).
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Numéro de la page
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Nombre d’éléments par page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Recherche textuelle
+ *     responses:
+ *       200:
+ *         description: Liste récupérée avec succès
+ *       403:
+ *         description: Permissions insuffisantes
+ *       500:
+ *         description: Erreur interne du serveur
+ */
+router.get('/unknown/list', nonDesirableController.getUnknownNonDesirables);
+
 
 module.exports = router;
