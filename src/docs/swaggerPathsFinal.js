@@ -63,6 +63,68 @@ const swaggerPathsFinal = {
       }
     }
   },
+  '/api/v1/sites/agent/{userId}/sites': {
+    get: {
+      tags: ['Sites'],
+      summary: 'Récupérer tous les sites assignés à un agent',
+      description: 'Récupère la liste complète des sites assignés à un agent spécifique avec leurs checkpoints',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { 
+          name: 'userId', 
+          in: 'path', 
+          required: true, 
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID de l\'agent' 
+        }
+      ],
+      responses: {
+        200: {
+          description: 'Liste des sites de l\'agent récupérée avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', format: 'uuid', description: 'ID du site' },
+                        name: { type: 'string', description: 'Nom du site' },
+                        address: { type: 'string', description: 'Adresse du site' },
+                        city: { type: 'string', description: 'Ville du site' },
+                        status: { type: 'string', description: 'Statut du site' },
+                        checkpoints: {
+                          type: 'array',
+                          description: 'Checkpoints du site',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string', format: 'uuid' },
+                              name: { type: 'string' },
+                              status: { type: 'string' },
+                              checkpointType: { type: 'string' }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        400: { description: 'Identifiant de l\'agent manquant ou invalide' },
+        401: { description: 'Non authentifié ou token invalide' },
+        403: { description: 'Rôle non autorisé' },
+        500: { description: 'Erreur serveur' }
+      }
+    }
+  },
   '/api/v1/sites/filter-options': {
     get: {
       tags: ['Sites'],

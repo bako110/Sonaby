@@ -215,49 +215,72 @@ class SiteService {
   }
 
   async createSite(siteData) {
-    try {
-      // Générer un code unique si aucun n'est fourni
-      if (!siteData.code) {
-        const cityPrefix = siteData.city.substring(0, 3).toUpperCase();
-        const existingCodes = await prisma.site.findMany({
-          where: {
-            code: {
-              startsWith: cityPrefix
+  try {
+    // Vérifier que le code est fourni
+    if (!siteData.code) {
+      throw new Error("Le code du site doit être fourni");
+    }
+
+    // Vérifier si le code existe déjà
+    const existingSite = await prisma.site.findUnique({
+      where: { code: siteData.code }
+    });
+    if (existingSite) {
+      throw new Error(`Un site avec le code "${siteData.code}" existe déjà`);
+    }
+
+    // Vérifier si le manager existe
+    let managerUser = null;
+    if (siteData.manager) {
+      managerUser = await prisma.user.findUnique({
+        where: { id: siteData.manager }
+      });
+      if (!managerUser) {
+        throw new Error(`L'utilisateur manager avec l'ID "${siteData.manager}" n'existe pas`);
+      }
+    }
+
+    // Extraire manager de siteData pour éviter de le mettre dans la table Site
+    const { manager, ...siteDataWithoutManager } = siteData;
+
+    // Créer le site et assigner le manager
+    const site = await prisma.site.create({
+      data: {
+        ...siteDataWithoutManager,
+        // Le champ manager dans Site est de type String (nom), pas une relation
+        // Donc on le garde comme chaîne, pas comme ID
+        manager: managerUser ? `${managerUser.firstName} ${managerUser.lastName}` : siteData.manager,
+        // Assigner le manager au site via UserSite
+        assignedUsers: manager
+          ? {
+              create: [{
+                userId: manager
+              }]
             }
-          },
-          select: { code: true }
-        });
-        
-        let counter = 1;
-        let newCode;
-        do {
-          newCode = `${cityPrefix}${counter.toString().padStart(3, '0')}`;
-          counter++;
-        } while (existingCodes.some(site => site.code === newCode));
-        
-        siteData.code = newCode;
-      } else {
-        // Vérifier si le code existe déjà
-        const existingSite = await prisma.site.findUnique({
-          where: { code: siteData.code }
-        });
-        
-        if (existingSite) {
-          throw new Error(`Un site avec le code "${siteData.code}" existe déjà`);
+          : undefined
+      },
+      include: {
+        assignedUsers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true
+              }
+            }
+          }
         }
       }
+    });
 
-      const site = await prisma.site.create({
-        data: siteData,
-        include: {
-          checkpoints: true
-        }
-      });
-      return site;
-    } catch (error) {
-      throw new Error(`Erreur lors de la création du site: ${error.message}`);
-    }
+    return site;
+  } catch (error) {
+    throw new Error(`Erreur lors de la création du site: ${error.message}`);
   }
+}
 
   async checkCodeAvailability(code) {
     try {
@@ -416,6 +439,64 @@ class SiteService {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
   }
+
+  // Récupérer tous les sites assignés à un agent spécifique
+async getSitesByAgent(userId) {
+    if (!userId) {
+        throw new Error("L'identifiant de l'agent est requis");
+    }
+
+    try {
+        const sites = await prisma.site.findMany({
+            where: {
+                assignedUsers: {
+                    some: {
+                        userId: userId
+                    }
+                }
+            },
+            include: {
+                checkpoints: {
+                    select: {
+                        id: true,
+                        name: true,
+                        status: true,
+                        checkpointType: true,
+                        agent: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true
+                            }
+                        }
+                    }
+                },
+                assignedUsers: {
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                role: true
+                            }
+                        }
+                    }
+                },
+            },
+            orderBy: {
+                creationDate: 'desc'
+            }
+        });
+
+        return sites;
+    } catch (error) {
+        console.error(error);
+        throw new Error(`Erreur lors de la récupération des sites de l'agent: ${error.message}`);
+    }
+}
+
 }
 
 module.exports = new SiteService();

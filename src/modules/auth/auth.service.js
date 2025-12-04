@@ -52,107 +52,117 @@ class AuthService {
     
     // Connexion
     async login(data) {
-        const { identifier, password } = data;
-        
-        console.log('🔍 [LOGIN DEBUG] Tentative de connexion');
-        console.log('  - Identifier:', identifier);
-        console.log('  - Password provided:', password ? 'YES' : 'NO');
-        
-        // Déterminer si l'identifier est un email ou un téléphone
-        const isEmail = identifier.includes('@');
-        console.log('  - Is email:', isEmail);
-        
-        // Trouver l'utilisateur par email ou téléphone
-        const user = await prisma.user.findFirst({
-            where: isEmail 
-                ? { email: identifier }
-                : { phone: identifier },
-            select: {
-                id: true,
-                email: true,
-                phone: true,
-                passwordHash: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                isActive: true,
-                createdAt: true
+    const { identifier, password } = data;
+
+    console.log('🔍 [LOGIN DEBUG] Tentative de connexion');
+
+    const isEmail = identifier.includes('@');
+
+    const user = await prisma.user.findFirst({
+        where: isEmail 
+            ? { email: identifier }
+            : { phone: identifier },
+        select: {
+            id: true,
+            email: true,
+            phone: true,
+            passwordHash: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            isActive: true,
+            createdAt: true
+        }
+    });
+
+    if (!user || !user.isActive) {
+        throw new AppError(401, 'Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+        throw new AppError(401, 'Invalid credentials');
+    }
+
+    const tokens = await this.generateTokens(user.id, user.role);
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    let additionalData = {};
+
+    // ----------------------------------------------------------
+    // 1️⃣ AGENT DE CONTRÔLE → dashboard déjà existant
+    // ----------------------------------------------------------
+    if (user.role === 'AGENT_CONTROLE') {
+        try {
+            additionalData.dashboard = await this.getAgentDashboardData(user.id);
+        } catch (error) {
+            console.error('Erreur lors du dashboard:', error.message);
+            additionalData.dashboard = {
+                agent: {
+                    id: user.id,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    phone: user.phone,
+                    role: user.role,
+                    permissions: []
+                },
+                assignedCheckpoint: null,
+                site: null,
+                visitors: [],
+                visits: [],
+                statistics: {
+                    activeVisits: 0,
+                    todayVisits: 0,
+                    activeCheckpoints: 0,
+                    blacklistedVisitors: 0,
+                    totalCheckpoints: 0,
+                    totalVisitors: 0,
+                    checkpointEfficiency: '0%'
+                }
+            };
+        }
+    }
+
+    // ----------------------------------------------------------
+    // 2️⃣ AGENT_GESTION → Sites assignés + checkpoints
+    // ----------------------------------------------------------
+    if (user.role === 'AGENT_GESTION') {
+    additionalData.sites = await prisma.site.findMany({
+        where: {
+            manager: user.id  // 🔹 filtrer sur le champ manager qui contient l'ID de l'agent
+        },
+        include: {
+            checkpoints: true
+        }
+    });
+}
+
+
+    // ----------------------------------------------------------
+    // 3️⃣ CHEF_SERVICE → sites dont il est manager
+    // ----------------------------------------------------------
+    if (user.role === 'CHEF_SERVICE') {
+        additionalData.sites = await prisma.site.findMany({
+            where: {
+                managerId: user.id
+            },
+            include: {
+                checkpoints: true,
+                assignedUsers: true     // 🔹 relation correcte pour voir les agents
             }
         });
-        
-        console.log('🔍 [LOGIN DEBUG] Utilisateur trouvé:', user ? 'YES' : 'NO');
-        if (user) {
-            console.log('  - User ID:', user.id);
-            console.log('  - Email:', user.email);
-            console.log('  - Phone:', user.phone);
-            console.log('  - Role:', user.role);
-            console.log('  - Is active:', user.isActive);
-        }
-        
-        if (!user || !user.isActive) {
-            console.log('❌ [LOGIN DEBUG] Utilisateur non trouvé ou inactif');
-            throw new AppError(401, 'Invalid credentials');
-        }
-        
-        // Vérifier le mot de passe
-        console.log('🔍 [LOGIN DEBUG] Vérification du mot de passe...');
-        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-        console.log('  - Password valid:', isPasswordValid);
-        
-        if (!isPasswordValid) {
-            console.log('❌ [LOGIN DEBUG] Mot de passe invalide');
-            throw new AppError(401, 'Invalid credentials');
-        }
-        
-        // Générer les tokens
-        const tokens = await this.generateTokens(user.id, user.role);
-        
-        // Retourner les données utilisateur sans le mot de passe
-        const { passwordHash, ...userWithoutPassword } = user;
-        
-        // Si c'est un agent de contrôle, inclure les données complètes du dashboard
-        let additionalData = {};
-        if (user.role === 'AGENT_CONTROLE') {
-            try {
-                additionalData.dashboard = await this.getAgentDashboardData(user.id);
-            } catch (error) {
-                // Si erreur lors de la récupération des données dashboard, log mais ne pas bloquer la connexion
-                console.error('Erreur lors de la récupération des données dashboard:', error.message);
-                // ✅ CORRECTION : Retourner un dashboard vide avec des valeurs à 0 au lieu de null
-                additionalData.dashboard = {
-                    agent: {
-                        id: user.id,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        email: user.email,
-                        phone: user.phone,
-                        role: user.role,
-                        permissions: []
-                    },
-                    assignedCheckpoint: null,
-                    site: null,
-                    visitors: [],
-                    visits: [],
-                    statistics: {
-                        activeVisits: 0,
-                        todayVisits: 0,
-                        activeCheckpoints: 0,
-                        blacklistedVisitors: 0,
-                        totalCheckpoints: 0,
-                        totalVisitors: 0,
-                        checkpointEfficiency: '0%'
-                    }
-                };
-            }
-        }
-        
-        return {
-            user: userWithoutPassword,
-            ...tokens,
-            ...additionalData
-        };
     }
-    
+
+    return {
+        user: userWithoutPassword,
+        ...tokens,
+        ...additionalData
+    };
+}
+
+
+   
     // Rafraîchir le token
     async refreshToken(data) {
         const { refreshToken } = data;
@@ -224,28 +234,41 @@ class AuthService {
     }
 
     // Récupérer le profil utilisateur
-    async getUserProfile(userId) {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                isActive: true,
-                phone: true,
-                createdAt: true,
-                updatedAt: true
-            }
-        });
-
-        if (!user) {
-            throw new AppError(404, 'User not found');
-        }
-
-        return user;
+    async getUserProfile({ userId, email, matricule } = {}) {
+    // Vérifier qu'au moins un identifiant est fourni
+    if (!userId && !email && !matricule) {
+        throw new AppError(400, 'At least one identifier is required');
     }
+
+    // Construire l'objet `where` pour Prisma
+    const where = {};
+    if (userId) where.id = userId;
+    else if (email) where.email = email;
+    else if (matricule) where.matricule = matricule;
+
+    // Requête Prisma
+    const user = await prisma.user.findUnique({
+        where,
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            isActive: true,
+            phone: true,
+            createdAt: true,
+            updatedAt: true
+        }
+    });
+
+    if (!user) {
+        throw new AppError(404, 'User not found');
+    }
+
+    return user;
+}
+
 
     // Tableau de bord complet pour agent de contrôle
     async getAgentDashboardData(userId) {

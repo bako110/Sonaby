@@ -913,4 +913,51 @@ router.put('/:id', siteController.updateSite);
  */
 router.delete('/:id', siteController.deleteSite);
 
+/**
+ * @swagger
+ * /api/sites/agent/{userId}/sites:
+ *   get:
+ *     summary: Récupérer tous les sites assignés à un agent
+ *     tags: [Sites]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID de l'agent
+ *     responses:
+ *       200:
+ *         description: Liste des sites de l'agent récupérée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Site'
+ *       400:
+ *         description: Identifiant de l'agent manquant ou invalide
+ *       401:
+ *         description: Non authentifié ou token invalide
+ *       403:
+ *         description: Rôle non autorisé
+ *       500:
+ *         description: Erreur serveur
+ */
+
+router.get(
+    '/agent/:userId/sites',
+    authenticateToken,          // obligatoire d'être connecté // accès limité selon les rôles
+    siteController.getSitesByAgent
+);
+
 module.exports = router;

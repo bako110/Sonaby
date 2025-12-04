@@ -783,6 +783,164 @@ class CheckpointService {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
   }
+
+  async getCheckpointsByAgent(agentId, options = {}) {
+  try {
+    // Vérifier que l'agent existe
+    const agent = await prisma.user.findUnique({
+      where: { id: agentId }
+    });
+    
+    if (!agent) {
+      throw new Error('Agent non trouvé');
+    }
+
+    const {
+      includeInactive = false,
+      withSiteInfo = true,
+      withStats = false,
+      page = 1,
+      limit = 50
+    } = options;
+
+    const skip = (page - 1) * limit;
+
+    // Construire la clause where
+    const whereClause = {
+      agentId: agentId
+    };
+
+    if (!includeInactive) {
+      whereClause.active = true;
+    }
+
+    const [checkpoints, total] = await Promise.all([
+      // Récupérer les checkpoints
+      prisma.checkpoint.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        include: {
+          site: withSiteInfo ? {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              city: true,
+              address: true,
+              status: true
+            }
+          } : false,
+          // Inclure les affectations d'agent (historique)
+          agentAssignments: {
+            where: {
+              userId: agentId
+            },
+            orderBy: {
+              startDate: 'desc'
+            },
+            take: 1 // Dernière affectation
+          },
+          // Stats si demandé
+          ...(withStats && {
+            _count: {
+              select: {
+                visits: {
+                  where: {
+                    createdAt: {
+                      gte: new Date(new Date().setDate(new Date().getDate() - 30)) // 30 derniers jours
+                    }
+                  }
+                },
+                sosAlerts: {
+                  where: {
+                    isResolved: false
+                  }
+                }
+              }
+            }
+          })
+        },
+        orderBy: [
+          { priority: 'asc' },
+          { name: 'asc' }
+        ]
+      }),
+      // Compter le total
+      prisma.checkpoint.count({
+        where: whereClause
+      })
+    ]);
+
+    // Formater la réponse
+    const formattedCheckpoints = checkpoints.map(checkpoint => {
+      const baseResponse = {
+        id: checkpoint.id,
+        name: checkpoint.name,
+        description: checkpoint.description,
+        sosId: checkpoint.sosId,
+        zone: checkpoint.zone,
+        building: checkpoint.building,
+        floor: checkpoint.floor,
+        checkpointType: checkpoint.checkpointType,
+        status: checkpoint.status,
+        priority: checkpoint.priority,
+        active: checkpoint.active,
+        coordinates: checkpoint.coordinatesLatitude && checkpoint.coordinatesLongitude 
+          ? {
+              latitude: checkpoint.coordinatesLatitude,
+              longitude: checkpoint.coordinatesLongitude
+            }
+          : null,
+        specialInstructions: checkpoint.specialInstructions,
+        createdAt: checkpoint.createdAt,
+        updatedAt: checkpoint.updatedAt,
+        ...(withSiteInfo && checkpoint.site && {
+          site: checkpoint.site
+        }),
+        ...(checkpoint.agentAssignments && checkpoint.agentAssignments.length > 0 && {
+          assignment: {
+            id: checkpoint.agentAssignments[0].id,
+            startDate: checkpoint.agentAssignments[0].startDate,
+            endDate: checkpoint.agentAssignments[0].endDate
+          }
+        })
+      };
+
+      // Ajouter les stats si demandé
+      if (withStats) {
+        baseResponse.stats = {
+          visitsLast30Days: checkpoint._count?.visits || 0,
+          activeAlerts: checkpoint._count?.sosAlerts || 0
+        };
+      }
+
+      return baseResponse;
+    });
+
+    return {
+      success: true,
+      agent: {
+        id: agent.id,
+        firstName: agent.firstName,
+        lastName: agent.lastName,
+        email: agent.email,
+        role: agent.role
+      },
+      checkpoints: formattedCheckpoints,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      }
+    };
+  } catch (error) {
+    throw new Error(`Erreur lors de la récupération des checkpoints de l'agent: ${error.message}`);
+  }
+}
 }
 
 module.exports = new CheckpointService();

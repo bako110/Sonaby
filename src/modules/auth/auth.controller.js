@@ -59,17 +59,20 @@ const authController = {
     
    
     getProfile: asyncHandler(async (req, res) => {
-        // req.user contient les données du token JWT (userId, role)
-        const userId = req.user.userId;
-        
-        // Récupérer les données complètes de l'utilisateur depuis la base
-        const user = await authService.getUserProfile(userId);
-        
-        res.json({
-            success: true,
-            data: { user }
-        });
-    }),
+    // req.user contient les données du token JWT (userId, role)
+    const userId = req.user.userId;
+
+    console.log("L'identifiant de l'utilisateur est:", userId)
+    
+    // Récupérer les données complètes de l'utilisateur depuis la base
+    const user = await authService.getUserProfile({ userId });
+    
+    res.json({
+        success: true,
+        data: { user }
+    });
+}),
+
 
     // Tableau de bord complet pour agent de contrôle
     getAgentDashboard: asyncHandler(async (req, res) => {

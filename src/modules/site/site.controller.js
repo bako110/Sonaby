@@ -248,6 +248,23 @@ getFilterOptions = asyncHandler(async (req, res) => {
       });
     }
   });
+  getSitesByAgent= asyncHandler(async (req, res) => {
+        const userId = req.params.userId;
+        console.log ("Identifiant", userId)
+
+        if (!userId) {
+            throw new AppError(400, "L'identifiant de l'agent est requis");
+        }
+
+        const sites = await siteService.getSitesByAgent(userId);
+
+        res.json({
+            success: true,
+            data: sites
+        });
+    })
+
+  
 }
 
 module.exports = new SiteController();
