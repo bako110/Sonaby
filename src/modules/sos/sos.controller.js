@@ -222,6 +222,54 @@ class SOSController {
       });
     }
   });
+  // Créer une alerte SOS générale
+  async createSOS(req, res) {
+    try {
+      // Validation simple des params
+      const validatedParams = sosParamsSchema.parse(req.body.params || {});
+
+      const sos = await sosService.createGeneralSOS({
+        params: validatedParams
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Alerte SOS créée',
+        sos
+      });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // Récupérer la liste des SOS générales
+  async getSOSList(req, res) {
+    try {
+      const sosList = await sosService.getSOSList(req.query);
+      return res.status(200).json({
+        success: true,
+        data: sosList
+      });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // Résoudre une alerte SOS
+  async resolveSOS(req, res) {
+    try {
+      const { id } = req.params;
+      const updatedSOS = await sosService.resolveSOS(id, req.body);
+
+      return res.status(200).json({
+        success: true,
+        message: 'SOS résolu',
+        sos: updatedSOS
+      });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new SOSController();

@@ -500,6 +500,51 @@ class SOSService {
       throw new Error(`Erreur lors de la récupération des statistiques SOS: ${error.message}`);
     }
   }
+
+  async createGeneralSOS(data) {
+    const { params } = data;
+
+    return await prisma.sos.create({
+      data: {
+        title: params?.title || null,
+        description: params?.description || null,
+        isResolved: false
+      }
+    });
+  }
+
+    // Récupérer une liste de SOS avec filtres simples (title / description)
+  async getSOSList(query) {
+    const { page = 1, limit = 10, search, isResolved } = query;
+
+    const where = {};
+    if (isResolved !== undefined) where.isResolved = isResolved;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    const sosList = await prisma.sos.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { id: 'desc' } // On peut utiliser l'id si pas de date
+    });
+
+    return sosList;
+  }
+
+  // Résoudre une SOS
+  async resolveSOS(id) {
+    return await prisma.sos.update({
+      where: { id },
+      data: {
+        isResolved: true
+      }
+    });
+  }
 }
 
 module.exports = new SOSService();

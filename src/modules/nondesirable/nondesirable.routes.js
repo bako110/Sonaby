@@ -1,6 +1,7 @@
 const express = require('express');
 const nonDesirableController = require('./nondesirable.controller');
 const { authenticateToken } = require('../../middleware/authMiddleware');
+const { uploadNonDesirableWithFile } = require('../../middleware/upload');
 
 const router = express.Router();
 router.use(authenticateToken);
@@ -98,44 +99,141 @@ router.get('/', nonDesirableController.getAllNonDesirables);
  */
 router.post('/', nonDesirableController.createNonDesirable);
 
+// /**
+//  * @swagger
+//  * /api/nondesirables/unknown:
+//  *   post:
+//  *     summary: Ajouter un indésirable inconnu (JSON - ADMIN seulement)
+//  *     description: |
+//  *       Permet à l'administrateur d'ajouter une personne à la liste des indésirables
+//  *       même si elle n'est pas enregistrée comme visiteur dans le système.
+//  *       Cette action crée directement un historique dans BlacklistHistory sans créer de visiteur.
+//  *       Version JSON sans fichier.
+//  *     tags: [Nondesirables]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     requestBody:
+//  *       required: true
+//  *       content:
+//  *         application/json:
+//  *           schema:
+//  *             $ref: '#/components/schemas/CreateUnknownNondesirableInput'
+//  *           example:
+//  *             firstName: "Jean"
+//  *             lastName: "SUSPECT"
+//  *             birthDate: "15/06/1980"
+//  *             birthPlace: "Ouagadougou"
+//  *             sexe: "M"
+//  *             givingDate: "01/01/2020"
+//  *             expirationDate: "01/01/2030"
+//  *             phone: "+226 70 11 22 33"
+//  *             email: "suspect@example.com"
+//  *             idType: "CNI"
+//  *             idNumber: "B1234567890"
+//  *             idScanUrl: "https://example.com/scans/suspect123.jpg"
+//  *             photoUrl: "https://example.com/photos/suspect123.jpg"
+//  *             company: "Entreprise Suspecte SARL"
+//  *             nationality: "Burkinabé"
+//  *             reason: "Comportement suspect signalé par les autorités"
+//  *             incidentDate: "2024-11-20"
+//  *             incidentLocation: "Entrée principale"
+//  *             severityLevel: 3
+//  *     responses:
+//  *       201:
+//  *         description: Indésirable inconnu ajouté avec succès
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 success:
+//  *                   type: boolean
+//  *                 message:
+//  *                   type: string
+//  *                 data:
+//  *                   $ref: '#/components/schemas/UnknownNondesirable'
+//  *       400:
+//  *         description: Personne déjà dans la liste
+//  *       403:
+//  *         description: Accès refusé - ADMIN requis
+//  */
+// // router.post('/unknown', nonDesirableController.createUnknownNonDesirable);
+
 /**
  * @swagger
- * /api/nondesirables/unknown:
+ * /api/nondesirables/unknown/formdata:
  *   post:
- *     summary: Ajouter un indésirable inconnu (ADMIN seulement)
+ *     summary: Ajouter un indésirable inconnu avec fichier (FormData - ADMIN seulement)
  *     description: |
  *       Permet à l'administrateur d'ajouter une personne à la liste des indésirables
- *       même si elle n'est pas enregistrée comme visiteur dans le système.
- *       Cette action crée directement un historique dans BlacklistHistory sans créer de visiteur.
+ *       avec un fichier joint (image ou PDF). Version FormData.
  *     tags: [Nondesirables]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/CreateUnknownNondesirableInput'
- *           example:
- *             firstName: "Jean"
- *             lastName: "SUSPECT"
- *             birthDate: "15/06/1980"
- *             birthPlace: "Ouagadougou"
- *             sexe: "M"
- *             givingDate: "01/01/2020"
- *             expirationDate: "01/01/2030"
- *             phone: "+226 70 11 22 33"
- *             email: "suspect@example.com"
- *             idType: "CNI"
- *             idNumber: "B1234567890"
- *             idScanUrl: "https://example.com/scans/suspect123.jpg"
- *             photoUrl: "https://example.com/photos/suspect123.jpg"
- *             company: "Entreprise Suspecte SARL"
- *             nationality: "Burkinabé"
- *             reason: "Comportement suspect signalé par les autorités"
- *             incidentDate: "2024-11-20"
- *             incidentLocation: "Entrée principale"
- *             severityLevel: 3
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 example: "Jean"
+ *               lastName:
+ *                 type: string
+ *                 example: "SUSPECT"
+ *               birthDate:
+ *                 type: string
+ *                 example: "15/06/1980"
+ *               birthPlace:
+ *                 type: string
+ *                 example: "Ouagadougou"
+ *               sexe:
+ *                 type: string
+ *                 example: "M"
+ *               givingDate:
+ *                 type: string
+ *                 example: "01/01/2020"
+ *               expirationDate:
+ *                 type: string
+ *                 example: "01/01/2030"
+ *               phone:
+ *                 type: string
+ *                 example: "+226 70 11 22 33"
+ *               email:
+ *                 type: string
+ *                 example: "suspect@example.com"
+ *               idType:
+ *                 type: string
+ *                 example: "CNI"
+ *               idNumber:
+ *                 type: string
+ *                 example: "B1234567890"
+ *               company:
+ *                 type: string
+ *                 example: "Entreprise Suspecte SARL"
+ *               nationality:
+ *                 type: string
+ *                 example: "Burkinabé"
+ *               reason:
+ *                 type: string
+ *                 example: "Comportement suspect signalé par les autorités"
+ *               incidentDate:
+ *                 type: string
+ *                 example: "2024-11-20"
+ *               incidentLocation:
+ *                 type: string
+ *                 example: "Entrée principale"
+ *               severityLevel:
+ *                 type: integer
+ *                 example: 3
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *                 description: Fichier image ou PDF optionnel
  *     responses:
  *       201:
  *         description: Indésirable inconnu ajouté avec succès
@@ -151,11 +249,11 @@ router.post('/', nonDesirableController.createNonDesirable);
  *                 data:
  *                   $ref: '#/components/schemas/UnknownNondesirable'
  *       400:
- *         description: Personne déjà dans la liste
+ *         description: Personne déjà dans la liste ou fichier invalide
  *       403:
  *         description: Accès refusé - ADMIN requis
  */
-router.post('/unknown', nonDesirableController.createUnknownNonDesirable);
+router.post('/unknown', uploadNonDesirableWithFile, nonDesirableController.createUnknownNonDesirable);
 
 /**
  * @swagger

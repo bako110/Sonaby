@@ -1,23 +1,83 @@
-const express = require('express');
-const multer = require('multer');
+// services/uploadService.js
+const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
-const router = express.Router();
+class UploadService {
+  constructor() {
+    this.baseUploadDir = 'public/uploads/';
+    this.createDirectories();
+  }
 
-// Configurer le stockage Multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')), // ../uploads par rapport à src/routes
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
+  createDirectories() {
+    const dirs = [
+      'non-desirables/attachments',
+      'visitors/photos',
+      'visitors/id-scans'
+    ];
 
-const upload = multer({ storage });
+    dirs.forEach(dir => {
+      const fullPath = path.join(this.baseUploadDir, dir);
+      if (!fs.existsSync(fullPath)) {
+        fs.mkdirSync(fullPath, { recursive: true });
+      }
+    });
+  }
 
-// Route POST /upload
-router.post('/', upload.single('photo'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu' });
+  async saveFileFromMemory(file, entityType, fileType) {
+    if (!file || !file.buffer) return null;
+    
+    try {
+      // Déterminer l'extension
+      const originalname = file.originalname || '';
+      let fileExtension = path.extname(originalname);
+      
+      if (!fileExtension) {
+        const mimeToExt = {
+          'image/jpeg': '.jpg',
+          'image/png': '.png',
+          'image/gif': '.gif',
+          'image/webp': '.webp',
+          'application/pdf': '.pdf'
+        };
+        fileExtension = mimeToExt[file.mimetype] || '.bin';
+      }
 
-  const url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.json({ url });
-});
+      const fileName = `${uuidv4()}${fileExtension}`;
+      const uploadDir = path.join(this.baseUploadDir, entityType, fileType);
+      const filePath = path.join(uploadDir, fileName);
 
-module.exports = router;
+      // Créer le dossier si nécessaire
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      // Sauvegarder le fichier
+      fs.writeFileSync(filePath, file.buffer);
+
+      // Retourner l'URL
+      return `/uploads/${entityType}/${fileType}/${fileName}`;
+      
+    } catch (error) {
+      console.error('Erreur sauvegarde fichier:', error);
+      return null;
+    }
+  }
+
+  deleteFile(fileUrl) {
+    if (!fileUrl) return;
+    
+    try {
+      const relativePath = fileUrl.replace('/uploads/', '');
+      const fullPath = path.join(this.baseUploadDir, relativePath);
+      
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    } catch (error) {
+      console.error('Erreur suppression fichier:', error);
+    }
+  }
+}
+
+module.exports = new UploadService();

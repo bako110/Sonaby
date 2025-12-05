@@ -1176,7 +1176,87 @@ const swaggerPathsFinal = {
       }
     }
   },
-
+'/api/v1/nondesirables/unknown': {
+  post: {
+    tags: ['Nondesirables'],
+    summary: 'Ajouter un indésirable inconnu (ADMIN seulement) - FormData avec fichier',
+    description: 'Ajoute un indésirable non enregistré comme visiteur. Accepte FormData avec un fichier optionnel (image ou PDF).',
+    security: [{ bearerAuth: [] }],
+    consumes: ['multipart/form-data'],
+    requestBody: {
+      required: true,
+      content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            required: ['firstName', 'lastName', 'reason'],
+            properties: {
+              // CHAMPS TEXTE
+              firstName: { type: 'string', example: 'Jean' },
+              lastName: { type: 'string', example: 'SUSPECT' },
+              birthDate: { type: 'string', example: '1980-06-15' },
+              birthPlace: { type: 'string', example: 'Ouagadougou' },
+              sexe: { type: 'string', example: 'M' },
+              givingDate: { type: 'string', example: '2020-01-01' },
+              expirationDate: { type: 'string', example: '2030-01-01' },
+              phone: { type: 'string', example: '+22670112233' },
+              email: { type: 'string', example: 'suspect@example.com' },
+              idType: { type: 'string', example: 'CNI' },
+              idNumber: { type: 'string', example: 'B1234567890' },
+              company: { type: 'string', example: 'Entreprise Suspecte SARL' },
+              nationality: { type: 'string', example: 'Burkinabé' },
+              reason: { type: 'string', example: 'Comportement suspect signalé' },
+              incidentDate: { type: 'string', example: '2024-11-20' },
+              incidentLocation: { type: 'string', example: 'Entrée principale' },
+              severityLevel: { type: 'integer', example: 3 },
+              
+              // UN SEUL FICHIER (optionnel)
+              photo: {
+                type: 'string',
+                format: 'binary',
+                description: 'Fichier image (JPEG, PNG, JPG, WEBP) ou PDF (max 10MB)'
+              }
+            }
+          },
+          encoding: {
+            photo: {
+              contentType: 'image/jpeg, image/png, image/jpg, image/webp, application/pdf'
+            }
+          }
+        }
+      }
+    },
+    responses: {
+      201: {
+        description: 'Indésirable inconnu ajouté avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+                data: { $ref: '#/components/schemas/UnknownNondesirable' }
+              }
+            }
+          }
+        }
+      },
+      400: { 
+        description: 'Données invalides ou fichier trop volumineux' 
+      },
+      403: { 
+        description: 'Accès refusé - ADMIN requis' 
+      },
+      413: {
+        description: 'Fichier trop volumineux (max 10MB)'
+      },
+      415: {
+        description: 'Type de fichier non supporté'
+      }
+    }
+  }
+},
   '/api/v1/nondesirables/visitor/{visitorId}': {
   delete: {
     tags: ['Nondesirables'],

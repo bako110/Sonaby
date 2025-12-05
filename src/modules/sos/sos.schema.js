@@ -35,10 +35,17 @@ const sosQuerySchema = z.object({
   isResolved: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
 });
 
+
+const sosParamsSchema = z.object({
+  title: z.string().max(255, 'Titre trop long').optional(),
+  description: z.string().optional()
+});
+
 module.exports = {
   createSOSSchema,
   createGeneralSOSSchema,
   resolveSOSSchema,
   sosIdSchema,
-  sosQuerySchema
+  sosQuerySchema,
+  sosParamsSchema
 };

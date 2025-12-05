@@ -38,7 +38,7 @@ router.use('/sos', sosRoutes);
 router.use('/rendezvous', rendezvousRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/stats', statsRoutes);
-router.use('/uploads', uploadRoutes)
+// router.use('/uploads', uploadRoutes)
 
 // Route de santé de l'API
 router.get('/health', (req, res) => {

@@ -1,4 +1,6 @@
 const { prisma } = require('../../config/prisma');
+ // En haut du fichier, importez le service d'upload
+const uploadService = require('../upload'); // Adaptez le chemin
 
 class NonDesirableService {
   // 1️⃣ Création d'un "indésirable" connu
@@ -460,129 +462,171 @@ class NonDesirableService {
     }
   }
 
-  // 5️⃣ Création d'un "indésirable inconnu"
-  async createUnknownNonDesirable(nonDesirableData, reportedBy) {
-    try {
-      const {
-        firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
-        givingDate, expirationDate, phone, email, company, nationality,
-        idScanUrl, photoUrl, reason, incidentDate, incidentLocation, severityLevel,
-        attachedFileUrl, attachedFileName, attachedFileType, attachedFileSize
-      } = nonDesirableData;
 
-      const parseDate = (dateString) => {
-        if (!dateString) return null;
-        if (dateString.includes('/')) {
-          const [day, month, year] = dateString.split('/');
-          return new Date(year, month - 1, day);
+
+// Dans la classe NonDesirableService, remplacez la fonction createUnknownNonDesirable par :
+
+// nondesirable.service.js - Fonction corrigée
+async createUnknownNonDesirable({ validatedData, reportedBy, file = null }) {
+  try {
+    console.log('Données reçues dans le service:', { validatedData, reportedBy, file: file ? 'présent' : 'absent' });
+
+    // Extraire les données validées
+    const {
+      firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
+      givingDate, expirationDate, phone, email, company, nationality,
+      reason, incidentDate, incidentLocation, severityLevel
+    } = validatedData;
+
+    // Vérifier les données requises
+    if (!firstName || !lastName || !reason) {
+      throw new Error('Prénom, nom et raison sont requis');
+    }
+
+    const parseDate = (dateString) => {
+      if (!dateString) return null;
+      if (dateString.includes('/')) {
+        const [day, month, year] = dateString.split('/');
+        return new Date(year, month - 1, day);
+      }
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
+    // Variables pour les fichiers
+    let photoUrl = validatedData.photoUrl || '';
+    let attachedFileUrl = '';
+    let attachedFileName = '';
+    let attachedFileType = '';
+    let attachedFileSize = 0;
+
+    // Traiter le fichier uploadé
+    if (file) {
+      try {
+        // Déterminer si c'est une image ou un PDF
+        if (file.mimetype.startsWith('image/')) {
+          // C'est une image → photoUrl
+          const baseUrl = '/uploads/non-desirables/photos/';
+          photoUrl = baseUrl + file.filename;
+          console.log('Image uploadée comme photo:', photoUrl);
+        } else if (file.mimetype === 'application/pdf') {
+          // C'est un PDF → attachedFile
+          const baseUrl = '/uploads/non-desirables/documents/';
+          attachedFileUrl = baseUrl + file.filename;
+          attachedFileName = file.originalname;
+          attachedFileType = file.mimetype;
+          attachedFileSize = file.size;
+          console.log('PDF uploadé comme document:', attachedFileName);
         }
-        const date = new Date(dateString);
-        return isNaN(date.getTime()) ? null : date;
-      };
+      } catch (uploadError) {
+        console.error('Erreur traitement fichier:', uploadError);
+        // Continuer sans le fichier
+      }
+    }
 
-      const fullReason = {
-        mainReason: reason,
-        personalInfo: { firstName, lastName, birthDate, birthPlace, sexe, nationality },
-        identification: { idType, idNumber, idScanUrl, givingDate, expirationDate },
-        contact: { phone, email, company },
-        incident: { incidentDate, incidentLocation, severityLevel },
-        photos: { photoUrl }
-      };
+    const fullReason = {
+      mainReason: reason,
+      personalInfo: { firstName, lastName, birthDate, birthPlace, sexe, nationality },
+      identification: { idType, idNumber, givingDate, expirationDate },
+      contact: { phone, email, company },
+      incident: { incidentDate, incidentLocation, severityLevel },
+      photos: { photoUrl }
+    };
 
-      const result = await prisma.$transaction(async (tx) => {
-        const nonDesirableEntry = await tx.nonDesirable.create({
-          data: {
-            visitorId: null,
-            reason: JSON.stringify(fullReason),
-            reportedBy,
-            firstName: firstName || "Inconnu",
-            lastName: lastName || "Inconnu",
-            birthDate: parseDate(birthDate),
-            birthPlace: birthPlace || "",
-            sexe: sexe || "",
-            nationality: nationality || "",
-            phone: phone || "",
-            email: email || "",
-            company: company || "",
-            idType: idType || "",
-            idNumber: idNumber || "",
-            idScanUrl: idScanUrl || "",
-            photoUrl: photoUrl || "",
-            givingDate: parseDate(givingDate),
-            expirationDate: parseDate(expirationDate),
-            incidentDate: parseDate(incidentDate),
-            incidentLocation: incidentLocation || "",
-            severityLevel: severityLevel || 2,
-            attachedFileUrl: attachedFileUrl || "",
-            attachedFileName: attachedFileName || "",
-            attachedFileType: attachedFileType || "",
-            attachedFileSize: attachedFileSize || 0,
-            createdBy: reportedBy || "system"
-          }
-        });
-
-        await tx.blacklistHistory.create({
-          data: {
-            visitorId: null,
-            firstName: nonDesirableEntry.firstName,
-            lastName: nonDesirableEntry.lastName,
-            idType: nonDesirableEntry.idType,
-            idNumber: nonDesirableEntry.idNumber,
-            phone: nonDesirableEntry.phone,
-            email: nonDesirableEntry.email,
-            nationality: nonDesirableEntry.nationality,
-            birthDate: nonDesirableEntry.birthDate,
-            birthPlace: nonDesirableEntry.birthPlace,
-            action: 'BLACKLIST',
-            reason: reason,
-            severityLevel: nonDesirableEntry.severityLevel,
-            incidentDate: nonDesirableEntry.incidentDate,
-            incidentLocation: nonDesirableEntry.incidentLocation,
-            createdBy: reportedBy,
-            nonDesirableId: nonDesirableEntry.id
-          }
-        });
-
-        return nonDesirableEntry;
+    const result = await prisma.$transaction(async (tx) => {
+      const nonDesirableEntry = await tx.nonDesirable.create({
+        data: {
+          visitorId: null,
+          reason: JSON.stringify(fullReason),
+          reportedBy,
+          firstName: firstName || "Inconnu",
+          lastName: lastName || "Inconnu",
+          birthDate: parseDate(birthDate),
+          birthPlace: birthPlace || "",
+          sexe: sexe || "M",
+          nationality: nationality || "",
+          phone: phone || "",
+          email: email || "",
+          company: company || "",
+          idType: idType || "",
+          idNumber: idNumber || "",
+          photoUrl: photoUrl || "",
+          givingDate: parseDate(givingDate),
+          expirationDate: parseDate(expirationDate),
+          incidentDate: parseDate(incidentDate),
+          incidentLocation: incidentLocation || "",
+          severityLevel: severityLevel || 2,
+          attachedFileUrl: attachedFileUrl || "",
+          attachedFileName: attachedFileName || "",
+          attachedFileType: attachedFileType || "",
+          attachedFileSize: attachedFileSize || 0,
+          createdBy: reportedBy || "system"
+        }
       });
 
-      return {
-        success: true,
+      await tx.blacklistHistory.create({
         data: {
-          id: result.id,
-          type: 'unknown',
           visitorId: null,
-          reason,
-          createdAt: result.createdAt,
-          updatedAt: result.updatedAt,
-          firstName: result.firstName,
-          lastName: result.lastName,
-          birthDate: result.birthDate,
-          birthPlace: result.birthPlace,
-          sexe: result.sexe,
-          nationality: result.nationality,
-          phone: result.phone,
-          email: result.email,
-          company: result.company,
-          idType: result.idType,
-          idNumber: result.idNumber,
-          idScanUrl: result.idScanUrl,
-          givingDate: result.givingDate,
-          expirationDate: result.expirationDate,
-          photoUrl: result.photoUrl,
-          isBlacklisted: true,
-          blacklistReason: reason,
-          severityLevel: result.severityLevel,
-          incidentDate: result.incidentDate,
-          incidentLocation: result.incidentLocation,
-          reporter: { id: reportedBy }
+          firstName: nonDesirableEntry.firstName,
+          lastName: nonDesirableEntry.lastName,
+          idType: nonDesirableEntry.idType,
+          idNumber: nonDesirableEntry.idNumber,
+          phone: nonDesirableEntry.phone,
+          email: nonDesirableEntry.email,
+          nationality: nonDesirableEntry.nationality,
+          birthDate: nonDesirableEntry.birthDate,
+          birthPlace: nonDesirableEntry.birthPlace,
+          action: 'BLACKLIST',
+          reason: reason,
+          severityLevel: nonDesirableEntry.severityLevel,
+          incidentDate: nonDesirableEntry.incidentDate,
+          incidentLocation: nonDesirableEntry.incidentLocation,
+          createdBy: reportedBy,
+          nonDesirableId: nonDesirableEntry.id
         }
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la création de l'indésirable inconnu: ${error.message}`);
-    }
-  }
+      });
 
+      return nonDesirableEntry;
+    });
+
+    return {
+      success: true,
+      data: {
+        id: result.id,
+        type: 'unknown',
+        visitorId: null,
+        reason,
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
+        firstName: result.firstName,
+        lastName: result.lastName,
+        birthDate: result.birthDate,
+        birthPlace: result.birthPlace,
+        sexe: result.sexe,
+        nationality: result.nationality,
+        phone: result.phone,
+        email: result.email,
+        company: result.company,
+        idType: result.idType,
+        idNumber: result.idNumber,
+        photoUrl: result.photoUrl,
+        givingDate: result.givingDate,
+        expirationDate: result.expirationDate,
+        isBlacklisted: true,
+        blacklistReason: reason,
+        severityLevel: result.severityLevel,
+        incidentDate: result.incidentDate,
+        incidentLocation: result.incidentLocation,
+        attachedFileUrl: result.attachedFileUrl,
+        attachedFileName: result.attachedFileName,
+        reporter: { id: reportedBy }
+      }
+    };
+  } catch (error) {
+    console.error('Erreur complète dans le service:', error);
+    throw new Error(`Erreur lors de la création de l'indésirable inconnu: ${error.message}`);
+  }
+}
   // 6️⃣ Suppression d'un "indésirable connu"
   async removeNonDesirable(visitorId, removedBy, reason) {
     try {

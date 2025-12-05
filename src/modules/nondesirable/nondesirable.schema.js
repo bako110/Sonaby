@@ -46,11 +46,39 @@ const createUnknownNonDesirableSchema = z.object({
   reason: z.string().min(1, "La raison est requise").max(500),
   incidentDate: z.string().refine(v => !v || !isNaN(Date.parse(v)), "Date d'incident invalide").optional(),
   incidentLocation: z.string().max(255).optional(),
-  severityLevel: z.number().int().min(1).max(4).default(2),
+  
+  // CORRECTION ICI: Accepter string et convertir en number
+  severityLevel: z
+    .union([z.string(), z.number()]) // Accepter string OU number
+    .transform(val => {
+      // Si c'est une string, convertir en number
+      if (typeof val === 'string') {
+        const num = parseInt(val, 10);
+        return isNaN(num) ? 2 : num; // Valeur par défaut si conversion échoue
+      }
+      return val;
+    })
+    .refine(val => val >= 1 && val <= 4, {
+      message: 'Le niveau de sévérité doit être entre 1 et 4'
+    })
+    .default(2),
+  
   attachedFileUrl: z.string().url().optional(),
   attachedFileName: z.string().optional(),
   attachedFileType: z.string().optional(),
-  attachedFileSize: z.number().optional(),
+  
+  // CORRECTION ICI aussi pour attachedFileSize
+  attachedFileSize: z
+    .union([z.string(), z.number()])
+    .transform(val => {
+      if (typeof val === 'string') {
+        const num = parseInt(val, 10);
+        return isNaN(num) ? 0 : num;
+      }
+      return val || 0;
+    })
+    .optional(),
+    
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   createdBy: z.string().optional(),
