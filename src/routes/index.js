@@ -16,13 +16,14 @@ const blacklistRoutes = require('../modules/blacklist/blacklist.routes');
 const rendezvousRoutes = require('../modules/rendezvous/rendezvous.routes');
 const dashboardRoutes = require('../modules/dashboard');
 const statsRoutes = require('../modules/stats/stats.routes');
+const uploadRoutes = require('../modules/upload')
 
 const router = express.Router();
 
 // Routes des modules
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
-router.use('/files', fileRoutes);
+// router.use('/files', fileRoutes);
 router.use('/sites', siteRoutes);
 router.use('/checkpoints', checkpointRoutes);
 router.use('/agents', agentRoutes);
@@ -33,11 +34,11 @@ router.use('/appointments', appointmentRoutes);
 router.use('/incidents', incidentRoutes);
 router.use('/nondesirables', nonDesirableRoutes);
 router.use('/sos', sosRoutes);
-router.use('/blacklist', blacklistRoutes);
+// router.use('/blacklist', blacklistRoutes);
 router.use('/rendezvous', rendezvousRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/stats', statsRoutes);
-
+router.use('/uploads', uploadRoutes)
 
 // Route de santé de l'API
 router.get('/health', (req, res) => {

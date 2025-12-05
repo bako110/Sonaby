@@ -491,6 +491,44 @@ class VisitorController {
         }
     });
 
+    getvisitorsAgents = asyncHandler(async (req, res) => {
+      try {
+        const userId = req.params.userId;
+        console.log("id de l'agent:", userId)
+        const {
+          currentOnly = 'true',
+          includeInactive = 'false',
+          withSiteInfo = 'true',
+          withStats = 'false',
+          page = '1',
+          limit = '20'
+        } = req.query;
+    
+        if (!userId) {
+          return res.status(400).json({ success: false, message: "L'ID de l'agent est requis" });
+        }
+    
+        const options = {
+          includeInactive: includeInactive === 'true',
+          withSiteInfo: withSiteInfo === 'true',
+          withStats: withStats === 'true',
+          page: parseInt(page),
+          limit: parseInt(limit)
+        };
+    
+        if (currentOnly === 'true') {
+          options.includeInactive = false; // checkpoints actifs seulement
+        }
+    
+        const result = await checkpointService.getVisitorsByAgent(userId, options);
+    
+        res.status(200).json(result);
+      } catch (error) {
+        console.error('Erreur dans getAgentCheckpoints:', error);
+        res.status(500).json({ success: false, message: error.message || 'Erreur serveur' });
+      }
+    })
+
 }
 
 module.exports = new VisitorController();

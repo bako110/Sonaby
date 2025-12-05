@@ -441,61 +441,44 @@ class SiteService {
   }
 
   // Récupérer tous les sites assignés à un agent spécifique
-async getSitesByAgent(userId) {
-    if (!userId) {
-        throw new Error("L'identifiant de l'agent est requis");
-    }
+   async getSitesByAgent(userId) {
+  if (!userId) {
+    throw new Error("L'identifiant de l'agent est requis");
+  }
 
-    try {
-        const sites = await prisma.site.findMany({
-            where: {
-                assignedUsers: {
-                    some: {
-                        userId: userId
-                    }
-                }
-            },
-            include: {
-                checkpoints: {
-                    select: {
-                        id: true,
-                        name: true,
-                        status: true,
-                        checkpointType: true,
-                        agent: {
-                            select: {
-                                id: true,
-                                firstName: true,
-                                lastName: true
-                            }
-                        }
-                    }
-                },
-                assignedUsers: {
-                    select: {
-                        user: {
-                            select: {
-                                id: true,
-                                firstName: true,
-                                lastName: true,
-                                email: true,
-                                role: true
-                            }
-                        }
-                    }
-                },
-            },
-            orderBy: {
-                creationDate: 'desc'
-            }
-        });
+  try {
+    // Récupérer tous les sites assignés à l'agent avec leurs relations
+    const sites = await prisma.site.findMany({
+      where: {
+        assignedUsers: {
+          some: { userId }
+        }
+      },
+      include: {
+        checkpoints: {
+          include: {
+            agent: true,
+            visits: { include: { visitor: true } }
+          }
+        },
+        incidents: {
+          include: { reporter: true, site: true, visiteur: true }
+        },
+        rendezvous: {
+          include: { organizer: true, visits: true }
+        },
+        assignedUsers: { include: { user: true } }
+      },
+      orderBy: { creationDate: 'desc' }
+    });
 
-        return sites;
-    } catch (error) {
-        console.error(error);
-        throw new Error(`Erreur lors de la récupération des sites de l'agent: ${error.message}`);
-    }
+    return sites;
+  } catch (error) {
+    console.error(error);
+    throw new Error(`Erreur lors de la récupération des sites de l'agent: ${error.message}`);
+  }
 }
+
 
 }
 

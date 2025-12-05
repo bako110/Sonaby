@@ -180,6 +180,19 @@ router.post('/unknown', nonDesirableController.createUnknownNonDesirable);
  *           type: string
  *           format: uuid
  *         description: ID du visiteur à retirer de la blacklist
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: La raison pour laquelle le visiteur est retiré de la blacklist
+ *                 example: "Comportement corrigé et approuvé par l'administration"
  *     responses:
  *       200:
  *         description: Visiteur retiré de la liste des indésirables avec succès
@@ -196,6 +209,7 @@ router.post('/unknown', nonDesirableController.createUnknownNonDesirable);
  *         description: Visiteur non trouvé ou pas blacklisté
  */
 router.delete('/visitor/:visitorId', nonDesirableController.removeNonDesirable);
+
 
 /**
  * @swagger
@@ -290,6 +304,116 @@ router.get('/known', nonDesirableController.getKnownNonDesirables);
  *         description: Erreur interne du serveur
  */
 router.get('/unknown/list', nonDesirableController.getUnknownNonDesirables);
+
+/**
+ * @swagger
+ * /visitor/{id}/blacklist-history:
+ *   get:
+ *     summary: Récupère l'historique de blacklist d'un visiteur
+ *     tags:
+ *       - NonDesirables
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID du visiteur
+ *     responses:
+ *       200:
+ *         description: Historique récupéré avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     example: { date: "2025-12-04", action: "Ajouté à la blacklist", user: "ADMIN" }
+ *       404:
+ *         description: Visiteur non trouvé
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Visiteur non trouvé
+ *       500:
+ *         description: Erreur serveur
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Erreur serveur
+ */
+router.get('/visitor/:id/blacklist-history', nonDesirableController.getBlacklistHistory);
+
+/**
+ * @swagger
+ * /unknown:
+ *   delete:
+ *     summary: Supprimer un indésirable non connu de la liste
+ *     description: Supprime un indésirable non connu et ajoute une raison dans l'historique.
+ *     tags:
+ *       - NonDesirable
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reportedBy:
+ *                 type: string
+ *                 description: ID de l'utilisateur qui fait la suppression
+ *               reason:
+ *                 type: string
+ *                 description: Raison de la suppression
+ *             required:
+ *               - reportedBy
+ *               - reason
+ *     responses:
+ *       200:
+ *         description: Succès de la suppression
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       500:
+ *         description: Erreur serveur
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ */
+router.delete('/unknown/user', nonDesirableController.removeUnknown);
+
 
 
 module.exports = router;

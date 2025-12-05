@@ -211,9 +211,8 @@ const swaggerPathsExtended = {
           }
         }
       }
-    }
+    },
   },
-
   // ==================== AGENT ENDPOINTS ====================
   '/api/v1/agents': {
     get: {
@@ -294,105 +293,86 @@ const swaggerPathsExtended = {
   },
 
   // ==================== SERVICE ENDPOINTS ====================
-  '/api/v1/services': {
-    get: {
-      tags: ['Services'],
-      summary: 'Lister tous les services',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: 'page', in: 'query', schema: { type: 'string' } },
-        { name: 'limit', in: 'query', schema: { type: 'string' } },
-        { name: 'search', in: 'query', schema: { type: 'string' } }
-      ],
-      responses: {
-        200: {
-          description: 'Liste des services',
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedResponse' } } }
-        }
-      }
-    },
-    post: {
-      tags: ['Services'],
-      summary: 'Créer un nouveau service',
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateServiceInput' } } }
-      },
-      responses: {
-        201: {
-          description: 'Service créé',
-          content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Service' } } } } }
-        }
-      }
-    }
-  },
 
-  '/api/v1/services/{id}': {
-    get: {
-      tags: ['Services'],
-      summary: 'Récupérer un service par ID',
-      security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-      responses: {
-        200: {
-          description: 'Service trouvé',
-          content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Service' } } } } }
-        }
-      }
-    },
-    put: {
-      tags: ['Services'],
-      summary: 'Mettre à jour un service',
-      security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-      requestBody: {
+ '/api/v1/services/sites/{siteId}/assign/{userId}': {
+  post: {
+    tags: ['Services'],
+    summary: 'Affecter un agent à un site',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'siteId',
+        in: 'path',
         required: true,
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateServiceInput' } } }
+        schema: { type: 'string' },
+        description: 'ID du site'
       },
-      responses: {
-        200: {
-          description: 'Service mis à jour',
-          content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Service' } } } } }
-        }
+      {
+        name: 'userId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'ID de l’agent'
       }
-    },
-    delete: {
-      tags: ['Services'],
-      summary: 'Supprimer un service',
-      security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-      responses: {
-        200: {
-          description: 'Service supprimé',
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiResponse' } } }
+    ],
+    responses: {
+      200: {
+        description: 'Agent affecté avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+                data: {
+                  type: 'object',
+                  properties: {
+                    siteId: { type: 'string' },
+                    userId: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
         }
-      }
+      },
+      404: { description: 'Site ou utilisateur introuvable' }
     }
-  },
+  }
+},
 
-  '/api/v1/services/{id}/stats': {
-    get: {
-      tags: ['Services'],
-      summary: 'Statistiques d\'un service',
-      security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
-      responses: {
-        200: {
-          description: 'Statistiques du service',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  data: {
+'/api/v1/services/sites/{siteId}/agents': {
+  get: {
+    tags: ['Services'],
+    summary: 'Lister les agents affectés à un site',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'siteId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'ID du site'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Liste des agents du site',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: {
+                  type: 'array',
+                  items: {
                     type: 'object',
                     properties: {
-                      totalVisits: { type: 'integer' },
-                      activeVisits: { type: 'integer' },
-                      totalAppointments: { type: 'integer' },
-                      totalIncidents: { type: 'integer' }
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      email: { type: 'string' }
                     }
                   }
                 }
@@ -402,7 +382,49 @@ const swaggerPathsExtended = {
         }
       }
     }
-  },
+  }
+},
+
+'/api/v1/services/sites/{siteId}/agent/{userId}': {
+  delete: {
+    tags: ['Services'],
+    summary: 'Retirer un agent d’un site',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'siteId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'ID du site'
+      },
+      {
+        name: 'userId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'ID de l’agent'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Agent retiré avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
+      404: { description: 'Agent ou site introuvable' }
+    }
+  }
+},
 
   // ==================== VISITOR ENDPOINTS ====================
   '/api/v1/visitors': {
@@ -716,53 +738,6 @@ const swaggerPathsExtended = {
     }
   },
 
-  // '/api/v1/visitors/site/{siteId}': {
-  //   get: {
-  //     tags: ['Visitors'],
-  //     summary: 'Récupérer les visiteurs d\'un site spécifique',
-  //     security: [{ bearerAuth: [] }],
-  //     parameters: [
-  //       { name: 'siteId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID du site' },
-  //       { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
-  //       { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
-  //       { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche par nom, prénom, email, téléphone ou entreprise' }
-  //     ],
-  //     responses: {
-  //       200: {
-  //         description: 'Liste des visiteurs du site',
-  //         content: {
-  //           'application/json': {
-  //             schema: {
-  //               type: 'object',
-  //               properties: {
-  //                 success: { type: 'boolean' },
-  //                 data: {
-  //                   type: 'array',
-  //                   items: { $ref: '#/components/schemas/VisitorWithSiteCount' }
-  //                 },
-  //                 pagination: {
-  //                   type: 'object',
-  //                   properties: {
-  //                     page: { type: 'integer' },
-  //                     limit: { type: 'integer' },
-  //                     total: { type: 'integer' },
-  //                     totalPages: { type: 'integer' }
-  //                   }
-  //                 }
-  //               }
-  //             }
-  //           }
-  //         }
-  //       },
-  //       403: {
-  //         description: 'Accès refusé'
-  //       },
-  //       404: {
-  //         description: 'Site non trouvé'
-  //       }
-  //     }
-  //   }
-  // },
 
   '/api/v1/visitors/site/{siteId}': {
     get: {
@@ -811,6 +786,7 @@ const swaggerPathsExtended = {
       }
     }
   },
+
 
   '/api/v1/visits/checkpoint/{checkpointId}/daily': {
     get: {

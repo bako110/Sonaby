@@ -307,59 +307,7 @@ class CheckpointController {
       });
     }
   });
-
-  // Dans ton contrôleur checkpointController.js
- getAgentCheckpoints = asyncHandler(async (req, res) => {
-  try {
-    const { agentId } = req.params;
-    const {
-      currentOnly = true, // true: checkpoints actuels, false: tous les checkpoints
-      includeInactive = false,
-      withSiteInfo = true,
-      withStats = false,
-      page = 1,
-      limit = 20
-    } = req.query;
-
-    if (!agentId) {
-      return res.status(400).json({
-        success: false,
-        message: "L'ID de l'agent est requis"
-      });
-    }
-
-    let result;
-    
-    if (currentOnly === 'true') {
-      // Checkpoints actuels (affectations actives)
-      result = await checkpointService.getCurrentAgentCheckpoints(agentId, {
-        withSiteInfo: withSiteInfo === 'true',
-        withActiveAlerts: true,
-        page: parseInt(page),
-        limit: parseInt(limit)
-      });
-    } else {
-      // Tous les checkpoints assignés à l'agent
-      result = await checkpointService.getCheckpointsByAgent(agentId, {
-        includeInactive: includeInactive === 'true',
-        withSiteInfo: withSiteInfo === 'true',
-        withStats: withStats === 'true',
-        page: parseInt(page),
-        limit: parseInt(limit)
-      });
-    }
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error('Erreur dans getAgentCheckpoints:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Erreur serveur'
-    });
-  }
-});
-
-
-}
+  
+ }
 
 module.exports = new CheckpointController();

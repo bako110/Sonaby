@@ -1105,6 +1105,4 @@ router.get('/:id/agents', checkpointController.getCheckpointAgents);
 router.post('/:id/sos', checkpointController.sendSOS);
 
 
-// Route correspondante
-router.get('/agent/:agentId/checkpoints',  checkpointController.getAgentCheckpoints);
 module.exports = router;

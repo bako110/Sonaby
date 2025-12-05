@@ -1,5 +1,5 @@
 const nonDesirableService = require('./nondesirable.service');
-const { createNonDesirableSchema, createUnknownNonDesirableSchema, nonDesirableIdSchema, nonDesirableQuerySchema } = require('./nondesirable.schema');
+const { createNonDesirableSchema, createUnknownNonDesirableSchema, removeUnknownSchema,nonDesirableIdSchema, nonDesirableQuerySchema } = require('./nondesirable.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class NonDesirableController {
@@ -64,35 +64,43 @@ class NonDesirableController {
   });
 
   removeNonDesirable = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès refusé. Permissions insuffisantes.'
-      });
-    }
+  if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Accès refusé. Permissions insuffisantes.'
+    });
+  }
 
-    const { visitorId } = req.params;
-    
-    try {
-      const result = await nonDesirableService.removeNonDesirable(visitorId, req.user.id);
-      res.json({
-        success: true,
-        message: 'Visiteur retiré de la liste des indésirables avec succès',
-        data: result
-      });
-    } catch (error) {
-      if (error.message.includes('non trouvé') || error.message.includes('pas blacklisté')) {
-        return res.status(400).json({
-          success: false,
-          message: error.message
-        });
-      }
-      res.status(500).json({
+  const { visitorId } = req.params;
+  const { reason } = req.body; // ← récupérer la raison du frontend
+
+  if (!reason) {
+    return res.status(400).json({
+      success: false,
+      message: 'La raison pour retirer le visiteur de la blacklist est requise.'
+    });
+  }
+
+  try {
+    const result = await nonDesirableService.removeNonDesirable(visitorId, req.user.userId, reason);
+    res.json({
+      success: true,
+      message: 'Visiteur retiré de la liste des indésirables avec succès',
+      data: result
+    });
+  } catch (error) {
+    if (error.message.includes('non trouvé') || error.message.includes('pas blacklisté')) {
+      return res.status(400).json({
         success: false,
         message: error.message
       });
     }
-  });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
 
   deleteNonDesirable = asyncHandler(async (req, res) => {
     if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
@@ -177,6 +185,55 @@ getUnknownNonDesirables = asyncHandler(async (req, res) => {
 
   res.json({ success: true, data });
 });
+
+
+getBlacklistHistory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const data = await nonDesirableService.getVisitorBlacklistHistory(id);
+
+  if (!data) {
+    return res.status(404).json({
+      success: false,
+      message: "Visiteur non trouvé"
+    });
+  }
+
+  res.json({
+    success: true,
+    data
+  });
+});
+
+   removeUnknown = asyncHandler(async (req, res) => {
+  console.log('=== REMOVE UNKNOWN START ===');
+  console.log('Body reçu :', req.body);
+
+  try {
+    // Validation avec Zod
+    const parsed = removeUnknownSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      console.log('Validation Zod échouée :', safeparsed.error.errors);
+      return res.status(400).json({ success: false, error: parsed.error.errors });
+    }
+
+    const { id, reason, reportedBy } = parsed.data;
+    console.log('Validation réussie :', { id, reason, reportedBy });
+
+    // Appel du service
+    const result = await nonDesirableService.removeUnknown(id, reason, reportedBy);
+    console.log('Résultat du service :', result);
+
+    res.status(200).json({ success: true, ...result });
+    console.log('=== REMOVE UNKNOWN FINISH ===');
+  } catch (error) {
+    console.error('Erreur catchée :', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
 
 
 }
