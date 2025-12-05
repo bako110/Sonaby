@@ -1405,7 +1405,42 @@ const swaggerPathsFinal = {
         description: 'Erreur serveur'
       }
     }
-  }
+  },
+
+  '/api/v1/nondesirables/unknown/{id}': {
+  get: {
+    tags: ['Nondesirables'],
+    summary: 'Récupérer un indésirable inconnu par ID',
+    description: 'Retourne les détails d’un indésirable inconnu.',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+        description: 'ID de l’indésirable inconnu'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Détails récupérés avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: { $ref: '#/components/schemas/UnknownNondesirable' }
+              }
+            }
+          }
+        }
+      },
+      404: { description: 'Indésirable non trouvé' },
+      500: { description: 'Erreur serveur' }
+    }
+  },}
 },
 
 

@@ -366,6 +366,59 @@ getBlacklistHistory = asyncHandler(async (req, res) => {
   }
 });
 
+// // GET Known by ID
+//   getKnownById = asyncHandler(async (req, res) => {
+//     const { id } = req.params;
+//     try {
+//       const data = await nonDesirableService.getNonDesirableById(id);
+//       if (!data) return res.status(404).json({ success: false, message: 'Visiteur connu non trouvé' });
+//       res.json({ success: true, data });
+//     } catch (error) {
+//       res.status(500).json({ success: false, message: error.message });
+//     }
+//   });
+
+//   // PATCH Known by ID
+//   updateKnownById = asyncHandler(async (req, res) => {
+//     const { id } = req.params;
+//     const updateData = req.body;
+//     try {
+//       const updated = await nonDesirableService.updateNonDesirable(id, updateData);
+//       res.json({ success: true, message: 'Visiteur connu mis à jour avec succès', data: updated });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   });
+
+  // ===========================
+  // INDÉSIRABLES INCONNUS (UNKNOWN)
+  // ===========================
+
+  // GET Unknown by ID
+  getUnknownById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    try {
+      const data = await nonDesirableService.getUnknownById(id);
+      if (!data) return res.status(404).json({ success: false, message: 'Indésirable inconnu non trouvé' });
+      res.json({ success: true, data });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // // PATCH Unknown by ID
+  // updateUnknownById = asyncHandler(async (req, res) => {
+  //   const { id } = req.params;
+  //   const updateData = req.body;
+  //   try {
+  //     const updated = await nonDesirableService.updateUnknownById(id, updateData);
+  //     res.json({ success: true, message: 'Indésirable inconnu mis à jour avec succès', data: updated });
+  //   } catch (error) {
+  //     res.status(400).json({ success: false, message: error.message });
+  //   }
+  // });
+
+
 
 
 
