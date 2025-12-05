@@ -44,7 +44,6 @@ model User {
 }
 
 model Site {
-<<<<<<< Updated upstream
   id                         String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
   name                       String       @db.VarChar(255)
   address                    String       @db.Text
@@ -93,7 +92,7 @@ model Site {
   incidents                  Incident[]
   rendezvous                 Rendezvous[] @relation("SiteRendezvous")
   assignedUsers              UserSite[]
-=======
+
   id                       String       @id @default(dbgenerated("(uuid())")) @db.Char(36)
   name                     String       @db.VarChar(255)
   address                  String       @db.Text
@@ -142,7 +141,6 @@ model Site {
   assignedUsers            UserSite[]
   rendezvous               Rendezvous[] @relation("SiteRendezvous")
   incidents                Incident[]
->>>>>>> Stashed changes
 
   @@index([code], map: "idx_sites_code")
   @@index([status], map: "idx_sites_status")
@@ -628,7 +626,3 @@ model UserSite {
   @@index([siteId], map: "idx_user_sites_site")
   @@map("user_sites")
 }
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
