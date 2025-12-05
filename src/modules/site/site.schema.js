@@ -117,20 +117,64 @@ const siteIdSchema = z.object({
 
 // Schéma de requête avec filtres adaptés à la nouvelle interface
 const siteQuerySchema = z.object({
+  // Pagination
   page: z.string().optional().transform(val => val ? parseInt(val) : 1),
   limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
+  
+  // Recherche et filtres de base
   search: z.string().optional(),
+  code: z.string().optional(),  // NOUVEAU
   city: z.string().optional(),
+  region: z.string().optional(),
+  country: z.string().optional(),
   status: siteStatusEnum.optional(),
   activityType: z.string().optional(),
-  country: z.string().optional(),
-  region: z.string().optional(),
   manager: z.string().optional(),
-  wheelchairAccessible: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
-  parkingAvailable: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
-  securitySystem: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+  
+  // Filtres numériques
   minEmployeeCount: z.string().optional().transform(val => val ? parseInt(val) : undefined),
-  maxEmployeeCount: z.string().optional().transform(val => val ? parseInt(val) : undefined)
+  maxEmployeeCount: z.string().optional().transform(val => val ? parseInt(val) : undefined),
+  minArea: z.string().optional().transform(val => val ? parseFloat(val) : undefined),  // NOUVEAU
+  maxArea: z.string().optional().transform(val => val ? parseFloat(val) : undefined),  // NOUVEAU
+  
+  // Filtres booléens
+  wheelchairAccessible: z.string().optional().transform(val => {
+    if (val === 'true') return true;
+    if (val === 'false') return false;
+    return undefined;
+  }),
+  parkingAvailable: z.string().optional().transform(val => {
+    if (val === 'true') return true;
+    if (val === 'false') return false;
+    return undefined;
+  }),
+  securitySystem: z.string().optional().transform(val => {
+    if (val === 'true') return true;
+    if (val === 'false') return false;
+    return undefined;
+  }),
+  securityGuard: z.string().optional().transform(val => {
+    if (val === 'true') return true;
+    if (val === 'false') return false;
+    return undefined;
+  }),
+  
+  // Filtres dates (renommés pour correspondre au frontend)
+  creationDateStart: z.string().datetime().optional(),  // NOUVEAU nom
+  creationDateEnd: z.string().datetime().optional(),    // NOUVEAU nom
+  
+  // Tri
+  sortBy: z.enum(['name', 'city', 'creationDate', 'employeeCount', 'area', 'code']).optional().default('creationDate'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc')
+}).refine(data => {
+  // Validation: date de début doit être avant date de fin
+  if (data.creationDateStart && data.creationDateEnd) {
+    return new Date(data.creationDateStart) <= new Date(data.creationDateEnd);
+  }
+  return true;
+}, {
+  message: "La date de début doit être avant la date de fin",
+  path: ["creationDateStart"]
 });
 
 module.exports = {
