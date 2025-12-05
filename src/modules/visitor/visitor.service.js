@@ -396,7 +396,7 @@ class VisitorService {
 async createOrFindVisitor(visitorData) {
     try {
         const { idType, idNumber, photoUrl, idScanUrl } = visitorData;
-        
+
         // 1️⃣ Vérifier si un visiteur existe déjà
         const existingVisitor = await prisma.visitor.findFirst({
             where: { idType, idNumber },
@@ -414,7 +414,7 @@ async createOrFindVisitor(visitorData) {
             }
         });
 
-        // 👉 Vérifier s'il est indésirable
+        // Vérifier s'il est indésirable
         let undesirableRecord = null;
 
         if (existingVisitor) {
@@ -427,31 +427,56 @@ async createOrFindVisitor(visitorData) {
                 }
             });
 
-            // 🔄 Mettre à jour les URLs si de nouveaux fichiers sont fournis
+            // 🔄 Mettre à jour les fichiers si Base64 ou nouvelles URLs
             const updateData = {};
-            
-            if (photoUrl && photoUrl !== existingVisitor.photoUrl) {
-                if (existingVisitor.photoUrl && !existingVisitor.photoUrl.startsWith('https://example.com')) {
-                    this.deleteOldFile(existingVisitor.photoUrl);
+
+            const processFile = async (newValue, oldValue, defaultName) => {
+                if (!newValue) return null;
+
+                if (newValue.startsWith('data:')) {
+                    // Base64 → fichier physique
+                    const match = newValue.match(/^data:([^;]+);base64,(.*)$/);
+                    if (!match) return null;
+
+                    const mimeType = match[1];
+                    const base64Data = match[2];
+                    let extension = 'jpg';
+                    if (mimeType.includes('png')) extension = 'png';
+                    else if (mimeType.includes('pdf')) extension = 'pdf';
+                    else if (mimeType.includes('jpeg')) extension = 'jpg';
+
+                    const fileName = `${defaultName}_${Date.now()}.${extension}`;
+                    const filePath = `./uploads/${fileName}`;
+                    const buffer = Buffer.from(base64Data, 'base64');
+                    const fs = require('fs');
+                    fs.writeFileSync(filePath, buffer);
+
+                    // Supprimer ancien fichier local si existant
+                    if (oldValue && !oldValue.startsWith('http')) {
+                        try { fs.unlinkSync(oldValue); } catch (e) { console.warn('Erreur suppression fichier:', e.message); }
+                    }
+
+                    return `/uploads/${fileName}`;
                 }
-                updateData.photoUrl = photoUrl;
-            }
-            
-            if (idScanUrl && idScanUrl !== existingVisitor.idScanUrl) {
-                if (existingVisitor.idScanUrl && !existingVisitor.idScanUrl.startsWith('https://example.com')) {
-                    this.deleteOldFile(existingVisitor.idScanUrl);
-                }
-                updateData.idScanUrl = idScanUrl;
-            }
-            
+
+                // Si c’est juste une URL, remplacer directement
+                if (newValue !== oldValue) return newValue;
+
+                return null;
+            };
+
+            const updatedPhotoUrl = await processFile(photoUrl, existingVisitor.photoUrl, 'photo');
+            if (updatedPhotoUrl) updateData.photoUrl = updatedPhotoUrl;
+
+            const updatedIdScanUrl = await processFile(idScanUrl, existingVisitor.idScanUrl, 'idscan');
+            if (updatedIdScanUrl) updateData.idScanUrl = updatedIdScanUrl;
+
             // Mettre à jour si besoin
             if (Object.keys(updateData).length > 0) {
                 await prisma.visitor.update({
                     where: { id: existingVisitor.id },
                     data: updateData
                 });
-                
-                // Mettre à jour l'objet existingVisitor
                 Object.assign(existingVisitor, updateData);
             }
 
@@ -471,10 +496,39 @@ async createOrFindVisitor(visitorData) {
             };
         }
 
-        // 2️⃣ Si n'existe pas → création avec les URLs
+        // 2️⃣ Si n'existe pas → création avec fichiers
+        const fs = require('fs');
+
+        const saveFileFromBase64 = (fieldValue, defaultName) => {
+            if (!fieldValue) return null;
+            if (fieldValue.startsWith('data:')) {
+                const match = fieldValue.match(/^data:([^;]+);base64,(.*)$/);
+                if (!match) return null;
+
+                const mimeType = match[1];
+                const base64Data = match[2];
+                let extension = 'jpg';
+                if (mimeType.includes('png')) extension = 'png';
+                else if (mimeType.includes('pdf')) extension = 'pdf';
+                else if (mimeType.includes('jpeg')) extension = 'jpg';
+
+                const fileName = `${defaultName}_${Date.now()}.${extension}`;
+                const filePath = `./uploads/${fileName}`;
+                const buffer = Buffer.from(base64Data, 'base64');
+                fs.writeFileSync(filePath, buffer);
+
+                return `/uploads/${fileName}`;
+            }
+
+            // Sinon c’est une URL
+            return fieldValue;
+        };
+
         const newVisitor = await prisma.visitor.create({
             data: {
                 ...visitorData,
+                photoUrl: saveFileFromBase64(photoUrl, 'photo'),
+                idScanUrl: saveFileFromBase64(idScanUrl, 'idscan'),
                 isBlacklisted: false,
                 blacklistReason: null
             }
@@ -493,8 +547,7 @@ async createOrFindVisitor(visitorData) {
         console.error("❌ Erreur createOrFindVisitor:", error);
         throw new Error(`Erreur lors de la création ou récupération du visiteur: ${error.message}`);
     }
-  }
-
+}
 
   /**
    * Supprime un ancien fichier
