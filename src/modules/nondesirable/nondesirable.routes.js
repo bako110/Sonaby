@@ -415,5 +415,31 @@ router.get('/visitor/:id/blacklist-history', nonDesirableController.getBlacklist
 router.delete('/unknown/user', nonDesirableController.removeUnknown);
 
 
+/**
+ * @swagger
+ * /api/non_desirables/unknown/{id}:
+ *   get:
+ *     summary: Récupérer un indésirable inconnu par ID
+ *     description: Retourne les détails d’un indésirable non enregistré comme visiteur.
+ *     tags: [Nondesirables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID de l’indésirable inconnu
+ *     responses:
+ *       200:
+ *         description: Détails récupérés avec succès
+ *       404:
+ *         description: Indésirable non trouvé
+ *       500:
+ *         description: Erreur interne du serveur
+ */
+router.get('/unknown/:id', nonDesirableController.getUnknownById);
+
 
 module.exports = router;

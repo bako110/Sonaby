@@ -734,6 +734,19 @@ class NonDesirableService {
       throw new Error(`Erreur lors de la suppression de l'indésirable inconnu: ${error.message}`);
     }
   }
+
+  // Récupérer un indésirable inconnu par ID
+async getUnknownById(id) {
+  const entry = await prisma.nonDesirable.findUnique({ where: { id } });
+  if (!entry || entry.visitorId) return null; // exclure les connus
+  try {
+    return { ...entry, type: 'unknown', reason: JSON.parse(entry.reason) };
+  } catch {
+    return { ...entry, type: 'unknown', reason: entry.reason }; // fallback si JSON invalide
+  }
+}
+
+
 }
 
 module.exports = new NonDesirableService();
