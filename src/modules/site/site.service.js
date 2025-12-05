@@ -244,12 +244,12 @@ class SiteService {
     const { manager, ...siteDataWithoutManager } = siteData;
 
     // Créer le site et assigner le manager
+    // Créer le site et assigner le manager
     const site = await prisma.site.create({
       data: {
         ...siteDataWithoutManager,
-        // Le champ manager dans Site est de type String (nom), pas une relation
-        // Donc on le garde comme chaîne, pas comme ID
-        manager: managerUser ? `${managerUser.firstName} ${managerUser.lastName}` : siteData.manager,
+        // ⚡ Stocker l'ID du manager directement au lieu du nom
+        manager: managerUser ? managerUser.id : siteData.manager,
         // Assigner le manager au site via UserSite
         assignedUsers: manager
           ? {
@@ -275,6 +275,7 @@ class SiteService {
         }
       }
     });
+
 
     return site;
   } catch (error) {
