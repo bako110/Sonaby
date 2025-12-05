@@ -166,24 +166,40 @@ class NonDesirableController {
   });
 
   getKnownNonDesirables = asyncHandler(async (req, res) => {
-  const data = await nonDesirableService.getAllNonDesirablesKnown(
-    req.query.page,
-    req.query.limit,
-    req.query.search
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const search = req.query.search || null;
+
+  const result = await nonDesirableService.getAllNonDesirablesKnown(
+    page,
+    limit,
+    search
   );
 
-  res.json({ success: true, data });
+  res.json({
+    success: true,
+    data: result.data,
+    pagination: result.pagination
+  });
 });
 
 
 getUnknownNonDesirables = asyncHandler(async (req, res) => {
-  const data = await nonDesirableService.getAllNonDesirablesUnknown(
-    req.query.page,
-    req.query.limit,
-    req.query.search
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const search = req.query.search || null;
+
+  const result = await nonDesirableService.getAllNonDesirablesUnknown(
+    page,
+    limit,
+    search
   );
 
-  res.json({ success: true, data });
+  res.json({
+    success: true,
+    data: result.data,
+    pagination: result.pagination
+  });
 });
 
 
