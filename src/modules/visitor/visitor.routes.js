@@ -3,39 +3,28 @@ const visitorController = require('./visitor.controller');
 const { authenticateToken } = require('../../middleware/authMiddleware');
 const multer = require('multer');
 
+
 const router = express.Router();
 
 // Middleware d'authentification pour toutes les routes
 router.use(authenticateToken);
 
 // Configuration Multer pour les uploads de fichiers
-const visitorUpload = multer({
-  storage: multer.memoryStorage(), // Utilise memoryStorage pour les buffers
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB max
-  },
-  fileFilter: (req, file, cb) => {
-    // Accepter les images et PDFs
-    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
-    const allowedDocumentTypes = ['application/pdf', ...allowedImageTypes];
-    
-    if (file.fieldname === 'photo') {
-      if (allowedImageTypes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error('La photo doit être une image (JPEG, PNG, JPG, GIF, WebP)'));
-      }
-    } else if (file.fieldname === 'idScan') {
-      if (allowedDocumentTypes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Le scan d\'ID doit être une image ou un PDF'));
-      }
-    } else {
-      cb(new Error('Type de fichier non autorisé'));
-    }
+// Configuration Multer pour les uploads
+// Utiliser la mémoire pour Multer (tu peux changer si tu veux stocker sur disque directement)
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+// Middleware pour gérer les erreurs de fichiers uploadés
+function handleUploadErrors(err, req, res, next) {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ success: false, message: err.message });
+  } else if (err) {
+    return res.status(400).json({ success: false, message: err.message });
   }
-});
+  next();
+}
+
 
 /**
  * @swagger
@@ -840,10 +829,8 @@ router.get('/week-planning/:siteId', visitorController.getWeekPlanning);
  */
 router.post(
   '/',
-  visitorUpload.fields([
-    { name: 'photo', maxCount: 1 },
-    { name: 'idScan', maxCount: 1 }
-  ]),
+  upload.fields([{ name: 'photoUrl', maxCount: 1 }, { name: 'idScanUrl', maxCount: 1 }]),
+  handleUploadErrors,
   visitorController.createVisitor
 );
 

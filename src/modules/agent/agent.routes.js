@@ -324,5 +324,75 @@ router.delete('/:id', agentController.deleteAgent);
  *         description: Agent ou checkpoint non trouvé
  */
 router.post('/:id/assign-checkpoint', agentController.assignToCheckpoint);
+/**
+ * @swagger
+ * /control-agents/{siteId}:
+ *   get:
+ *     summary: Récupérer la liste des agents de contrôle d'un site
+ *     tags:
+ *       - Utilisateurs
+ *     parameters:
+ *       - in: path
+ *         name: siteId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: L'ID du site dont on veut récupérer les agents de contrôle
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des agents de contrôle récupérée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "123e4567-e89b-12d3-a456-426614174000"
+ *                       firstName:
+ *                         type: string
+ *                         example: "John"
+ *                       lastName:
+ *                         type: string
+ *                         example: "Doe"
+ *                       email:
+ *                         type: string
+ *                         example: "john.doe@example.com"
+ *                       phone:
+ *                         type: string
+ *                         example: "+22670123456"
+ *       400:
+ *         description: siteId manquant
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Le siteId est requis"
+ *       403:
+ *         description: Accès refusé (permissions insuffisantes)
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get(
+    '/controlAgents/:siteId', agentController.fetchControlAgents
+);
+
+
 
 module.exports = router;

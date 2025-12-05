@@ -596,54 +596,130 @@ class CheckpointService {
     });
     if (!agent) throw new Error('Agent non trouvé');
 
-    // Mettre à jour le checkpoint et le user dans une transaction
-    const [updatedCheckpoint] = await prisma.$transaction([
+    // Transaction : update checkpoint + update user + créer AgentCheckpointAssignment
+    await prisma.$transaction([
       // 1️⃣ Mettre à jour le checkpoint
       prisma.checkpoint.update({
         where: { id: checkpointId },
         data: { agentId: agentId }
       }),
-      // 2️⃣ Ajouter le checkpoint à l’agent
+
+      // 2️⃣ Ajouter le checkpoint à l’agent (relation many-to-many)
       prisma.user.update({
         where: { id: agentId },
         data: {
           assignedCheckpoints: {
-            connect: { id: checkpointId } // ajoute le checkpoint à la liste
+            connect: { id: checkpointId }
           }
+        }
+      }),
+
+      // 3️⃣ Créer l'affectation active
+      prisma.agentCheckpointAssignment.create({
+        data: {
+          checkpointId: checkpointId,
+          userId: agentId,
+          startDate: new Date(),
+          endDate: null
         }
       })
     ]);
 
-    // Récupérer le checkpoint mis à jour avec les infos de l’agent
+    // Récupérer le checkpoint mis à jour avec l’agent
     const checkpointWithAgent = await prisma.checkpoint.findUnique({
-  where: { id: checkpointId },
-  include: {
-    agentAssignments: {
+      where: { id: checkpointId },
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true
-          }
-        }
-      },
-      where: {
-        endDate: null // seulement les affectations actives
+        agentAssignments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
+          },
+          where: { endDate: null }
+        },
+        site: true
       }
-    },
-    site: true
-  }
-});
-
+    });
 
     return checkpointWithAgent;
+
   } catch (error) {
     throw new Error(`Erreur lors de l'assignation de l'agent: ${error.message}`);
   }
 }
+
+
+async unassignAgent(checkpointId, agentId) {
+  try {
+    // Vérifier que le checkpoint existe
+    const checkpoint = await prisma.checkpoint.findUnique({
+      where: { id: checkpointId }
+    });
+    if (!checkpoint) throw new Error('Checkpoint non trouvé');
+
+    // Vérifier que l'agent existe (rôle AGENT_CONTROLE)
+    const agent = await prisma.user.findFirst({
+      where: { id: agentId, role: 'AGENT_CONTROLE' }
+    });
+    if (!agent) throw new Error('Agent non trouvé');
+
+    // Transaction pour désaffecter et supprimer l'affectation
+    await prisma.$transaction([
+      // 1️⃣ Mettre le checkpoint à null si c'est cet agent
+      prisma.checkpoint.update({
+        where: { id: checkpointId },
+        data: { agentId: null }
+      }),
+
+      // 2️⃣ Retirer le checkpoint de l’agent (relation many-to-many)
+      prisma.user.update({
+        where: { id: agentId },
+        data: {
+          assignedCheckpoints: {
+            disconnect: { id: checkpointId }
+          }
+        }
+      }),
+
+      // 3️⃣ Supprimer complètement l’affectation active
+      prisma.agentCheckpointAssignment.deleteMany({
+        where: { checkpointId, userId: agentId }
+      })
+    ]);
+
+    // Récupérer le checkpoint mis à jour
+    const checkpointWithAgents = await prisma.checkpoint.findUnique({
+      where: { id: checkpointId },
+      include: {
+        agentAssignments: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        },
+        site: true
+      }
+    });
+
+    return checkpointWithAgents;
+
+  } catch (error) {
+    throw new Error(`Erreur lors de la désaffectation de l'agent: ${error.message}`);
+  }
+}
+
 
   async getCheckpointAgents(checkpointId) {
     try {

@@ -397,6 +397,8 @@ async createOrFindVisitor(visitorData) {
     try {
         const { idType, idNumber, photoUrl, idScanUrl } = visitorData;
 
+        console.log('🔍 Recherche visiteur existant:', { idType, idNumber });
+
         // 1️⃣ Vérifier si un visiteur existe déjà
         const existingVisitor = await prisma.visitor.findFirst({
             where: { idType, idNumber },
@@ -406,11 +408,22 @@ async createOrFindVisitor(visitorData) {
                 lastName: true,
                 idType: true,
                 idNumber: true,
-                photoUrl: true,
-                idScanUrl: true,
+                photoUrl: true,  // 👈 CHANGÉ DE false À true
+                idScanUrl: true, // 👈 CHANGÉ DE false À true
                 isBlacklisted: true,
                 blacklistReason: true,
                 createdAt: true,
+                birthDate: true,
+                birthPlace: true,
+                residence: true,
+                sexe: true,
+                givingDate: true,
+                expirationDate: true,
+                phone: true,
+                email: true,
+                company: true,
+                emergencyContactPhone: true,
+                emergencyContactName: true
             }
         });
 
@@ -418,6 +431,10 @@ async createOrFindVisitor(visitorData) {
         let undesirableRecord = null;
 
         if (existingVisitor) {
+            console.log('✅ Visiteur existant trouvé:', existingVisitor.id);
+            console.log('📸 Photo URL existante:', existingVisitor.photoUrl);
+            console.log('🆔 ID Scan URL existante:', existingVisitor.idScanUrl);
+
             undesirableRecord = await prisma.nonDesirable.findFirst({
                 where: { visitorId: existingVisitor.id },
                 select: {
@@ -427,56 +444,43 @@ async createOrFindVisitor(visitorData) {
                 }
             });
 
-            // 🔄 Mettre à jour les fichiers si Base64 ou nouvelles URLs
+            console.log('🔍 Statut indésirable:', undesirableRecord ? 'OUI' : 'NON');
+
+            // 🔄 Mettre à jour les données si nécessaire
             const updateData = {};
+            const fieldsToUpdate = [
+                'firstName', 'lastName', 'birthDate', 'birthPlace', 'residence',
+                'sexe', 'givingDate', 'expirationDate', 'phone', 'email',
+                'company', 'emergencyContactPhone', 'emergencyContactName'
+            ];
 
-            const processFile = async (newValue, oldValue, defaultName) => {
-                if (!newValue) return null;
-
-                if (newValue.startsWith('data:')) {
-                    // Base64 → fichier physique
-                    const match = newValue.match(/^data:([^;]+);base64,(.*)$/);
-                    if (!match) return null;
-
-                    const mimeType = match[1];
-                    const base64Data = match[2];
-                    let extension = 'jpg';
-                    if (mimeType.includes('png')) extension = 'png';
-                    else if (mimeType.includes('pdf')) extension = 'pdf';
-                    else if (mimeType.includes('jpeg')) extension = 'jpg';
-
-                    const fileName = `${defaultName}_${Date.now()}.${extension}`;
-                    const filePath = `./uploads/${fileName}`;
-                    const buffer = Buffer.from(base64Data, 'base64');
-                    const fs = require('fs');
-                    fs.writeFileSync(filePath, buffer);
-
-                    // Supprimer ancien fichier local si existant
-                    if (oldValue && !oldValue.startsWith('http')) {
-                        try { fs.unlinkSync(oldValue); } catch (e) { console.warn('Erreur suppression fichier:', e.message); }
-                    }
-
-                    return `/uploads/${fileName}`;
+            // Comparer les nouvelles données avec l'existant
+            fieldsToUpdate.forEach(field => {
+                if (visitorData[field] !== undefined && 
+                    visitorData[field] !== existingVisitor[field] &&
+                    visitorData[field] !== null) {
+                    updateData[field] = visitorData[field];
                 }
+            });
 
-                // Si c’est juste une URL, remplacer directement
-                if (newValue !== oldValue) return newValue;
+            // Mettre à jour les URLs de fichiers si fournies
+            if (photoUrl && photoUrl !== existingVisitor.photoUrl) {
+                console.log(`🔄 Mise à jour photo URL: ${existingVisitor.photoUrl} -> ${photoUrl}`);
+                updateData.photoUrl = photoUrl;
+            }
+            if (idScanUrl && idScanUrl !== existingVisitor.idScanUrl) {
+                console.log(`🔄 Mise à jour ID Scan URL: ${existingVisitor.idScanUrl} -> ${idScanUrl}`);
+                updateData.idScanUrl = idScanUrl;
+            }
 
-                return null;
-            };
-
-            const updatedPhotoUrl = await processFile(photoUrl, existingVisitor.photoUrl, 'photo');
-            if (updatedPhotoUrl) updateData.photoUrl = updatedPhotoUrl;
-
-            const updatedIdScanUrl = await processFile(idScanUrl, existingVisitor.idScanUrl, 'idscan');
-            if (updatedIdScanUrl) updateData.idScanUrl = updatedIdScanUrl;
-
-            // Mettre à jour si besoin
+            // Mettre à jour en base si des changements sont détectés
             if (Object.keys(updateData).length > 0) {
+                console.log('🔄 Mise à jour des données visiteur:', updateData);
                 await prisma.visitor.update({
                     where: { id: existingVisitor.id },
                     data: updateData
                 });
+                // Mettre à jour l'objet existant
                 Object.assign(existingVisitor, updateData);
             }
 
@@ -496,43 +500,23 @@ async createOrFindVisitor(visitorData) {
             };
         }
 
-        // 2️⃣ Si n'existe pas → création avec fichiers
-        const fs = require('fs');
-
-        const saveFileFromBase64 = (fieldValue, defaultName) => {
-            if (!fieldValue) return null;
-            if (fieldValue.startsWith('data:')) {
-                const match = fieldValue.match(/^data:([^;]+);base64,(.*)$/);
-                if (!match) return null;
-
-                const mimeType = match[1];
-                const base64Data = match[2];
-                let extension = 'jpg';
-                if (mimeType.includes('png')) extension = 'png';
-                else if (mimeType.includes('pdf')) extension = 'pdf';
-                else if (mimeType.includes('jpeg')) extension = 'jpg';
-
-                const fileName = `${defaultName}_${Date.now()}.${extension}`;
-                const filePath = `./uploads/${fileName}`;
-                const buffer = Buffer.from(base64Data, 'base64');
-                fs.writeFileSync(filePath, buffer);
-
-                return `/uploads/${fileName}`;
-            }
-
-            // Sinon c’est une URL
-            return fieldValue;
-        };
+        // 2️⃣ Si n'existe pas → création
+        console.log('🆕 Création nouveau visiteur...');
+        console.log('📸 Nouvelle photo URL:', photoUrl);
+        console.log('🆔 Nouveau ID Scan URL:', idScanUrl);
 
         const newVisitor = await prisma.visitor.create({
             data: {
                 ...visitorData,
-                photoUrl: saveFileFromBase64(photoUrl, 'photo'),
-                idScanUrl: saveFileFromBase64(idScanUrl, 'idscan'),
-                isBlacklisted: false,
-                blacklistReason: null
+                // Les URLs de fichiers sont déjà prêtes (gérées par le contrôleur)
+                photoUrl: photoUrl || null,
+                idScanUrl: idScanUrl || null,
+                isBlacklisted: visitorData.isBlacklisted || false,
+                blacklistReason: visitorData.blacklistReason || null
             }
         });
+
+        console.log('✅ Nouveau visiteur créé:', newVisitor.id);
 
         return {
             success: true,
@@ -545,10 +529,24 @@ async createOrFindVisitor(visitorData) {
 
     } catch (error) {
         console.error("❌ Erreur createOrFindVisitor:", error);
+        console.error("❌ Erreur détail:", error.message);
+        console.error("❌ Stack:", error.stack);
+        
+        // Gestion spécifique des erreurs de contrainte unique
+        if (error.code === 'P2002') {
+            console.error('❌ Erreur de contrainte unique:', error.meta);
+            throw new Error(`Un visiteur avec ce type et numéro d'identité existe déjà.`);
+        }
+        
+        // Erreur de validation des données
+        if (error.code === 'P2003' || error.code === 'P2025') {
+            console.error('❌ Erreur de validation:', error.meta);
+            throw new Error(`Données invalides pour la création du visiteur: ${error.message}`);
+        }
+        
         throw new Error(`Erreur lors de la création ou récupération du visiteur: ${error.message}`);
     }
 }
-
   /**
    * Supprime un ancien fichier
    * @param {string} fileUrl - URL du fichier à supprimer

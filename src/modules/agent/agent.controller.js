@@ -222,6 +222,22 @@ class AgentController {
       });
     }
   });
+
+    fetchControlAgents = asyncHandler(async (req, res) => {
+    const { siteId } = req.params;
+
+    if (!siteId) {
+        return res.status(400).json({ success: false, message: "Le siteId est requis" });
+    }
+
+    try {
+        const agents = await agentService.getControlAgentsBySite(siteId);
+        return res.status(200).json({ success: true, data: agents });
+    } catch (error) {
+        console.error("Erreur lors de la récupération des agents de contrôle :", error);
+        return res.status(500).json({ success: false, message: "Erreur serveur" });
+    }
+  });
 }
 
 module.exports = new AgentController();

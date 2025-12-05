@@ -639,6 +639,24 @@ class AgentService {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
   }
+
+  async getControlAgentsBySite  (siteId) {
+    return await prisma.user.findMany({
+        where: {
+            role: 'AGENT_CONTROLE',
+            assignedSites: {
+                some: { siteId }
+            }
+        },
+        select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true
+        }
+    });
+};
 }
 
 module.exports = new AgentService();

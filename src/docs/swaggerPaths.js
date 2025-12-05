@@ -343,6 +343,7 @@ const swaggerPaths = {
     }
   },
 
+  
   // ==================== SITE ENDPOINTS ====================
   '/api/v1/sites': {
     get: {

@@ -213,6 +213,73 @@ const swaggerPathsExtended = {
       }
     },
   },
+
+  '/api/v1/checkpoints/unassign/{id}': {
+  delete: {
+    tags: ['Checkpoints'],
+    summary: 'Désaffecter un agent d’un checkpoint',
+    description: 'Supprime l’affectation d’un agent à un checkpoint (ADMIN et AGENT_GESTION uniquement)',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+        description: 'Identifiant du checkpoint'
+      }
+    ],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            properties: {
+              agentId: { type: 'string', format: 'uuid', description: "ID de l'agent à désaffecter" }
+            },
+            required: ['agentId']
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        description: 'Agent désaffecté avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+                data: { $ref: '#/components/schemas/Checkpoint' }
+              }
+            }
+          }
+        }
+      },
+      400: { $ref: '#/components/responses/BadRequest' },
+      401: { $ref: '#/components/responses/Unauthorized' },
+      403: { $ref: '#/components/responses/Forbidden' },
+      404: {
+        description: 'Checkpoint ou agent non trouvé',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
+      500: { $ref: '#/components/responses/InternalServerError' }
+    }
+  }
+},
   // ==================== AGENT ENDPOINTS ====================
   '/api/v1/agents': {
     get: {
@@ -291,7 +358,59 @@ const swaggerPathsExtended = {
       }
     }
   },
-
+// ==================== CONTROL AGENTS ENDPOINT ====================
+'/api/v1/agents/controlAgents/{siteId}': {
+  get: {
+    tags: ['Agents'],
+    summary: 'Lister les agents de contrôle d’un site',
+    description: 'Récupérer la liste des agents de contrôle affectés à un site spécifique (ADMIN et CHEF_SERVICE uniquement)',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'siteId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string' },
+        description: 'Identifiant du site'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Liste des agents de contrôle du site',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Agent' }
+                }
+              }
+            }
+          }
+        }
+      },
+      401: { $ref: '#/components/responses/Unauthorized' },
+      403: { $ref: '#/components/responses/Forbidden' },
+      404: {
+        description: 'Site non trouvé',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+},
   // ==================== SERVICE ENDPOINTS ====================
 
  '/api/v1/services/sites/{siteId}/assign/{userId}': {

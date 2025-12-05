@@ -43,7 +43,7 @@ class VisitorController {
         }
     });
 
-    createVisitor = asyncHandler(async (req, res) => {
+   createVisitor = asyncHandler(async (req, res) => {
     // 🔹 Vérifier les permissions
     if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
         return res.status(403).json({
@@ -53,196 +53,261 @@ class VisitorController {
     }
 
     try {
-        console.log('📥 Données reçues:', JSON.stringify(req.body, null, 2).substring(0, 500));
+        // 🔍 DEBUG COMPLET
+        console.log('=== DEBUG DÉBUT ===');
+        console.log('📥 Headers Content-Type:', req.headers['content-type']);
+        console.log('📝 req.body keys:', Object.keys(req.body));
+        console.log('📁 req.files keys:', req.files ? Object.keys(req.files) : 'null');
         
-        // 📁 1. VALIDER LES DONNÉES
-        const validated = createVisitorWithTransform.parse(req.body);
+        // Vérifier CHAQUE fichier en détail
+        if (req.files) {
+            for (const fieldName in req.files) {
+                const files = req.files[fieldName];
+                console.log(`\n🔍 Champ "${fieldName}":`);
+                files.forEach((file, index) => {
+                    console.log(`  [${index}]`, {
+                        fieldname: file.fieldname,
+                        originalname: file.originalname,
+                        originalnameType: typeof file.originalname,
+                        originalnameValue: JSON.stringify(file.originalname),
+                        mimetype: file.mimetype,
+                        size: file.size,
+                        bufferExists: !!file.buffer,
+                        pathExists: !!file.path
+                    });
+                });
+            }
+        }
+        console.log('=== DEBUG FIN ===\n');
+
+        // 📁 1. VALIDER LES DONNÉES TEXTUELLES
+        const validatedData = createVisitorWithTransform.parse(req.body);
         console.log('✅ Données validées:', {
-            firstName: validated.firstName,
-            lastName: validated.lastName,
-            idType: validated.idType,
-            idNumber: validated.idNumber,
-            photoIsBase64: validated._photoData?.isBase64 || false,
-            idScanIsBase64: validated._idScanData?.isBase64 || false
+            firstName: validatedData.firstName,
+            lastName: validatedData.lastName,
+            idType: validatedData.idType,
+            idNumber: validatedData.idNumber
         });
-        
-        // 📁 2. TRAITEMENT DES FICHIERS (Base64 ou URLs)
+
+        // 📁 2. TRAITEMENT DES FICHIERS MULTIPART
         let finalPhotoUrl = null;
         let finalIdScanUrl = null;
-        
-        console.log('📁 Début traitement des fichiers...');
-        
-        // 📅 Créer la structure de dossier par date
+
         const now = new Date();
-        const year = now.getFullYear().toString();
-        const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        const day = now.getDate().toString().padStart(2, '0');
-        
-        // Chemin : uploads/visitors/2025/12/03
+        const year = now.getFullYear().toString(); // Convertir en string
+        const month = String(now.getMonth() + 1).padStart(2, '0'); // Déjà string
+        const day = String(now.getDate()).padStart(2, '0'); // Déjà string
         const baseUploadDir = path.join(__dirname, '../../../public/uploads/visitors');
         const uploadDir = path.join(baseUploadDir, year, month, day);
         
-        console.log('📂 Chemin upload:', uploadDir);
-        
-        // Créer les dossiers récursivement
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
-            console.log('📁 Dossiers créés:', uploadDir);
+            console.log('📁 Dossier créé:', uploadDir);
         }
 
-        // 📸 TRAITEMENT DE LA PHOTO
-        if (validated._photoData) {
-            if (validated._photoData.isBase64) {
-                // CAS 1: Base64 -> sauvegarder fichier
-                console.log('📸 Traitement photo Base64...');
-                const { fileName, base64 } = validated._photoData;
-                
-                // Générer un nom de fichier unique
-                const timestamp = now.getTime();
-                const randomString = Math.random().toString(36).substring(2, 8);
-                const safeFirstName = validated.firstName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-                const safeLastName = validated.lastName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-                
-                const photoFileName = `photo_${safeFirstName}_${safeLastName}_${year}${month}${day}_${timestamp}_${randomString}.${fileName.split('.').pop() || 'jpg'}`;
-                const photoPath = path.join(uploadDir, photoFileName);
-                
-                // Convertir Base64 en buffer
-                console.log('🔧 Conversion Base64 -> Buffer...');
-                const photoBuffer = Buffer.from(base64, 'base64');
-                console.log(`📏 Taille buffer photo: ${photoBuffer.length} bytes`);
-                
-                // Écrire le fichier
-                fs.writeFileSync(photoPath, photoBuffer);
-                console.log(`💾 Photo écrite: ${photoPath}`);
-                
-                // URL relative
-                finalPhotoUrl = `/uploads/visitors/${year}/${month}/${day}/${photoFileName}`;
-                console.log(`✅ Photo sauvegardée: ${finalPhotoUrl}`);
-                
-            } else if (validated._photoData.url) {
-                // CAS 2: URL existante
-                finalPhotoUrl = validated._photoData.url;
-                console.log('📸 URL photo existante utilisée:', finalPhotoUrl);
+        // 🔧 Fonction SÉCURISÉE pour l'extension - SANS path.extname()
+        const getSafeExtension = (file) => {
+            console.log(`\n🔧 getSafeExtension appelée:`, {
+                originalname: file.originalname,
+                originalnameType: typeof file.originalname,
+                mimetype: file.mimetype
+            });
+
+            // CAS 1: originalname est INVALIDE (nombre ou undefined)
+            if (!file.originalname || typeof file.originalname !== 'string') {
+                console.log(`⚠️ originalname invalide (${typeof file.originalname}), utilisation mimetype`);
+                return getExtensionFromMimeType(file.mimetype);
             }
+
+            // CAS 2: originalname est une string
+            const originalnameStr = String(file.originalname);
+            
+            // Essayer d'extraire l'extension manuellement
+            const lastDotIndex = originalnameStr.lastIndexOf('.');
+            
+            if (lastDotIndex === -1 || lastDotIndex === originalnameStr.length - 1) {
+                // Pas de point ou point à la fin
+                console.log(`⚠️ Pas d'extension dans "${originalnameStr}", utilisation mimetype`);
+                return getExtensionFromMimeType(file.mimetype);
+            }
+            
+            const ext = originalnameStr.substring(lastDotIndex + 1).toLowerCase();
+            console.log(`🔧 Extension extraite: "${ext}"`);
+            
+            // Valider l'extension
+            const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
+            if (validExtensions.includes(ext)) {
+                return '.' + (ext === 'jpeg' ? 'jpg' : ext);
+            }
+            
+            // Extension invalide
+            console.log(`⚠️ Extension "${ext}" invalide, utilisation mimetype`);
+            return getExtensionFromMimeType(file.mimetype);
+        };
+
+        // Fonction pour obtenir l'extension depuis mimetype
+        const getExtensionFromMimeType = (mimetype) => {
+            if (!mimetype) return '.jpg';
+            
+            if (mimetype.includes('jpeg') || mimetype.includes('jpg')) return '.jpg';
+            if (mimetype.includes('png')) return '.png';
+            if (mimetype.includes('gif')) return '.gif';
+            if (mimetype.includes('webp')) return '.webp';
+            if (mimetype.includes('pdf')) return '.pdf';
+            
+            return '.jpg';
+        };
+
+        // 📸 Photo - CORRECTION ICI : cherche 'photoUrl' pas 'photo'
+        if (req.files?.photoUrl?.[0]) {
+            console.log('\n📸 Traitement PHOTO...');
+            const photoFile = req.files.photoUrl[0];
+            
+            // Utiliser notre fonction sécurisée
+            const extension = getSafeExtension(photoFile);
+            console.log(`📸 Extension finale: ${extension}`);
+            
+            const timestamp = now.getTime();
+            const randomString = Math.random().toString(36).substring(2, 8);
+            const safeFirstName = (validatedData.firstName || 'unknown').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+            const safeLastName = (validatedData.lastName || 'unknown').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+            
+            const fileName = `photo_${safeFirstName}_${safeLastName}_${year}${month}${day}_${timestamp}_${randomString}${extension}`;
+            const filePath = path.join(uploadDir, fileName);
+            
+            console.log(`💾 Écriture: ${fileName}`);
+            // Vérifier si on a un buffer ou un fichier sur disque
+            if (photoFile.buffer) {
+                fs.writeFileSync(filePath, photoFile.buffer);
+            } else if (photoFile.path) {
+                // Si le fichier est déjà sur disque (middleware diskStorage)
+                fs.copyFileSync(photoFile.path, filePath);
+                // Supprimer le fichier temporaire
+                fs.unlinkSync(photoFile.path);
+            } else {
+                throw new Error('Aucun contenu de fichier trouvé');
+            }
+            
+            finalPhotoUrl = `/uploads/visitors/${year}/${month}/${day}/${fileName}`;
+            console.log(`✅ Photo URL: ${finalPhotoUrl}`);
+        } else {
+            console.log('📸 Aucune photo reçue (champ photoUrl non trouvé)');
         }
 
-        // 🆔 TRAITEMENT DU SCAN D'IDENTITÉ
-        if (validated._idScanData) {
-            if (validated._idScanData.isBase64) {
-                // CAS 1: Base64 -> sauvegarder fichier
-                console.log('🆔 Traitement ID scan Base64...');
-                const { fileName, base64 } = validated._idScanData;
-                
-                const timestamp = now.getTime();
-                const randomString = Math.random().toString(36).substring(2, 8);
-                const safeFirstName = validated.firstName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-                const safeLastName = validated.lastName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
-                
-                const idScanFileName = `idscan_${safeFirstName}_${safeLastName}_${validated.idType}_${year}${month}${day}_${timestamp}_${randomString}.${fileName.split('.').pop() || 'jpg'}`;
-                const idScanPath = path.join(uploadDir, idScanFileName);
-                
-                // Convertir Base64 en buffer
-                console.log('🔧 Conversion Base64 ID scan -> Buffer...');
-                const idScanBuffer = Buffer.from(base64, 'base64');
-                console.log(`📏 Taille buffer ID scan: ${idScanBuffer.length} bytes`);
-                
-                // Écrire le fichier
-                fs.writeFileSync(idScanPath, idScanBuffer);
-                console.log(`💾 ID scan écrit: ${idScanPath}`);
-                
-                // URL relative
-                finalIdScanUrl = `/uploads/visitors/${year}/${month}/${day}/${idScanFileName}`;
-                console.log(`✅ ID Scan sauvegardé: ${finalIdScanUrl}`);
-                
-            } else if (validated._idScanData.url) {
-                // CAS 2: URL existante
-                finalIdScanUrl = validated._idScanData.url;
-                console.log('🆔 URL ID scan existante utilisée:', finalIdScanUrl);
+        // 🆔 ID Scan - CORRECTION ICI : cherche 'idScanUrl' pas 'idScan'
+        if (req.files?.idScanUrl?.[0]) {
+            console.log('\n🆔 ID Scan trouvé dans "idScanUrl"');
+            const idScanFile = req.files.idScanUrl[0];
+            
+            console.log('\n🆔 Traitement ID SCAN...');
+            
+            // Utiliser notre fonction sécurisée
+            const extension = getSafeExtension(idScanFile);
+            console.log(`🆔 Extension finale: ${extension}`);
+            
+            const timestamp = now.getTime();
+            const randomString = Math.random().toString(36).substring(2, 8);
+            const safeFirstName = (validatedData.firstName || 'unknown').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+            const safeLastName = (validatedData.lastName || 'unknown').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+            
+            const fileName = `idscan_${safeFirstName}_${safeLastName}_${validatedData.idType}_${year}${month}${day}_${timestamp}_${randomString}${extension}`;
+            const filePath = path.join(uploadDir, fileName);
+            
+            console.log(`💾 Écriture: ${fileName}`);
+            // Vérifier si on a un buffer ou un fichier sur disque
+            if (idScanFile.buffer) {
+                fs.writeFileSync(filePath, idScanFile.buffer);
+            } else if (idScanFile.path) {
+                // Si le fichier est déjà sur disque
+                fs.copyFileSync(idScanFile.path, filePath);
+                // Supprimer le fichier temporaire
+                fs.unlinkSync(idScanFile.path);
+            } else {
+                throw new Error('Aucun contenu de fichier trouvé');
             }
+            
+            finalIdScanUrl = `/uploads/visitors/${year}/${month}/${day}/${fileName}`;
+            console.log(`✅ ID Scan URL: ${finalIdScanUrl}`);
+        } else {
+            console.log('🆔 Aucun ID Scan trouvé (champ idScanUrl non trouvé)');
         }
-        
-        console.log('📁 Traitement fichiers terminé!');
 
         // 📁 3. PRÉPARER LES DONNÉES POUR LA BD
         const finalData = {
-            firstName: validated.firstName,
-            lastName: validated.lastName,
-            birthDate: validated.birthDate,
-            birthPlace: validated.birthPlace,
-            residence: validated.residence,
-            sexe: validated.sexe,
-            givingDate: validated.givingDate,
-            expirationDate: validated.expirationDate,
-            phone: validated.phone,
-            email: validated.email,
-            idType: validated.idType,
-            idNumber: validated.idNumber,
-            photoUrl: finalPhotoUrl,  // URL finale (générée ou existante)
-            idScanUrl: finalIdScanUrl, // URL finale (générée ou existante)
-            isBlacklisted: validated.isBlacklisted,
-            blacklistReason: validated.blacklistReason,
-            company: validated.company,
-            emergencyContactPhone: validated.emergencyContactPhone,
-            emergencyContactName: validated.emergencyContactName
+            ...validatedData,
+            photoUrl: finalPhotoUrl,
+            idScanUrl: finalIdScanUrl
         };
-
-        console.log('📋 Données pour BD:', {
+        
+        console.log('\n📋 Données finales:', {
             firstName: finalData.firstName,
             lastName: finalData.lastName,
             idType: finalData.idType,
             idNumber: finalData.idNumber,
-            photoUrl: finalData.photoUrl,
-            idScanUrl: finalData.idScanUrl
+            photoUrl: finalData.photoUrl ? '✓' : '✗',
+            idScanUrl: finalData.idScanUrl ? '✓' : '✗'
         });
 
         // 📁 4. APPELER LE SERVICE
-        console.log('👤 Appel au service createOrFindVisitor...');
+        console.log('\n👤 Appel au service createOrFindVisitor...');
         const result = await visitorService.createOrFindVisitor(finalData);
-        console.log('✅ Résultat service:', result.status);
+        console.log('✅ Résultat:', result.status);
 
-        // 🎉 5. RÉPONSE (convertir les URLs relatives en absolues)
+        // 🎉 5. RÉPONSE
         const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
         
         const responseData = {
-            ...result,
-            visitor: result.visitor ? {
-                ...result.visitor,
-                // Convertir URLs relatives en absolues si besoin
-                photoUrl: result.visitor.photoUrl?.startsWith('/') 
-                    ? `${baseUrl}${result.visitor.photoUrl}`
-                    : result.visitor.photoUrl,
-                idScanUrl: result.visitor.idScanUrl?.startsWith('/') 
-                    ? `${baseUrl}${result.visitor.idScanUrl}`
-                    : result.visitor.idScanUrl
-            } : null
-        };
-
-        console.log('🎉 Visiteur traité avec succès!');
-        res.status(result.status === "NEW_VISITOR_CREATED" ? 201 : 200).json({
             success: true,
             message: result.message,
-            data: responseData
-        });
+            data: {
+                ...result,
+                visitor: result.visitor ? {
+                    ...result.visitor,
+                    photoUrl: result.visitor.photoUrl?.startsWith('/') 
+                        ? `${baseUrl}${result.visitor.photoUrl}`
+                        : result.visitor.photoUrl,
+                    idScanUrl: result.visitor.idScanUrl?.startsWith('/') 
+                        ? `${baseUrl}${result.visitor.idScanUrl}`
+                        : result.visitor.idScanUrl
+                } : null
+            }
+        };
+
+        console.log('\n🎉 Réponse envoyée avec succès!');
+        res.status(result.status === "NEW_VISITOR_CREATED" ? 201 : 200).json(responseData);
 
     } catch (error) {
-        console.error('❌ ERREUR:', error.message);
-        console.error('Stack:', error.stack);
+        console.error('\n❌ ERREUR FATALE:', error.message);
+        console.error('❌ Type:', error.name);
+        console.error('❌ Stack complète:');
+        console.error(error.stack);
+        
+        // Vérifier spécifiquement l'erreur path.extname
+        if (error.message.includes('path.extname') || 
+            error.message.includes('path argument') || 
+            error.message.includes('must be of type string')) {
+            console.error('\n🔴 ERREUR CONFIRMÉE: path.extname() utilisé quelque part!');
+            console.error('🔴 Vérifie dans les logs ci-dessus si originalname est un nombre');
+            
+            // Si l'erreur vient de getSafeExtension, on peut contourner
+            if (error.stack.includes('getSafeExtension')) {
+                console.error('🔴 Erreur dans getSafeExtension! Utilisation extension par défaut .jpg');
+                // Tu peux forcer .jpg en cas d'erreur
+                return res.status(500).json({
+                    success: false,
+                    message: `Erreur fichier: ${error.message}. Utilisez une extension valide (.jpg, .png, etc.)`
+                });
+            }
+        }
         
         if (error.name === 'ZodError') {
             return res.status(400).json({
                 success: false,
                 message: 'Données invalides',
-                errors: error.errors ? error.errors.map(err => ({
+                errors: error.errors.map(err => ({
                     field: err.path.join('.'),
                     message: err.message
-                })) : []
-            });
-        }
-
-        if (error.message.includes('Unique constraint failed')) {
-            return res.status(400).json({
-                success: false,
-                message: `Un visiteur avec ce type et numéro d'identité existe déjà.`
+                }))
             });
         }
 

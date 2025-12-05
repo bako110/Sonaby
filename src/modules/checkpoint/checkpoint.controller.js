@@ -5,7 +5,8 @@ const {
   checkpointIdSchema, 
   checkpointQuerySchema,
   assignAgentSchema,
-  sosSchema
+  sosSchema,
+  unassignAgentSchema
 } = require('./checkpoint.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
@@ -239,6 +240,43 @@ class CheckpointController {
     }
   });
 
+  unassignAgent = asyncHandler(async (req, res) => {
+  // 🔹 Vérifier les permissions ADMIN et AGENT_GESTION
+  if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Accès refusé. Seuls les administrateurs et agents de gestion peuvent désaffecter des agents.'
+    });
+  }
+
+  // 🔹 Validation des params et body
+  const { id } = checkpointIdSchema.parse(req.params);
+  const { agentId } = unassignAgentSchema.parse(req.body);
+
+  try {
+    // 🔹 Appel au service
+    const checkpoint = await checkpointService.unassignAgent(id, agentId);
+
+    res.json({
+      success: true,
+      message: 'Agent désaffecté avec succès',
+      data: checkpoint
+    });
+
+  } catch (error) {
+    if (error.message.includes('non trouvé')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
   sendSOS = asyncHandler(async (req, res) => {
     const { id } = checkpointIdSchema.parse(req.params);
     const { message } = sosSchema.parse(req.body);
@@ -307,6 +345,8 @@ class CheckpointController {
       });
     }
   });
+
+   
   
  }
 

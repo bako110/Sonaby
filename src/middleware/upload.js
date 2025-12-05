@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Créer les dossiers si nécessaire
+// Dossiers
 const createUploadDirs = () => {
   const dirs = [
     'public/uploads/non-desirables/photos/',
@@ -18,56 +18,74 @@ const createUploadDirs = () => {
 };
 createUploadDirs();
 
-// Configuration pour fichiers (photos + PDF)
-const fileStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
+// Storage dynamique
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
     let folder = 'public/uploads/non-desirables/';
-    
-    // Séparer les photos des documents
-    if (file.mimetype.startsWith('image/')) {
+
+    if (file.fieldname === 'photo') {
       folder += 'photos/';
     } else {
       folder += 'documents/';
     }
-    
+
     cb(null, folder);
   },
-  
-  filename: function (req, file, cb) {
-    // Garder l'extension originale
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    const uniqueName = `${name}-${Date.now()}${ext}`;
-    cb(null, uniqueName);
+
+  filename: (req, file, cb) => {
+    // CORRECTION ICI : Vérifier si originalname est une string
+    let ext = '.jpg'; // extension par défaut
+    
+    if (file.originalname && typeof file.originalname === 'string') {
+      // Essayer d'extraire l'extension
+      const lastDot = file.originalname.lastIndexOf('.');
+      if (lastDot !== -1) {
+        const extractedExt = file.originalname.substring(lastDot);
+        if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'].includes(extractedExt.toLowerCase())) {
+          ext = extractedExt.toLowerCase();
+        }
+      }
+    }
+    
+    // Déterminer le nom de base
+    let base = 'file';
+    if (file.originalname && typeof file.originalname === 'string') {
+      const lastDot = file.originalname.lastIndexOf('.');
+      if (lastDot !== -1) {
+        base = file.originalname.substring(0, lastDot);
+      } else {
+        base = file.originalname;
+      }
+    }
+    
+    // Nettoyer le nom de base
+    base = base.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+    
+    cb(null, `${base}-${Date.now()}${ext}`);
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accepter images et PDF
-  const allowedTypes = [
+  const allowed = [
     'image/jpeg',
-    'image/png', 
+    'image/png',
     'image/jpg',
     'image/webp',
     'application/pdf'
   ];
-  
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error(`Type de fichier non supporté: ${file.mimetype}. Types autorisés: JPEG, PNG, JPG, WEBP, PDF`), false);
-  }
+
+  if (allowed.includes(file.mimetype)) cb(null, true);
+  else cb(new Error("Type de fichier non supporté"), false);
 };
 
-const upload = multer({
-  storage: fileStorage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB max
-  }
-});
-
-// Middleware pour FormData avec fichier optionnel
-const uploadNonDesirableWithFile = upload.single('photo'); // Champ 'photo' dans FormData
+// NOUVEAU : 2 champs
+const uploadNonDesirableWithFile = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }
+}).fields([
+  { name: 'photo', maxCount: 1 },
+  { name: 'idScanUrl', maxCount: 1 }
+]);
 
 module.exports = { uploadNonDesirableWithFile };

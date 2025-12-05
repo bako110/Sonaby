@@ -1104,5 +1104,10 @@ router.get('/:id/agents', checkpointController.getCheckpointAgents);
  */
 router.post('/:id/sos', checkpointController.sendSOS);
 
+router.delete(
+  '/unassign/:id',  // id = checkpointId
+  authenticateToken,
+  checkpointController.unassignAgent
+);
 
 module.exports = router;

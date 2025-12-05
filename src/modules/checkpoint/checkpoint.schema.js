@@ -71,6 +71,10 @@ const assignAgentSchema = z.object({
   agentId: z.string().min(1, 'L\'ID de l\'agent est requis')
 });
 
+const unassignAgentSchema = z.object({
+  agentId: z.string().uuid({ message: "L'ID de l'agent doit être un UUID valide" })
+});
+
 module.exports = {
   createCheckpointSchema,
   updateCheckpointSchema,
@@ -81,5 +85,6 @@ module.exports = {
   checkpointStatusEnum,
   checkpointTypeEnum,
   checkpointPriorityEnum,
-  controlFrequencyEnum
+  controlFrequencyEnum,
+  unassignAgentSchema 
 };

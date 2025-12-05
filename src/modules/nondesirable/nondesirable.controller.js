@@ -136,151 +136,126 @@ class NonDesirableController {
   // nondesirable.controller.js - Fonction corrigée
   createUnknownNonDesirable = asyncHandler(async (req, res) => {
   try {
-    // DEBUG: Voir ce qu'il y a dans req.user
-    console.log('=== DEBUG req.user ===');
-    console.log('req.user:', req.user);
-    console.log('req.user?.id:', req.user?.id);
-    console.log('Type de req.user?.id:', typeof req.user?.id);
-    console.log('=====================');
 
-    // Vérifier que req.body existe
-    if (!req.body || typeof req.body !== 'object') {
+    console.log("=== DEBUG req.user ===", req.user);
+
+    if (!req.body || typeof req.body !== "object") {
       return res.status(400).json({
         success: false,
-        message: 'Données manquantes ou invalides'
+        message: "Données manquantes ou invalides"
       });
     }
 
-    // Préparer les données pour la validation
-    const formData = req.body || {};
-    
-    // Convertir severityLevel si présent
-    if (formData.severityLevel) {
-      formData.severityLevel = parseInt(formData.severityLevel, 10);
-      if (isNaN(formData.severityLevel) || formData.severityLevel < 1 || formData.severityLevel > 4) {
-        formData.severityLevel = 2;
-      }
-    } else {
-      formData.severityLevel = 2; // Valeur par défaut
+    const formData = req.body;
+
+    // Normalisation des nombres
+    formData.severityLevel = parseInt(formData.severityLevel ?? 2, 10);
+    if (isNaN(formData.severityLevel) || formData.severityLevel < 1 || formData.severityLevel > 4) {
+      formData.severityLevel = 2;
     }
 
-    // Convertir attachedFileSize si présent
-    if (formData.attachedFileSize) {
-      formData.attachedFileSize = parseInt(formData.attachedFileSize, 10) || 0;
-    }
+    formData.attachedFileSize = parseInt(formData.attachedFileSize ?? 0, 10);
 
-    // Valider les données
+    // Validation ZOD
     const validatedData = createUnknownNonDesirableSchema.parse(formData);
 
-    // Récupérer l'utilisateur qui reporte - CORRECTION ICI
-    let reportedBy;
-    
-    // Option 1: Vérifier que req.user.id existe dans la base
-    if (req.user?.id) {
-      try {
-        // Chercher l'utilisateur dans la base
-        const user = await prisma.user.findUnique({
-          where: { id: req.user.id },
-          select: { id: true }
-        });
-        
-        if (user) {
-          reportedBy = user.id;
-          console.log('Utilisateur trouvé dans la base:', reportedBy);
-        } else {
-          console.warn(`Utilisateur avec ID ${req.user.id} non trouvé dans la base`);
-        }
-      } catch (userError) {
-        console.error('Erreur recherche utilisateur:', userError);
-      }
-    }
-    
-    // Option 2: Si pas d'utilisateur valide, prendre un admin
-    if (!reportedBy) {
-      try {
-        const adminUser = await prisma.user.findFirst({
-          where: { role: 'ADMIN' },
-          select: { id: true }
-        });
-        
-        if (adminUser) {
-          reportedBy = adminUser.id;
-          console.log('Utilisation d\'un admin comme reportedBy:', reportedBy);
-        }
-      } catch (adminError) {
-        console.error('Erreur recherche admin:', adminError);
-      }
-    }
-    
-    // Option 3: Si toujours pas, prendre le premier utilisateur
-    if (!reportedBy) {
-      try {
-        const anyUser = await prisma.user.findFirst({
-          select: { id: true }
-        });
-        
-        if (anyUser) {
-          reportedBy = anyUser.id;
-          console.log('Utilisation du premier utilisateur trouvé:', reportedBy);
-        }
-      } catch (anyUserError) {
-        console.error('Erreur recherche utilisateur:', anyUserError);
-      }
-    }
-    
-    // Option 4: Si vraiment aucun utilisateur, créer un système
-    if (!reportedBy) {
-      console.warn('Aucun utilisateur trouvé dans la base, création système...');
-      
-      try {
-        // Créer un utilisateur système
-        const systemUser = await prisma.user.create({
-          data: {
-            email: 'system@sonaby.com',
-            firstName: 'System',
-            lastName: 'User',
-            password: 'system_password_hash', // À hasher
-            role: 'ADMIN',
-            isActive: true
-          }
-        });
-        
-        reportedBy = systemUser.id;
-        console.log('Utilisateur système créé:', reportedBy);
-      } catch (createError) {
-        console.error('Erreur création utilisateur système:', createError);
-        // Dernier recours: utiliser une valeur par défaut
-        reportedBy = '00000000-0000-0000-0000-000000000000';
-      }
-    }
-    
-    console.log('Valeur finale de reportedBy:', reportedBy);
+    // =======================================================
+    // 🔥 RÉCUPÉRATION SÛRE ET DÉFINITIVE DE reportedBy
+    // =======================================================
 
-    // Appeler le service avec la valeur vérifiée
+    let reportedBy = null;
+
+    // 1️⃣ Token valide et user existant ?
+    if (req.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { id: true }
+      });
+
+      if (user) {
+        reportedBy = user.id;
+        console.log("Reporter depuis token:", reportedBy);
+      }
+    }
+
+    // 2️⃣ Sinon, récupérer un admin
+    if (!reportedBy) {
+      const admin = await prisma.user.findFirst({
+        where: { role: "ADMIN" },
+        select: { id: true }
+      });
+
+      if (admin) {
+        reportedBy = admin.id;
+        console.log("Reporter fallback admin:", reportedBy);
+      }
+    }
+
+    // 3️⃣ Sinon, prendre n’importe quel user
+    if (!reportedBy) {
+      const anyUser = await prisma.user.findFirst({
+        select: { id: true }
+      });
+
+      if (anyUser) {
+        reportedBy = anyUser.id;
+        console.log("Reporter fallback any user:", reportedBy);
+      }
+    }
+
+    // 4️⃣ Sinon, créer un user système (sécurisé)
+    if (!reportedBy) {
+      console.warn("Aucun user trouvé → création utilisateur système…");
+
+      const systemUser = await prisma.user.upsert({
+        where: { email: "system@sonaby.com" },
+        update: {},
+        create: {
+          email: "system@sonaby.com",
+          firstName: "System",
+          lastName: "User",
+          password: "$2a$10$SYSTEMHASHPLACEHOLDER", // Remet un vrai hash
+          role: "ADMIN",
+          isActive: true
+        },
+        select: { id: true }
+      });
+
+      reportedBy = systemUser.id;
+      console.log("Reporter système créé:", reportedBy);
+    }
+
+    console.log("=== REPORTER FINAL ===", reportedBy);
+    // =======================================================
+
+
+    // Appel du service
     const result = await nonDesirableService.createUnknownNonDesirable({
       validatedData,
       reportedBy,
-      file: req.file // Le fichier uploadé (si présent)
+      file: req.file
     });
 
     return res.status(201).json(result);
+
   } catch (error) {
-    console.error('Erreur détaillée:', error);
-    
-    if (error.name === 'ZodError') {
+    console.error("Erreur détaillée:", error);
+
+    if (error.name === "ZodError") {
       return res.status(400).json({
         success: false,
-        message: 'Erreur de validation des données',
+        message: "Erreur de validation des données",
         errors: error.errors
       });
     }
-    
+
     return res.status(500).json({
       success: false,
-      message: error.message || 'Erreur lors de la création de l\'indésirable inconnu'
+      message: error.message || "Erreur lors de la création de l'indésirable inconnu"
     });
   }
 });
+
 
   getKnownNonDesirables = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
