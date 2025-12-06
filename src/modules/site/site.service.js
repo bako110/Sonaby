@@ -247,7 +247,7 @@ async getFilteredSites(filters = {}) {
   }
 }
 
-  async createSite(siteData) {
+async createSite(siteData) {
   try {
     // Vérifier que le code est fourni
     if (!siteData.code) {
@@ -273,21 +273,21 @@ async getFilteredSites(filters = {}) {
       }
     }
 
-    // Extraire manager de siteData pour éviter de le mettre dans la table Site
-    const { manager, ...siteDataWithoutManager } = siteData;
+    // CORRECTION ICI : Sauvegarde le managerId AVANT de le supprimer
+    const managerId = siteData.manager;
+    const { manager: _, ...siteDataWithoutManager } = siteData;
 
-    // Créer le site et assigner le manager
     // Créer le site et assigner le manager
     const site = await prisma.site.create({
       data: {
         ...siteDataWithoutManager,
-        // ⚡ Stocker l'ID du manager directement au lieu du nom
-        manager: managerUser ? managerUser.id : siteData.manager,
+        // ⚡ Utiliser managerId au lieu de siteData.manager
+        manager: managerUser ? managerUser.id : managerId,
         // Assigner le manager au site via UserSite
-        assignedUsers: manager
+        assignedUsers: managerId
           ? {
               create: [{
-                userId: manager
+                userId: managerId
               }]
             }
           : undefined
@@ -308,7 +308,6 @@ async getFilteredSites(filters = {}) {
         }
       }
     });
-
 
     return site;
   } catch (error) {
