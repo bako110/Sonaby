@@ -3,107 +3,73 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class IncidentService {
-  async createIncident(incidentData, reportedBy) {
-    try {
-      // Vérifications des données requises
-      if (!incidentData.titre || !incidentData.description || !incidentData.siteId) {
-        throw new Error('Titre, description et siteId sont requis');
-      }
-
-      // Vérifier que le site existe
-      const site = await prisma.site.findUnique({
-        where: { id: incidentData.siteId }
-      });
-
-      if (!site) {
-        throw new Error('Site non trouvé');
-      }
-
-      // Vérifier la visite si fournie et récupérer le visiteur
-      let visitorId = null;
-      if (incidentData.visitId && incidentData.visitId !== '') {
-        console.log('DEBUG - Recherche de la visite:', incidentData.visitId);
-        
-        const visit = await prisma.visit.findUnique({
-          where: { id: incidentData.visitId },
-          include: {
-            visitor: true
-          }
-        });
-
-        console.log('DEBUG - Visit trouvée:', visit);
-
-        if (!visit) {
-          throw new Error('Visite non trouvée');
-        }
-        
-        if (!visit.visitor) {
-          console.log('DEBUG - La visite n\'a pas de visiteur associé');
-          throw new Error('La visite n\'a pas de visiteur associé');
-        }
-        
-        // Récupérer l'ID du visiteur depuis la visite
-        visitorId = visit.visitor.id;
-        console.log('DEBUG - VisitorId récupéré:', visitorId);
-      }
-
-      // Vérifier que l'utilisateur qui rapporte existe
-      if (!reportedBy) {
-        throw new Error('L\'utilisateur qui rapporte l\'incident est requis');
-      }
-
-      const reporterExists = await prisma.user.findUnique({
-        where: { id: reportedBy }
-      });
-
-      if (!reporterExists) {
-        throw new Error('Utilisateur rapporteur non trouvé');
-      }
-
-      // Préparer les données de l'incident
-      const incident = await prisma.incident.create({
-        data: {
-          titre: incidentData.titre,
-          description: incidentData.description,
-          typeIncident: incidentData.typeIncident || 'AUTRE',
-          severite: incidentData.severite || 'MOYENNE',
-          priorite: incidentData.priorite || 'NORMALE',
-          source: incidentData.source || 'AGENT',
-          dateIncident: new Date(incidentData.dateIncident),
-          heureIncident: new Date(incidentData.heureIncident),
-          siteId: incidentData.siteId,
-          visiteurId: visitorId, // Utiliser le visiteurId récupéré de la visite
-          actionsImmediates: incidentData.actionsImmediates || null,
-          temoinPresent: incidentData.temoinPresent || false,
-          notifierAgents: incidentData.notifierAgents || false,
-          reportedBy: reportedBy
-        },
-        include: {
-          site: {
-            select: { id: true, name: true }
-          },
-          reporter: {
-            select: { id: true, firstName: true, lastName: true }
-          }
-        }
-      });
-
-      // Notifier les agents si demandé
-      if (incidentData.notifierAgents) {
-        await this.notifyAgents(incident);
-      }
-
-      return {
-        success: true,
-        message: 'Incident créé avec succès',
-        data: incident
-      };
-
-    } catch (error) {
-      console.error('Erreur lors de la création de l\'incident:', error);
-      throw new Error(`Erreur lors de la création de l'incident: ${error.message}`);
+ async createIncident(incidentData, reportedBy) {
+  try {
+    // 🔹 Vérifications obligatoires
+    if (!incidentData.titre || !incidentData.description || !incidentData.siteId || !incidentData.dateIncident) {
+      throw new Error('Titre, description, dateIncident et siteId sont requis');
     }
+
+    // 🔹 Vérifier que le site existe
+    const site = await prisma.site.findUnique({ where: { id: incidentData.siteId } });
+    if (!site) throw new Error('Site non trouvé');
+
+    // 🔹 Récupérer le visitorId si visitId fourni
+    let visitorId = null;
+    if (incidentData.visitId) {
+      const visit = await prisma.visit.findUnique({
+        where: { id: incidentData.visitId },
+        include: { visitor: true }
+      });
+      if (!visit) throw new Error('Visite non trouvée');
+      if (!visit.visitor) throw new Error('La visite n\'a pas de visiteur associé');
+      visitorId = visit.visitor.id;
+    }
+
+    // 🔹 Vérifier l'utilisateur rapporteur
+    if (!reportedBy) throw new Error('Utilisateur rapporteur requis');
+    const reporterExists = await prisma.user.findUnique({ where: { id: reportedBy } });
+    if (!reporterExists) throw new Error('Utilisateur rapporteur non trouvé');
+
+    // 🔹 Créer l'incident
+    const incident = await prisma.incident.create({
+      data: {
+        titre: incidentData.titre,
+        description: incidentData.description,
+        typeIncident: incidentData.typeIncident || 'AUTRE',
+        severite: incidentData.severite || 'MOYENNE',
+        priorite: incidentData.priorite || 'NORMALE',
+        source: incidentData.source || 'AGENT',
+        dateIncident: new Date(incidentData.dateIncident), // date + heure complète
+        // dateIncident: dateObj,
+        siteId: incidentData.siteId,
+        visiteurId: visitorId,
+        actionsImmediates: incidentData.actionsImmediates || null,
+        temoinPresent: incidentData.temoinPresent || false,
+        notifierAgents: incidentData.notifierAgents || false,
+        reportedBy
+      },
+      include: {
+        site: { select: { id: true, name: true } },
+        reporter: { select: { id: true, firstName: true, lastName: true } }
+      }
+    });
+
+    // 🔹 Notifier les agents si demandé
+    if (incidentData.notifierAgents) {
+      await this.notifyAgents(incident);
+    }
+
+    return { success: true, message: 'Incident créé avec succès', data: incident };
+
+  } catch (error) {
+    console.error('Erreur création incident:', error);
+    return { success: false, message: `Erreur lors de la création de l'incident: ${error.message}` };
   }
+}
+
+
+
 
   async getIncidents(filters = {}) {
     try {
@@ -498,6 +464,63 @@ class IncidentService {
       };
     }
   }
+async getWeeklyIncidentsBySite(siteId) {
+  try {
+    const now = new Date();
+
+    // 🔹 Calcul du début de la semaine (Lundi 00:00 UTC)
+    const day = now.getUTCDay(); // 0 = dimanche, 1 = lundi, ...
+    const diffToMonday = day === 0 ? -6 : 1 - day; // Décalage vers lundi
+    const startOfWeek = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + diffToMonday,
+      0, 0, 0, 0
+    ));
+
+    // 🔹 Calcul de la fin de la semaine (Dimanche 23:59:59.999 UTC)
+    const endOfWeek = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + diffToMonday + 6,
+      23, 59, 59, 999
+    ));
+
+    // 🔹 Récupérer tous les incidents du site dans la semaine
+    const incidents = await prisma.incident.findMany({
+      where: {
+        siteId,
+        dateIncident: {
+          gte: startOfWeek,
+          lte: endOfWeek
+        }
+      },
+      include: {
+        site: true,
+        reporter: true,
+        visiteur: true
+      },
+      orderBy: { dateIncident: 'desc' }
+    });
+
+    return {
+      success: true,
+      message: `${incidents.length} incident(s) cette semaine`,
+      data: incidents
+    };
+
+  } catch (error) {
+    console.error("❌ Erreur getWeeklyIncidentsBySite:", error);
+    return {
+      success: false,
+      message: "Impossible de récupérer les incidents de la semaine.",
+      error: error.message
+    };
+  }
+}
+
+
+
 }
 
 module.exports = new IncidentService();

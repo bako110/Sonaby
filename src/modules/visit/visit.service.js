@@ -752,6 +752,29 @@ class VisitService {
       throw new Error(`Erreur lors de la récupération des visiteurs du checkpoint: ${error.message}`);
     }
   }
+
+  async getFinishedVisitsByCheckpoint(checkpointId) {
+        try {
+            return await prisma.visit.findMany({
+                where: {
+                    checkpointId: checkpointId,
+                    exitTime: {
+                        not: null        // visite terminée
+                    }
+                },
+                include: {
+                    visitor: true,
+                    checkpoint: true,
+                },
+                orderBy: {
+                    exitTime: "desc"
+                }
+            });
+        } catch (error) {
+            console.error("❌ Erreur getFinishedVisitsByCheckpoint:", error);
+            throw new Error("Impossible de récupérer les visites terminées.");
+        }
+    }
 }
 
 module.exports = new VisitService();

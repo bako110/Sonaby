@@ -5,20 +5,26 @@
 
 app = 'backend-sonaby'
 primary_region = 'ams'
+
 [build]
 
 [deploy]
-  release_command = 'npx prisma db push --accept-data-loss'
+# Génère le client Prisma avant de pousser la base de données
+release_command = 'npx prisma generate && npx prisma db push --accept-data-loss'
 
 [http_service]
-  internal_port = 5000
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
+internal_port = 5000
+force_https = true
+auto_stop_machines = 'stop'
+auto_start_machines = true
+min_machines_running = 0
+processes = ['app']
 
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
+memory = '1gb'
+cpu_kind = 'shared'
+cpus = 1
+
+[mounts]
+source="uploads"
+destination="/uploads"

@@ -1,29 +1,21 @@
 // services/uploadService.js
-const fs = require('fs');
 const path = require('path');
+const { BASE_UPLOAD_DIR } = require('../config/paths');
+const fs = require('fs');
 
 class UploadService {
   getPublicUrl(file) {
     if (!file) return null;
 
-    // file.path = public/uploads/non-desirables/photos/xxx.jpg
-    const normalized = file.path.replace('public', '').replace(/\\/g, '/');
-
-    return normalized.startsWith('/') ? normalized : `/${normalized}`;
+    let relativePath = path.relative(BASE_UPLOAD_DIR, file.path);
+    return `/${relativePath.replace(/\\/g, '/')}`; // Normaliser pour URL
   }
 
   deleteFile(fileUrl) {
     if (!fileUrl) return;
 
-    try {
-      const localPath = path.join('public', fileUrl.replace('/uploads/', 'uploads/'));
-
-      if (fs.existsSync(localPath)) {
-        fs.unlinkSync(localPath);
-      }
-    } catch (err) {
-      console.error("Erreur suppression fichier:", err);
-    }
+    const localPath = path.join(BASE_UPLOAD_DIR, fileUrl.replace(/^\//, ''));
+    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
   }
 }
 

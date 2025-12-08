@@ -3,24 +3,29 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
-// Utilitaire pour créer les répertoires dynamiquement
+// Chemin de base : local ou Fly.io
+const BASE_UPLOAD_DIR = process.env.FLY_APP_NAME
+  ? '/uploads' // En production Fly.io
+  : path.join(__dirname, '..', '..', 'uploads'); // En local
+
+// Fonction pour créer un dossier avec date
 const createDirectoryPath = () => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  
-  const dirPath = path.join('uploads', year.toString(), month, day);
-  
-  // Créer le répertoire s'il n'existe pas
+
+  const dirPath = path.join(BASE_UPLOAD_DIR, year.toString(), month, day);
+
+  // Créer si n'existe pas
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
-  
+
   return dirPath;
 };
 
-// Configuration du stockage
+// Multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     try {
@@ -31,33 +36,23 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    try {
-      const uuid = uuidv4();
-      const ext = path.extname(file.originalname);
-      const baseName = path.basename(file.originalname, ext);
-      const filename = `${uuid}_${baseName}${ext}`;
-      cb(null, filename);
-    } catch (error) {
-      cb(error, null);
-    }
+    const uuid = uuidv4();
+    const ext = path.extname(file.originalname);
+    const baseName = path.basename(file.originalname, ext);
+
+    cb(null, `${uuid}_${baseName}${ext}`);
   }
 });
 
-// Filtre pour les types de fichiers autorisés
+// File filter
 const fileFilter = (req, file, cb) => {
-  // Types MIME autorisés
   const allowedMimeTypes = [
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'application/pdf',
-    'text/plain',
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf', 'text/plain',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ];
-  
+
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -65,17 +60,11 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configuration multer
+// Multer final
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max
-    files: 5 // Maximum 5 fichiers pour upload multiple
-  }
+  storage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024, files: 5 }
 });
 
-module.exports = {
-  upload,
-  createDirectoryPath
-};
+module.exports = { upload, createDirectoryPath };

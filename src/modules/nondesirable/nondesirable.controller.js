@@ -134,9 +134,9 @@ class NonDesirableController {
   });
 
   // nondesirable.controller.js - Fonction corrigée
-  createUnknownNonDesirable = asyncHandler(async (req, res) => {
-  try {
 
+ createUnknownNonDesirable = asyncHandler(async (req, res) => {
+  try {
     console.log("=== DEBUG req.user ===", req.user);
 
     if (!req.body || typeof req.body !== "object") {
@@ -160,53 +160,29 @@ class NonDesirableController {
     const validatedData = createUnknownNonDesirableSchema.parse(formData);
 
     // =======================================================
-    // 🔥 RÉCUPÉRATION SÛRE ET DÉFINITIVE DE reportedBy
+    // 🔥 RÉCUPÉRATION SÛRE DE reportedBy
     // =======================================================
-
     let reportedBy = null;
 
-    // 1️⃣ Token valide et user existant ?
-    if (req.user?.id) {
+    if (req.user?.userId) {
       const user = await prisma.user.findUnique({
-        where: { id: req.user.id },
+        where: { id: req.user.userId },
         select: { id: true }
       });
-
-      if (user) {
-        reportedBy = user.id;
-        console.log("Reporter depuis token:", reportedBy);
-      }
+      if (user) reportedBy = user.id;
     }
 
-    // 2️⃣ Sinon, récupérer un admin
     if (!reportedBy) {
-      const admin = await prisma.user.findFirst({
-        where: { role: "ADMIN" },
-        select: { id: true }
-      });
-
-      if (admin) {
-        reportedBy = admin.id;
-        console.log("Reporter fallback admin:", reportedBy);
-      }
+      const admin = await prisma.user.findFirst({ where: { role: "ADMIN" }, select: { id: true } });
+      if (admin) reportedBy = admin.id;
     }
 
-    // 3️⃣ Sinon, prendre n’importe quel user
     if (!reportedBy) {
-      const anyUser = await prisma.user.findFirst({
-        select: { id: true }
-      });
-
-      if (anyUser) {
-        reportedBy = anyUser.id;
-        console.log("Reporter fallback any user:", reportedBy);
-      }
+      const anyUser = await prisma.user.findFirst({ select: { id: true } });
+      if (anyUser) reportedBy = anyUser.id;
     }
 
-    // 4️⃣ Sinon, créer un user système (sécurisé)
     if (!reportedBy) {
-      console.warn("Aucun user trouvé → création utilisateur système…");
-
       const systemUser = await prisma.user.upsert({
         where: { email: "system@sonaby.com" },
         update: {},
@@ -214,26 +190,23 @@ class NonDesirableController {
           email: "system@sonaby.com",
           firstName: "System",
           lastName: "User",
-          password: "$2a$10$SYSTEMHASHPLACEHOLDER", // Remet un vrai hash
+          password: "$2a$10$SYSTEMHASHPLACEHOLDER",
           role: "ADMIN",
           isActive: true
         },
         select: { id: true }
       });
-
       reportedBy = systemUser.id;
-      console.log("Reporter système créé:", reportedBy);
     }
 
     console.log("=== REPORTER FINAL ===", reportedBy);
     // =======================================================
 
-
     // Appel du service
     const result = await nonDesirableService.createUnknownNonDesirable({
       validatedData,
       reportedBy,
-      file: req.file
+      files: req.files // photo et idScanUrl
     });
 
     return res.status(201).json(result);

@@ -209,6 +209,35 @@ class IncidentController {
       });
     }
   });
+
+  getWeeklyIncidents = asyncHandler(async (req, res) => {
+    const { siteId } = req.params;
+
+    if (!siteId) {
+        return res.status(400).json({
+            success: false,
+            message: "Le siteId est requis."
+        });
+    }
+
+    try {
+        const result = await incidentService.getWeeklyIncidentsBySite(siteId);
+
+        res.json({
+            success: true,
+            total: result.data.length,
+            data: result.data
+        });
+
+    } catch (error) {
+        console.error("❌ Controller getWeeklyIncidents:", error);
+        res.status(500).json({
+            success: false,
+            message: "Erreur serveur lors de la récupération des incidents de la semaine."
+        });
+    }
+});
+
 }
 
 module.exports = new IncidentController();

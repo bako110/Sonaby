@@ -145,7 +145,7 @@ class AuthService {
     if (user.role === 'CHEF_SERVICE') {
         additionalData.sites = await prisma.site.findMany({
             where: {
-                managerId: user.id
+                manager: user.id
             },
             include: {
                 checkpoints: true,
