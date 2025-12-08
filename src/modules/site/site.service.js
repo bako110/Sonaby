@@ -474,33 +474,48 @@ async createSite(siteData) {
   }
 
   // Récupérer tous les sites assignés à un agent spécifique
-   async getSitesByAgent(userId) {
+   async  getSitesByAgent(userId) {
   if (!userId) {
     throw new Error("L'identifiant de l'agent est requis");
   }
 
   try {
-    // Récupérer tous les sites assignés à l'agent avec leurs relations
     const sites = await prisma.site.findMany({
       where: {
         assignedUsers: {
-          some: { userId }
+          some: { userId: userId }
         }
       },
       include: {
         checkpoints: {
           include: {
-            agent: true,
-            visits: { include: { visitor: true } }
+            agent: true,  // Agent principal du checkpoint
+            agentAssignments: {
+              include: {
+                user: true  // Inclut toutes les infos de l'agent assigné au checkpoint
+              }
+            },
+            visits: { include: { visitor: true } } // Visites avec les visiteurs
           }
         },
         incidents: {
-          include: { reporter: true, site: true, visiteur: true }
+          include: {
+            reporter: true,  // Utilisateur qui a reporté
+            visiteur: true,  // Visiteur concerné
+            site: true       // Site de l'incident
+          }
         },
         rendezvous: {
-          include: { organizer: true, visits: true }
+          include: {
+            organizer: true, // Organisateur du rendez-vous
+            visits: { include: { visitor: true, service: true } }
+          }
         },
-        assignedUsers: { include: { user: true } }
+        assignedUsers: {
+          include: {
+            user: true // Infos complètes des utilisateurs assignés au site
+          }
+        }
       },
       orderBy: { creationDate: 'desc' }
     });
@@ -511,6 +526,8 @@ async createSite(siteData) {
     throw new Error(`Erreur lors de la récupération des sites de l'agent: ${error.message}`);
   }
 }
+
+
 
 
 }

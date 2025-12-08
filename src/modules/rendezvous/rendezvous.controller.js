@@ -244,6 +244,17 @@ class RendezvousController {
       });
     }
   };
+
+   getBySite = async(req, res) => {
+    try {
+      const { siteId } = req.params;
+      const rendezvousList = await rendezvousService.getRendezvousBySite(siteId);
+      res.status(200).json({ success: true, data: rendezvousList });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
 }
 
 module.exports = new RendezvousController();

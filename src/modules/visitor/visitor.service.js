@@ -836,12 +836,14 @@ async getWeekPlanning(siteId) {
         service: visit.service?.name,
         visitStatus: visit.visitStatus?.name,
         visitor: {
-          id: visit.visitor?.id,
-          firstName: visit.visitor?.firstName,
-          lastName: visit.visitor?.lastName,
-          company: visit.visitor?.company,
-          isBlacklisted: visit.visitor?.isBlacklisted
-        },
+        id: visit.visitor?.id,
+        firstName: visit.visitor?.firstName,
+        lastName: visit.visitor?.lastName,
+        phone: visit.visitor?.phone,      // ✅ numéro ajouté
+        company: visit.visitor?.company,
+        isBlacklisted: visit.visitor?.isBlacklisted
+      },
+
         agent: visit.creator ? {
           id: visit.creator.id,
           firstName: visit.creator.firstName,
