@@ -1,6 +1,6 @@
 const { z } = require('zod');
 
-// Schéma pour créer un incident (sans enum)
+// Schéma pour créer un incident (sans enum) avec dateIncident ISO complète
 const createIncidentSchema = z.object({
   titre: z.string().min(1, 'Le titre est requis').max(255, 'Le titre ne peut pas dépasser 255 caractères'),
   description: z.string().min(1, 'La description est requise'),
@@ -8,8 +8,9 @@ const createIncidentSchema = z.object({
   severite: z.string().nullable().optional().default('MOYENNE'),
   priorite: z.string().nullable().optional().default('NORMALE'),
   source: z.string().nullable().optional().default('AGENT'),
-  dateIncident: z.string().min(1, 'La date d\'incident est requise').regex(/^\d{4}-\d{2}-\d{2}$/, 'Format de date invalide (YYYY-MM-DD)'),
-  heureIncident: z.string().datetime('Heure d\'incident invalide'),
+  dateIncident: z.string()
+    .min(1, 'La date d\'incident est requise')
+    .refine(val => !isNaN(Date.parse(val)), 'Format de date invalide (ISO 8601 attendu)'),
   siteId: z.string().uuid('ID du site invalide'),
   visitId: z.string().uuid('ID de la visite invalide').optional().or(z.literal('')),
   actionsImmediates: z.string().nullable().optional().default(null),
@@ -25,8 +26,7 @@ const updateIncidentSchema = z.object({
   severite: z.string().optional(),
   priorite: z.string().optional(),
   source: z.string().optional(),
-  dateIncident: z.string().datetime().optional(),
-  heureIncident: z.string().datetime().optional(),
+  dateIncident: z.string().refine(val => !isNaN(Date.parse(val)), 'Format de date invalide (ISO 8601 attendu)').optional(),
   siteId: z.string().uuid().optional(),
   visitId: z.string().uuid().optional().or(z.literal('')),
   actionsImmediates: z.string().optional(),

@@ -318,6 +318,33 @@ class VisitController {
     }
   });
 
+  getFinishedVisits = asyncHandler(async (req, res) => {
+        const { checkpointId } = req.params;
+
+        if (!checkpointId) {
+            return res.status(400).json({
+                success: false,
+                message: "Le checkpointId est requis."
+            });
+        }
+
+        try {
+            const visits = await visitService.getFinishedVisitsByCheckpoint(checkpointId);
+
+            return res.json({
+                success: true,
+                total: visits.length,
+                data: visits
+            });
+        } catch (error) {
+            console.error("❌ Controller getFinishedVisits:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Erreur serveur lors de la récupération des visites terminées."
+            })
+        } 
+    });
+
 }
 
 module.exports = new VisitController();

@@ -7,7 +7,7 @@ const { prisma } = require('../config/prisma');
 const authenticateToken = async (req, res, next) => {
     try {
         const token = req.header('Authorization')?.replace('Bearer ', '');
-
+        console.log("Le token est:", token)
         if (!token) {
             return next(new AppError(401, 'Access denied. No token provided.'));
         }

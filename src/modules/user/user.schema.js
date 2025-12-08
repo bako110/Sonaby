@@ -10,7 +10,7 @@ const createUserSchema = z.object({
   role: z.enum(['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']).optional().default('AGENT_CONTROLE'),
   phone: z.string().optional(),
   isActive: z.boolean().optional().default(true),
-  assignedSites: z.array(z.string().uuid('ID de site invalide (doit être un UUID)')).default([]),
+  assignedSites: z.array(z.string().uuid('ID de site invalide (doit être un UUID)')).optional().default([]),
   permissions: z.array(z.string().min(1, 'Nom de permission invalide')).default([])
 });
 

@@ -1,10 +1,20 @@
 const express = require('express');
 const nonDesirableController = require('./nondesirable.controller');
-const { authenticateToken } = require('../../middleware/authMiddleware');
-const { uploadNonDesirableWithFile } = require('../../middleware/upload');
+const { authenticateToken, allowRoles } = require('../../middleware/authMiddleware');
+const { uploadNonDesirable } = require('../../middleware/upload');
 
 const router = express.Router();
 router.use(authenticateToken);
+
+const handleUpload = (req, res, next) => {
+  uploadNonDesirable(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+};
+
 
 /**
  * @swagger
@@ -253,7 +263,18 @@ router.post('/', nonDesirableController.createNonDesirable);
  *       403:
  *         description: Accès refusé - ADMIN requis
  */
-router.post('/unknown', uploadNonDesirableWithFile, nonDesirableController.createUnknownNonDesirable);
+
+
+
+// 2️⃣ Route POST en utilisant la nouvelle méthode
+router.post(
+  '/unknown',
+  authenticateToken,        // 🔹 d’abord auth pour définir req.user
+  allowRoles('ADMIN'),      // 🔹 vérifier rôle
+  handleUpload,             // 🔹 ensuite Multer
+  nonDesirableController.createUnknownNonDesirable // 🔹 middleware Express standard (req, res)
+);
+
 
 /**
  * @swagger

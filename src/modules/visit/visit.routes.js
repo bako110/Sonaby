@@ -444,4 +444,67 @@ router.get('/:id', visitController.getVisitById);
 router.patch('/:id/checkout', visitController.checkoutVisit);
 router.delete('/:id', visitController.deleteVisit);
 
+/**
+ * @swagger
+ * /checkpoint/{checkpointId}/finished:
+ *   get:
+ *     summary: Récupère toutes les visites terminées d’un checkpoint
+ *     description: Retourne la liste des visites dont l'état est marqué comme terminé (ex: `FINISHED`, `EXITED`, `EXIT_TERMINE`, etc.) pour un checkpoint donné.
+ *     tags:
+ *       - Visites
+ *     parameters:
+ *       - in: path
+ *         name: checkpointId
+ *         required: true
+ *         description: ID du checkpoint
+ *         schema:
+ *           type: string
+ *           example: "d1f6c960-49a2-4fdf-896e-b60ef97b07bd"
+ *     responses:
+ *       200:
+ *         description: Liste des visites terminées trouvée
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Visites terminées récupérées avec succès"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "7a94264e-6e81-4d5a-a45a-24b899996fe9"
+ *                       visitorName:
+ *                         type: string
+ *                         example: "DERA Abdoul-Fataph"
+ *                       checkpointId:
+ *                         type: string
+ *                         example: "d1f6c960-49a2-4fdf-896e-b60ef97b07bd"
+ *                       status:
+ *                         type: string
+ *                         example: "EXIT_TERMINE"
+ *                       exitTime:
+ *                         type: string
+ *                         example: "2025-12-06T14:23:00Z"
+ *       404:
+ *         description: Aucune visite terminée trouvée
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Aucune visite terminée trouvée pour ce checkpoint"
+ *       500:
+ *         description: Erreur interne serveur
+ */
+router.get("/checkpoint/:checkpointId/finished", visitController.getFinishedVisits);
+
+
 module.exports = router;

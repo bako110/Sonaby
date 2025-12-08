@@ -6,66 +6,87 @@ const { AppError } = require('../../middleware/errorHandler');
 
 class AuthService {
     // Inscription
-    async register(data) {
-        const { email, password, firstName, lastName, role } = data;
-        
-        // Vérifier si l'utilisateur existe déjà
-        const existingUser = await prisma.user.findUnique({
-            where: { email }
-        });
-        
-        if (existingUser) {
-            throw new AppError(400, 'User already exists with this email');
+   async register(data) {
+    const { email, username, password, firstName, lastName, role } = data;
+
+    // Vérifier si l'utilisateur existe déjà par email ou username
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            OR: [
+                { email },
+                username ? { username } : undefined
+            ].filter(Boolean) // enlève les undefined si username n'est pas fourni
         }
-        
-        // Hasher le mot de passe
-        const passwordHash = await bcrypt.hash(password, 12);
-        
-        // Créer l'utilisateur
-        const user = await prisma.user.create({
-            data: {
-                email,
-                passwordHash,
-                firstName,
-                lastName,
-                role: role || 'AGENT_GESTION'
-            },
-            select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                createdAt: true
-            }
-        });
-        
-        // Générer les tokens
-        const tokens = await this.generateTokens(user.id, user.role);
-        
-        return {
-            user,
-            ...tokens
-        };
+    });
+
+    if (existingUser) {
+        throw new AppError(400, 'User already exists with this email or username');
     }
+
+    // Hasher le mot de passe
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Créer l'utilisateur
+    const user = await prisma.user.create({
+        data: {
+            email,
+            username, // ajoute username
+            passwordHash,
+            firstName,
+            lastName,
+            role: role || 'AGENT_GESTION'
+        },
+        select: {
+            id: true,
+            email: true,
+            username: true, // sélectionne username
+            firstName: true,
+            lastName: true,
+            role: true,
+            createdAt: true
+        }
+    });
+
+    // Générer les tokens
+    const tokens = await this.generateTokens(user.id, user.role);
+
+    return {
+        user,
+        ...tokens
+    };
+}
 
     
     // Connexion
-    async login(data) {
+     async login(data) {
     const { identifier, password } = data;
 
-    console.log('🔍 [LOGIN DEBUG] Tentative de connexion');
+    console.log('🔍 [LOGIN DEBUG] Tentative de connexion avec identifiant:', identifier);
 
+    // Vérifier si c'est un email, téléphone ou username
     const isEmail = identifier.includes('@');
+    
+    // Construire la condition OR pour rechercher par email, phone OU username
+    const whereCondition = {
+        OR: []
+    };
+    
+    if (isEmail) {
+        // Si c'est un email
+        whereCondition.OR.push({ email: identifier });
+    } else {
+        // Si ce n'est pas un email, ça pourrait être un téléphone OU un username
+        whereCondition.OR.push({ phone: identifier });
+        whereCondition.OR.push({ username: identifier }); // ← Ajout pour username
+    }
 
     const user = await prisma.user.findFirst({
-        where: isEmail 
-            ? { email: identifier }
-            : { phone: identifier },
+        where: whereCondition,
         select: {
             id: true,
             email: true,
             phone: true,
+            username: true, // ← Ajouter username
             passwordHash: true,
             firstName: true,
             lastName: true,
@@ -75,6 +96,8 @@ class AuthService {
         }
     });
 
+    console.log('🔍 [LOGIN DEBUG] Utilisateur trouvé:', user ? 'Oui' : 'Non');
+    
     if (!user || !user.isActive) {
         throw new AppError(401, 'Invalid credentials');
     }
@@ -104,6 +127,7 @@ class AuthService {
                     lastName: user.lastName,
                     email: user.email,
                     phone: user.phone,
+                    username: user.username, // ← Ajouter username
                     role: user.role,
                     permissions: []
                 },
@@ -128,16 +152,15 @@ class AuthService {
     // 2️⃣ AGENT_GESTION → Sites assignés + checkpoints
     // ----------------------------------------------------------
     if (user.role === 'AGENT_GESTION') {
-    additionalData.sites = await prisma.site.findMany({
-        where: {
-            manager: user.id  // 🔹 filtrer sur le champ manager qui contient l'ID de l'agent
-        },
-        include: {
-            checkpoints: true
-        }
-    });
-}
-
+        additionalData.sites = await prisma.site.findMany({
+            where: {
+                manager: user.id
+            },
+            include: {
+                checkpoints: true
+            }
+        });
+    }
 
     // ----------------------------------------------------------
     // 3️⃣ CHEF_SERVICE → sites dont il est manager
@@ -145,11 +168,11 @@ class AuthService {
     if (user.role === 'CHEF_SERVICE') {
         additionalData.sites = await prisma.site.findMany({
             where: {
-                managerId: user.id
+                manager: user.id
             },
             include: {
                 checkpoints: true,
-                assignedUsers: true     // 🔹 relation correcte pour voir les agents
+                assignedUsers: true
             }
         });
     }

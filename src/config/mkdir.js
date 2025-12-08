@@ -1,0 +1,18 @@
+// config/mkdir.js
+const fs = require('fs');
+const path = require('path');
+
+function createDirectoryPath(baseDir, subFolder = '') {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  const dirPath = path.join(baseDir, subFolder, year.toString(), month, day);
+
+  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+
+  return dirPath;
+}
+
+module.exports = createDirectoryPath;

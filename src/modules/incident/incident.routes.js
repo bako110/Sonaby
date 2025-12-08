@@ -14,5 +14,9 @@ router.get('/:id', incidentController.getIncidentById);
 router.put('/:id', incidentController.updateIncident);
 router.patch('/:id/resolve', incidentController.resolveIncident);
 router.delete('/:id', incidentController.deleteIncident);
+router.get(
+    '/checkpoint/:siteId/weekly',
+    incidentController.getWeeklyIncidents
+);
 
 module.exports = router;

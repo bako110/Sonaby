@@ -1,5 +1,5 @@
 const sosService = require('./sos.service');
-const { createSOSSchema, createGeneralSOSSchema, sosIdSchema, sosQuerySchema, deactivateSOSSchema } = require('./sos.schema');
+const { createSOSSchema, createGeneralSOSSchema, sosIdSchema, sosQuerySchema } = require('./sos.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class SOSController {
@@ -16,13 +16,11 @@ class SOSController {
     console.log('🔍 DEBUG CONTROLLER - req.user:', req.user);
     console.log('🔍 DEBUG CONTROLLER - req.user.userId:', req.user?.userId);
     
-    // Ajouter l'utilisateur authentifié comme triggeredBy si non fourni
-    if (!validated.triggeredBy) {
-      validated.triggeredBy = req.user.userId;
-    }
+    // Utiliser l'utilisateur authentifié comme triggeredBy
+    const sentBy = req.user.userId;
     
     try {
-      const sos = await sosService.createSOS(validated, req.user.userId);
+      const sos = await sosService.createSOS(validated, sentBy);
       res.status(201).json({
         success: true,
         message: 'SOS envoyé avec succès',
@@ -55,13 +53,11 @@ class SOSController {
     console.log('🔍 DEBUG CONTROLLER - req.user:', req.user);
     console.log('🔍 DEBUG CONTROLLER - req.user.userId:', req.user?.userId);
     
-    // Ajouter l'utilisateur authentifié comme triggeredBy si non fourni
-    if (!validated.triggeredBy) {
-      validated.triggeredBy = req.user.userId;
-    }
+    // Utiliser l'utilisateur authentifié comme triggeredBy
+    const sentBy = req.user.userId;
     
     try {
-      const sos = await sosService.createGeneralSOS(validated, req.user.userId);
+      const sos = await sosService.createGeneralSOS(validated, sentBy);
       res.status(201).json({
         success: true,
         message: 'Alerte SOS générale déclenchée avec succès',
@@ -222,54 +218,68 @@ class SOSController {
       });
     }
   });
-  // Créer une alerte SOS générale
-  async createSOS(req, res) {
-    try {
-      // Validation simple des params
-      const validatedParams = sosParamsSchema.parse(req.body.params || {});
 
-      const sos = await sosService.createGeneralSOS({
-        params: validatedParams
+  // Nouvelle méthode pour résoudre un SOS avec notes
+  resolveSOS = asyncHandler(async (req, res) => {
+    if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Permissions insuffisantes.'
       });
+    }
 
-      return res.status(201).json({
+    const { id } = req.params;
+    const { notes } = req.body;
+    
+    try {
+      const resolvedSOS = await sosService.resolveSOS(id, req.user.userId, notes);
+      res.json({
         success: true,
-        message: 'Alerte SOS créée',
-        sos
+        message: 'SOS résolu avec succès',
+        data: resolvedSOS
       });
     } catch (error) {
-      return res.status(400).json({ success: false, message: error.message });
+      if (error.message.includes('non trouvé')) {
+        return res.status(404).json({
+          success: false,
+          message: error.message
+        });
+      }
+      if (error.message.includes('déjà résolu')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
     }
-  }
+  });
 
-  // Récupérer la liste des SOS générales
-  async getSOSList(req, res) {
+  // Méthode pour récupérer la liste simple des SOS
+  getSOSList = asyncHandler(async (req, res) => {
+    if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Permissions insuffisantes.'
+      });
+    }
+
     try {
       const sosList = await sosService.getSOSList(req.query);
-      return res.status(200).json({
+      res.json({
         success: true,
         data: sosList
       });
     } catch (error) {
-      return res.status(400).json({ success: false, message: error.message });
-    }
-  }
-
-  // Résoudre une alerte SOS
-  async resolveSOS(req, res) {
-    try {
-      const { id } = req.params;
-      const updatedSOS = await sosService.resolveSOS(id, req.body);
-
-      return res.status(200).json({
-        success: true,
-        message: 'SOS résolu',
-        sos: updatedSOS
+      res.status(500).json({
+        success: false,
+        message: error.message
       });
-    } catch (error) {
-      return res.status(400).json({ success: false, message: error.message });
     }
-  }
+  });
 }
 
 module.exports = new SOSController();

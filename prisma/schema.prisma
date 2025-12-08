@@ -19,6 +19,7 @@ model User {
   phone                 String?                     @db.VarChar(20)
   createdAt             DateTime?                   @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt             DateTime?                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  username              String?                     @unique(map: "username")
   agentAssignments      AgentCheckpointAssignment[]
   auditLogs             AuditLog[]
   blacklistActions      BlacklistHistory[]
@@ -280,7 +281,6 @@ model Incident {
   priorite          String    @db.VarChar(20)
   source            String    @db.VarChar(20)
   dateIncident      DateTime  @map("date_incident") @db.Timestamp(0)
-  heureIncident     DateTime  @map("heure_incident") @db.Timestamp(0)
   siteId            String?   @map("site_id") @db.Char(36)
   visiteurId        String?   @map("visiteur_id") @db.Char(36)
   actionsImmediates String?   @map("actions_immediates") @db.Text
@@ -354,32 +354,30 @@ model SosAlert {
 }
 
 model BlacklistHistory {
-  id               String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  visitorId        String?   @map("visitor_id") @db.Char(36)
-  nonDesirableId   String?   @map("non_desirable_id") @db.Char(36)
-  firstName        String?   @map("first_name") @db.VarChar(100)
-  lastName         String?   @map("last_name") @db.VarChar(100)
-  idType           String?   @map("id_type") @db.VarChar(20)
-  idNumber         String?   @map("id_number") @db.VarChar(255)
-  phone            String?   @db.VarChar(20)
-  email            String?   @db.VarChar(255)
-  nationality      String?   @db.VarChar(100)
-  birthDate        DateTime? @map("birth_date") @db.Date
-  birthPlace       String?   @map("birth_place") @db.VarChar(255)
-  action           String    @db.VarChar(20)
-  reason           String    @db.Text
-  severityLevel    Int?      @default(1) @map("severity_level")
-  incidentDate     DateTime? @map("incident_date") @db.Date
-  incidentLocation String?   @map("incident_location") @db.VarChar(255)
-  createdBy        String    @map("created_by") @db.Char(36)
-  createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt        DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
-
-  // Relations
-  nonDesirable      NonDesirable?     @relation("NonDesirableBlacklist", fields: [nonDesirableId], references: [id], onUpdate: NoAction)
+  id                String            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  visitorId         String?           @map("visitor_id") @db.Char(36)
+  firstName         String?           @map("first_name") @db.VarChar(100)
+  lastName          String?           @map("last_name") @db.VarChar(100)
+  idType            String?           @map("id_type") @db.VarChar(20)
+  idNumber          String?           @map("id_number") @db.VarChar(255)
+  phone             String?           @db.VarChar(20)
+  email             String?           @db.VarChar(255)
+  nationality       String?           @db.VarChar(100)
+  birthDate         DateTime?         @map("birth_date") @db.Date
+  birthPlace        String?           @map("birth_place") @db.VarChar(255)
+  action            String            @db.VarChar(20)
+  reason            String            @db.Text
+  severityLevel     Int?              @default(1) @map("severity_level")
+  incidentDate      DateTime?         @map("incident_date") @db.Date
+  incidentLocation  String?           @map("incident_location") @db.VarChar(255)
+  createdBy         String            @map("created_by") @db.Char(36)
+  createdAt         DateTime?         @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime?         @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  nonDesirableId    String?           @map("non_desirable_id") @db.Char(36)
   blacklist_actions blacklist_actions @relation(fields: [action], references: [action_name], onDelete: NoAction, onUpdate: NoAction)
   creator           User              @relation(fields: [createdBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
   idTypeRel         id_types?         @relation(fields: [idType], references: [type_name], onDelete: NoAction, onUpdate: NoAction)
+  nonDesirable      NonDesirable?     @relation("NonDesirableBlacklist", fields: [nonDesirableId], references: [id], onUpdate: NoAction)
   visitor           Visitor?          @relation(fields: [visitorId], references: [id], onUpdate: NoAction)
 
   @@index([visitorId], map: "idx_blacklist_visitor_id")
@@ -485,56 +483,39 @@ model RefreshToken {
 }
 
 model NonDesirable {
-  id String @id @default(uuid()) @db.Char(36)
-
-  // --- Relation avec Visitor existant ---
-  visitorId String?  @map("visitor_id") @db.Char(36)
-  visitor   Visitor? @relation(fields: [visitorId], references: [id], onDelete: SetNull)
-
-  // --- Rapporteur (User) ---
-  reportedBy String @map("reported_by") @db.Char(36)
-  reporter   User   @relation("NonDesirableReporter", fields: [reportedBy], references: [id], onDelete: Cascade)
-
-  // === INFORMATIONS D'IDENTITÉ ===
-  idType   String? @map("id_type") @db.VarChar(50)
-  idNumber String? @map("id_number") @db.VarChar(255)
-
-  // === INFORMATIONS PERSONNELLES ===
-  firstName   String?   @map("first_name") @db.VarChar(100)
-  lastName    String?   @map("last_name") @db.VarChar(100)
-  birthDate   DateTime? @map("birth_date")
-  birthPlace  String?   @map("birth_place") @db.VarChar(255)
-  sexe        String?   @db.VarChar(10)
-  nationality String?   @db.VarChar(100)
-  phone       String?   @db.VarChar(20)
-  email       String?   @db.VarChar(255)
-  company     String?   @db.VarChar(255)
-
-  givingDate     DateTime? @map("giving_date")
-  expirationDate DateTime? @map("expiration_date")
-
-  // === DOCUMENTS ===
+  id                 String             @id @default(uuid()) @db.Char(36)
+  visitorId          String?            @map("visitor_id") @db.Char(36)
+  reason             String             @db.Text
+  reportedBy         String             @map("reported_by") @db.Char(36)
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  attachedFileName   String?            @map("attached_file_name") @db.VarChar(255)
+  attachedFileSize   Int?               @map("attached_file_size")
+  attachedFileType   String?            @map("attached_file_type") @db.VarChar(100)
+  attachedFileUrl    String?            @map("attached_file_url") @db.Text
+  birthDate          DateTime?          @map("birth_date")
+  birthPlace         String?            @map("birth_place") @db.VarChar(255)
+  company            String?            @db.VarChar(255)
+  createdBy          String?            @map("created_by") @db.Char(36)
+  email              String?            @db.VarChar(255)
+  expirationDate     DateTime?          @map("expiration_date")
+  firstName          String?            @map("first_name") @db.VarChar(100)
+  givingDate         DateTime?          @map("giving_date")
+  idNumber           String?            @map("id_number") @db.VarChar(255)
   idScanUrl          String?            @map("id_scan_url") @db.Text
+  idType             String?            @map("id_type") @db.VarChar(50)
+  incidentDate       DateTime?          @map("incident_date")
+  incidentLocation   String?            @map("incident_location") @db.VarChar(255)
+  isActive           Boolean            @default(true) @map("is_active")
+  lastName           String?            @map("last_name") @db.VarChar(100)
+  nationality        String?            @db.VarChar(100)
+  phone              String?            @db.VarChar(20)
   photoUrl           String?            @map("photo_url") @db.Text
+  severityLevel      Int                @default(2) @map("severity_level")
+  sexe               String?            @db.VarChar(10)
   blacklistHistories BlacklistHistory[] @relation("NonDesirableBlacklist")
-
-  // === INCIDENT ===
-  reason           String    @db.Text
-  incidentDate     DateTime? @map("incident_date")
-  incidentLocation String?   @map("incident_location") @db.VarChar(255)
-  severityLevel    Int       @default(2) @map("severity_level")
-
-  // === FICHIER JOINT ===
-  attachedFileUrl  String? @map("attached_file_url") @db.Text
-  attachedFileName String? @map("attached_file_name") @db.VarChar(255)
-  attachedFileType String? @map("attached_file_type") @db.VarChar(100)
-  attachedFileSize Int?    @map("attached_file_size")
-
-  // === MÉTADONNÉES ===
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  createdBy String?  @map("created_by") @db.Char(36)
-  isActive  Boolean  @default(true) @map("is_active")
+  reporter           User               @relation("NonDesirableReporter", fields: [reportedBy], references: [id], onDelete: Cascade)
+  visitor            Visitor?           @relation(fields: [visitorId], references: [id])
 
   @@index([visitorId], map: "idx_non_desirables_visitor_id")
   @@index([reportedBy], map: "idx_non_desirables_reported_by")
