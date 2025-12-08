@@ -303,6 +303,8 @@ model Incident {
   @@map("incidents")
 }
 
+
+
 model VisitIncident {
   id              String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
   visitId         String    @map("visit_id") @db.Char(36)
