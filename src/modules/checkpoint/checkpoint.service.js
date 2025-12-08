@@ -117,10 +117,11 @@ class CheckpointService {
         }
       }
 
+      // CORRECTION ICI : whereConditions -> whereClause
       const [checkpoints, total] = await Promise.all([
         prisma.checkpoint.findMany({
-          where: whereClause,
-          skip,
+          where: whereClause,  // <-- CHANGÉ : whereConditions -> whereClause
+          skip: skip,
           take: limit,
           include: {
             site: {
@@ -140,28 +141,36 @@ class CheckpointService {
               }
             },
             sosAlerts: {
-              where: { isResolved: false },
+              where: {
+                isResolved: false
+              },
               select: {
                 id: true,
                 message: true,
-                createdAt: true
+                triggeredAt: true,
+                isResolved: true,
+                resolvedAt: true
               }
             },
             _count: {
               select: {
                 visits: true,
                 sosAlerts: {
-                  where: { isResolved: false }
+                  where: {
+                    isResolved: false
+                  }
                 }
               }
             }
           },
           orderBy: [
-            { createdAt: 'desc' },
-            { name: 'asc' }
+            { createdAt: "desc" },
+            { name: "asc" }
           ]
         }),
-        prisma.checkpoint.count({ where: whereClause })
+        prisma.checkpoint.count({
+          where: whereClause  // <-- CHANGÉ : whereConditions -> whereClause
+        })
       ]);
 
       return {
