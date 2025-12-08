@@ -24,9 +24,9 @@ class UserService {
     }
 
     // Vérifier que les sites existent (obligatoire pour les agents)
-    if (!data.assignedSites || data.assignedSites.length === 0) {
-      throw new Error('Au moins un site doit être assigné à un utilisateur');
-    }
+    // if (!data.assignedSites || data.assignedSites.length === 0) {
+    //   throw new Error('Au moins un site doit être assigné à un utilisateur');
+    // }
 
     const sites = await prisma.site.findMany({
       where: { id: { in: data.assignedSites } }

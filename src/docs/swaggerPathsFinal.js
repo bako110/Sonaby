@@ -795,96 +795,37 @@ const swaggerPathsFinal = {
   },
   // ==================== INCIDENT ENDPOINTS ====================
   '/api/v1/incidents': {
-    get: {
-      tags: ['Incidents'],
-      summary: 'Lister tous les incidents',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
-        { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
-        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle' },
-        { name: 'visitId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par visite' },
-        { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par site' },
-        { name: 'resolved', in: 'query', schema: { type: 'boolean' }, description: 'Filtrer incidents résolus' }
-      ],
-      responses: {
-        200: {
-          description: '✅ Liste des incidents récupérée',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: true },
-                  message: { type: 'string', example: 'Incidents récupérés avec succès' },
-                  data: {
-                    type: 'array',
-                    items: { $ref: '#/components/schemas/Incident' }
-                  },
-                  pagination: {
-                    type: 'object',
-                    properties: {
-                      page: { type: 'integer', example: 1 },
-                      limit: { type: 'integer', example: 10 },
-                      total: { type: 'integer', example: 25 },
-                      totalPages: { type: 'integer', example: 3 }
-                    }
+  get: {
+    tags: ['Incidents'],
+    summary: 'Lister tous les incidents',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+      { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' },
+      { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle' },
+      { name: 'visitId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par visite' },
+      { name: 'siteId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par site' },
+      { name: 'resolved', in: 'query', schema: { type: 'boolean' }, description: 'Filtrer incidents résolus' }
+    ],
+    responses: {
+      200: {
+        description: '✅ Liste des incidents récupérée',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Incidents récupérés avec succès' },
+                data: { type: 'array', items: { $ref: '#/components/schemas/Incident' } },
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    page: { type: 'integer', example: 1 },
+                    limit: { type: 'integer', example: 10 },
+                    total: { type: 'integer', example: 25 },
+                    totalPages: { type: 'integer', example: 3 }
                   }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    post: {
-      tags: ['Incidents'],
-      summary: '🚨 Créer un nouvel incident',
-      description: 'Crée un nouvel incident lié à une visite ou à un visiteur',
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateIncidentInput' } } }
-      },
-      responses: {
-        201: {
-          description: '✅ Incident créé avec succès',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: true },
-                  message: { type: 'string', example: 'Incident créé avec succès' },
-                  data: { $ref: '#/components/schemas/Incident' }
-                }
-              }
-            }
-          }
-        },
-        400: {
-          description: '❌ Données invalides',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  message: { type: 'string', example: 'Titre, description et siteId sont requis' }
-                }
-              }
-            }
-          }
-        },
-        404: {
-          description: '❌ Ressource non trouvée',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  message: { type: 'string', example: 'Site non trouvé' }
                 }
               }
             }
@@ -893,6 +834,81 @@ const swaggerPathsFinal = {
       }
     }
   },
+  post: {
+    tags: ['Incidents'],
+    summary: '🚨 Créer un nouvel incident',
+    description: 'Crée un nouvel incident lié à une visite ou à un visiteur',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/CreateIncidentInput' },
+          example: {
+            titre: "Personne anormale",
+            description: "Un fou est entré dans la cellule",
+            typeIncident: "AUTRE",
+            severite: "MOYENNE",
+            priorite: "NORMALE",
+            source: "AGENT",
+            dateIncident: "2024-12-07T14:30:00.000Z",
+            siteId: "d4a30898-d202-11f0-af88-da7d8e8d4741",
+            visitId: "2778f2a5-d2b1-11f0-af88-da7d8e8d4741",
+            actionsImmediates: "Le visiteur a été raccompagné à la sortie",
+            temoinPresent: true,
+            notifierAgents: true
+          }
+        }
+      }
+    },
+    responses: {
+      201: {
+        description: '✅ Incident créé avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Incident créé avec succès' },
+                data: { $ref: '#/components/schemas/Incident' }
+              }
+            }
+          }
+        }
+      },
+      400: {
+        description: '❌ Données invalides',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Titre, description et siteId sont requis' }
+              }
+            }
+          }
+        }
+      },
+      404: {
+        description: '❌ Ressource non trouvée',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Site non trouvé' }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+},
+
   '/api/v1/incidents/{id}': {
     get: {
       tags: ['Incidents'],
@@ -986,6 +1002,88 @@ const swaggerPathsFinal = {
       }
     }
   },
+
+    '/api/v1/incidents/checkpoint/{siteId}/weekly': {
+    get: {
+      tags: ['Incidents'],
+      summary: '📅 Récupérer tous les incidents d’un site pour la semaine en cours',
+      description: 'Retourne tous les incidents liés aux visites d’un site spécifique pour la semaine actuelle.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { 
+          name: 'siteId', 
+          in: 'path', 
+          required: true, 
+          schema: { type: 'string', format: 'uuid' }, 
+          description: 'ID du site' 
+        }
+      ],
+      responses: {
+        200: {
+          description: '✅ Liste des incidents récupérée avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  total: { type: 'integer', example: 7 },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Incident' }
+                  }
+                }
+              }
+            }
+          }
+        },
+        400: {
+          description: '❌ siteId manquant ou invalide',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Le checkpointId est requis.' }
+                }
+              }
+            }
+          }
+        },
+        403: {
+          description: '❌ Accès refusé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Accès refusé. Permissions insuffisantes.' }
+                }
+              }
+            }
+          }
+        },
+        500: {
+          description: '❌ Erreur serveur lors de la récupération des incidents de la semaine',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Erreur serveur lors de la récupération des incidents de la semaine.' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
+
 
 
 

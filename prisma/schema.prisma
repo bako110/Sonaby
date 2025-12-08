@@ -280,7 +280,6 @@ model Incident {
   priorite          String    @db.VarChar(20)
   source            String    @db.VarChar(20)
   dateIncident      DateTime  @map("date_incident") @db.Timestamp(0)
-  heureIncident     DateTime  @map("heure_incident") @db.Timestamp(0)
   siteId            String?   @map("site_id") @db.Char(36)
   visiteurId        String?   @map("visiteur_id") @db.Char(36)
   actionsImmediates String?   @map("actions_immediates") @db.Text
@@ -302,6 +301,8 @@ model Incident {
   @@index([dateIncident])
   @@map("incidents")
 }
+
+
 
 model VisitIncident {
   id              String    @id @default(dbgenerated("(uuid())")) @db.Char(36)

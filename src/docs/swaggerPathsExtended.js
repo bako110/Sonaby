@@ -998,7 +998,112 @@ const swaggerPathsExtended = {
         }
       }
     }
+  },
+
+  '/api/v1/visits/checkpoint/{checkpointId}/finished': {
+  get: {
+    tags: ['Visits'],
+    summary: 'Récupérer les visites terminées d’un checkpoint',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'checkpointId',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+        description: 'ID du checkpoint'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Liste des visites terminées du checkpoint spécifié',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: {
+                  type: 'object',
+                  properties: {
+                    checkpoint: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        name: { type: 'string' },
+                        site: {
+                          type: 'object',
+                          properties: {
+                            id: { type: 'string', format: 'uuid' },
+                            name: { type: 'string' }
+                          }
+                        }
+                      }
+                    },
+                    finishedVisits: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', format: 'uuid' },
+                          visitorName: { type: 'string' },
+                          visitorId: { type: 'string', format: 'uuid' },
+                          status: {
+                            type: 'string',
+                            example: 'EXIT_TERMINE'
+                          },
+                          entryTime: { type: 'string', format: 'date-time' },
+                          exitTime: { type: 'string', format: 'date-time' },
+                          company: { type: 'string' },
+                          phone: { type: 'string' },
+                          email: { type: 'string' }
+                        }
+                      }
+                    },
+                    stats: {
+                      type: 'object',
+                      properties: {
+                        totalFinished: { type: 'integer', example: 12 },
+                        averageVisitDurationMinutes: { type: 'number', example: 42.5 },
+                        earliestExit: { type: 'string', format: 'date-time' },
+                        latestExit: { type: 'string', format: 'date-time' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      404: {
+        description: 'Aucune visite terminée trouvée pour ce checkpoint',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: {
+                  type: 'string',
+                  example: 'Aucune visite terminée trouvée pour ce checkpoint'
+                }
+              }
+            }
+          }
+        }
+      },
+      403: {
+        description: 'Accès refusé'
+      },
+      500: {
+        description: 'Erreur interne serveur'
+      }
+    }
   }
+}
+
 };
+
 
 module.exports = swaggerPathsExtended;

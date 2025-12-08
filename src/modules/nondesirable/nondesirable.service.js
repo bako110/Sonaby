@@ -1,6 +1,10 @@
+
 const { prisma } = require('../../config/prisma');
+// console.log('Prisma dans ce fichier:', prisma);
+
  // En haut du fichier, importez le service d'upload
 const uploadService = require('../upload'); // Adaptez le chemin
+
 
 class NonDesirableService {
   // 1️⃣ Création d'un "indésirable" connu
@@ -466,19 +470,18 @@ class NonDesirableService {
 
 // Dans la classe NonDesirableService, remplacez la fonction createUnknownNonDesirable par :
 
-// nondesirable.service.js - Fonction corrigée
-async createUnknownNonDesirable({ validatedData, reportedBy, file = null }) {
-  try {
-    console.log('Données reçues dans le service:', { validatedData, reportedBy, file: file ? 'présent' : 'absent' });
 
-    // Extraire les données validées
+
+  async createUnknownNonDesirable({ validatedData, reportedBy, files = {} }) {
+  try {
+    console.log('Données reçues dans le service:', { validatedData, reportedBy, files });
+
     const {
       firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
       givingDate, expirationDate, phone, email, company, nationality,
       reason, incidentDate, incidentLocation, severityLevel
     } = validatedData;
 
-    // Vérifier les données requises
     if (!firstName || !lastName || !reason) {
       throw new Error('Prénom, nom et raison sont requis');
     }
@@ -493,35 +496,24 @@ async createUnknownNonDesirable({ validatedData, reportedBy, file = null }) {
       return isNaN(date.getTime()) ? null : date;
     };
 
-    // Variables pour les fichiers
+    // Gestion des fichiers uploadés
     let photoUrl = validatedData.photoUrl || '';
     let attachedFileUrl = '';
     let attachedFileName = '';
     let attachedFileType = '';
     let attachedFileSize = 0;
 
-    // Traiter le fichier uploadé
-    if (file) {
-      try {
-        // Déterminer si c'est une image ou un PDF
-        if (file.mimetype.startsWith('image/')) {
-          // C'est une image → photoUrl
-          const baseUrl = '/uploads/non-desirables/photos/';
-          photoUrl = baseUrl + file.filename;
-          console.log('Image uploadée comme photo:', photoUrl);
-        } else if (file.mimetype === 'application/pdf') {
-          // C'est un PDF → attachedFile
-          const baseUrl = '/uploads/non-desirables/documents/';
-          attachedFileUrl = baseUrl + file.filename;
-          attachedFileName = file.originalname;
-          attachedFileType = file.mimetype;
-          attachedFileSize = file.size;
-          console.log('PDF uploadé comme document:', attachedFileName);
-        }
-      } catch (uploadError) {
-        console.error('Erreur traitement fichier:', uploadError);
-        // Continuer sans le fichier
-      }
+    if (files.photo?.[0]) {
+      photoUrl = uploadService.getPublicUrl(files.photo[0]);
+      console.log('Image uploadée comme photo:', photoUrl);
+    }
+
+    if (files.idScanUrl?.[0]) {
+      attachedFileUrl = uploadService.getPublicUrl(files.idScanUrl[0]);
+      attachedFileName = files.idScanUrl[0].originalname;
+      attachedFileType = files.idScanUrl[0].mimetype;
+      attachedFileSize = files.idScanUrl[0].size;
+      console.log('Document uploadé:', attachedFileName);
     }
 
     const fullReason = {
@@ -530,7 +522,8 @@ async createUnknownNonDesirable({ validatedData, reportedBy, file = null }) {
       identification: { idType, idNumber, givingDate, expirationDate },
       contact: { phone, email, company },
       incident: { incidentDate, incidentLocation, severityLevel },
-      photos: { photoUrl }
+      photos: { photoUrl },
+      document: { attachedFileUrl, attachedFileName, attachedFileType, attachedFileSize }
     };
 
     const result = await prisma.$transaction(async (tx) => {
@@ -577,7 +570,7 @@ async createUnknownNonDesirable({ validatedData, reportedBy, file = null }) {
           birthDate: nonDesirableEntry.birthDate,
           birthPlace: nonDesirableEntry.birthPlace,
           action: 'BLACKLIST',
-          reason: reason,
+          reason,
           severityLevel: nonDesirableEntry.severityLevel,
           incidentDate: nonDesirableEntry.incidentDate,
           incidentLocation: nonDesirableEntry.incidentLocation,
@@ -627,6 +620,8 @@ async createUnknownNonDesirable({ validatedData, reportedBy, file = null }) {
     throw new Error(`Erreur lors de la création de l'indésirable inconnu: ${error.message}`);
   }
 }
+
+
   // 6️⃣ Suppression d'un "indésirable connu"
   async removeNonDesirable(visitorId, removedBy, reason) {
     try {

@@ -1,11 +1,28 @@
+// config/prisma.js
 const { PrismaClient } = require('@prisma/client');
 
+// On stocke le client globalement pour éviter plusieurs instances en dev
 const globalForPrisma = global;
 
-const prisma = globalForPrisma.prisma || new PrismaClient();
+// Si déjà défini, on réutilise ; sinon on crée un nouveau client
+const prisma = globalForPrisma.prisma || new PrismaClient({
+  log: ['query', 'info', 'warn', 'error'], // utile pour debug en prod
+});
 
+// On ne le réaffecte globalement qu'en dev pour éviter les fuites de connexion
 if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma = prisma;
 }
+
+// Vérification de la connexion au démarrage
+async function testConnection() {
+  try {
+    await prisma.$connect();
+    console.log('✅ Prisma connected successfully');
+  } catch (err) {
+    console.error('❌ Prisma connection error:', err);
+  }
+}
+testConnection();
 
 module.exports = { prisma };
