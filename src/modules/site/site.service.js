@@ -7,17 +7,17 @@ async getFilteredSites(filters = {}) {
   try {
     const {
       search,
-      code,                    // NOUVEAU
+      code,
       city,
       region,
       country,
       status,
       activityType,
       manager,
-      creationDateStart,       // Renommé pour correspondre au frontend
-      creationDateEnd,         // Renommé pour correspondre au frontend
-      minArea,                 // NOUVEAU
-      maxArea,                 // NOUVEAU
+      creationDateStart,
+      creationDateEnd,
+      minArea,
+      maxArea,
       minEmployeeCount,
       maxEmployeeCount,
       wheelchairAccessible,
@@ -26,8 +26,8 @@ async getFilteredSites(filters = {}) {
       securityGuard,
       page = 1,
       limit = 10,
-      sortBy = 'creationDate',  // NOUVEAU
-      sortOrder = 'desc'        // NOUVEAU
+      sortBy = 'creationDate',
+      sortOrder = 'desc'
     } = filters;
 
     const skip = (page - 1) * limit;
@@ -38,29 +38,29 @@ async getFilteredSites(filters = {}) {
     // Recherche globale (search)
     if (search) {
       whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { code: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } },
-        { manager: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } }  // Ajouté
+        { name: { contains: search } },
+        { code: { contains: search } },
+        { description: { contains: search } },
+        { address: { contains: search } },
+        { manager: { contains: search } },
+        { city: { contains: search } }
       ];
     }
 
-    // Filtre par code exact (NOUVEAU)
+    // Filtre par code exact
     if (code) {
-      whereClause.code = { contains: code, mode: 'insensitive' };
+      whereClause.code = { contains: code };
     }
 
     // Filtres géographiques
-    if (city) whereClause.city = { contains: city, mode: 'insensitive' };
-    if (region) whereClause.region = { contains: region, mode: 'insensitive' };
-    if (country) whereClause.country = { contains: country, mode: 'insensitive' };
+    if (city) whereClause.city = { contains: city };
+    if (region) whereClause.region = { contains: region };
+    if (country) whereClause.country = { contains: country };
 
     // Filtres catégoriels
     if (status) whereClause.status = status;
     if (activityType) whereClause.activityType = activityType;
-    if (manager) whereClause.manager = { contains: manager, mode: 'insensitive' };
+    if (manager) whereClause.manager = { contains: manager };
 
     // Filtres par plage numérique
     if (minEmployeeCount !== undefined || maxEmployeeCount !== undefined) {
@@ -69,14 +69,14 @@ async getFilteredSites(filters = {}) {
       if (maxEmployeeCount !== undefined) whereClause.employeeCount.lte = maxEmployeeCount;
     }
 
-    // Filtres par surface (NOUVEAU)
+    // Filtres par surface
     if (minArea !== undefined || maxArea !== undefined) {
       whereClause.area = {};
       if (minArea !== undefined) whereClause.area.gte = minArea;
       if (maxArea !== undefined) whereClause.area.lte = maxArea;
     }
 
-    // Filtres par dates (renommés)
+    // Filtres par dates
     if (creationDateStart || creationDateEnd) {
       whereClause.creationDate = {};
       if (creationDateStart) whereClause.creationDate.gte = new Date(creationDateStart);
@@ -97,7 +97,7 @@ async getFilteredSites(filters = {}) {
       }
     });
 
-    // Gestion du tri (NOUVEAU)
+    // Gestion du tri
     const orderBy = {};
     const validSortFields = ['name', 'city', 'creationDate', 'employeeCount', 'area', 'code'];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'creationDate';
@@ -170,7 +170,7 @@ async getFilteredSites(filters = {}) {
         hasPrev: page > 1
       },
       filterOptions: filterOptions.data,
-      appliedFilters: { // NOUVEAU: pour debug frontend
+      appliedFilters: {
         ...filters,
         sortBy,
         sortOrder
