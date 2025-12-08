@@ -11,17 +11,20 @@ const {
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class CheckpointController {
+
   getFilteredCheckpoints = asyncHandler(async (req, res) => {
   try {
     // 1. Récupérer tous les paramètres de requête
     const {
       search,
+      name,          // <-- AJOUT: Recherche par nom spécifique
       siteId,
       zone,
       checkpointType,
       status,
       priority,
       agentId,
+      agentName,     // <-- AJOUT: Recherche par nom d'agent
       dateCreationDebut,
       dateCreationFin,
       avecAgent,
@@ -111,15 +114,45 @@ class CheckpointController {
       });
     }
 
-    // 5. Construction des filtres
-    const filters = {
+    // 5. Construction des filtres pour le service
+    const filtersForService = {
       search: search || undefined,
+      name: name || undefined,          // <-- AJOUT
       siteId: siteId || undefined,
       zone: zone || undefined,
       checkpointType: checkpointType || undefined,
       status: status || undefined,
       priority: priority || undefined,
       agentId: agentId || undefined,
+      agentName: agentName || undefined, // <-- AJOUT
+      dateCreationStart: dateCreationDebut || undefined,  // Mapping
+      dateCreationEnd: dateCreationFin || undefined,      // Mapping
+      hasAgent: avecAgent === 'true' ? true : 
+                avecAgent === 'false' ? false : undefined,
+      inAlert: enAlerte === 'true' ? true : 
+               enAlerte === 'false' ? false : undefined,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    };
+
+    // Nettoyer les valeurs undefined
+    Object.keys(filtersForService).forEach(key => {
+      if (filtersForService[key] === undefined) {
+        delete filtersForService[key];
+      }
+    });
+
+    // 6. Construction des filtres pour la réponse (garder les noms originaux)
+    const filtersForResponse = {
+      search: search || undefined,
+      name: name || undefined,
+      siteId: siteId || undefined,
+      zone: zone || undefined,
+      checkpointType: checkpointType || undefined,
+      status: status || undefined,
+      priority: priority || undefined,
+      agentId: agentId || undefined,
+      agentName: agentName || undefined,
       dateCreationDebut: dateCreationDebut || undefined,
       dateCreationFin: dateCreationFin || undefined,
       avecAgent: avecAgent || undefined,
@@ -128,17 +161,27 @@ class CheckpointController {
       limit: parseInt(limit)
     };
 
-    // 6. Appel au service
-    const result = await checkpointService.getFilteredCheckpoints(filters);
+    // Nettoyer les valeurs undefined pour la réponse aussi
+    Object.keys(filtersForResponse).forEach(key => {
+      if (filtersForResponse[key] === undefined) {
+        delete filtersForResponse[key];
+      }
+    });
+
+    console.log('=== DEBUG: Filters envoyés au service ===');
+    console.log(filtersForService);
+
+    // 7. Appel au service
+    const result = await checkpointService.getFilteredCheckpoints(filtersForService);
     
-    // 7. Réponse
+    // 8. Réponse
     res.status(200).json({
       success: true,
       message: 'Checkpoints filtrés récupérés avec succès',
       data: result.checkpoints,
       pagination: result.pagination,
       filterOptions: result.filterOptions,
-      filters: filters
+      filters: filtersForResponse
     });
 
   } catch (error) {
@@ -149,7 +192,6 @@ class CheckpointController {
     });
   }
 });
-
   getFilterOptions = asyncHandler(async (req, res) => {
   try {
     // 1. Récupérer les filtres
