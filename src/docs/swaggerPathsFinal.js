@@ -793,6 +793,57 @@ const swaggerPathsFinal = {
       }
     }
   },
+
+    // ==================== RENDEZVOUS PAR SITE ====================
+  '/api/v1/rendezvous/site/{siteId}': {
+    get: {
+      tags: ['Appointments'],
+      summary: "Récupère tous les rendez-vous d'un site",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'siteId',
+          required: true,
+          schema: { type: 'string' },
+          description: "L'ID du site pour lequel récupérer les rendez-vous"
+        }
+      ],
+      responses: {
+        200: {
+          description: 'Liste des rendez-vous du site',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Appointment' }
+                  }
+                }
+              }
+            }
+          }
+        },
+        500: {
+          description: 'Erreur serveur',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Erreur lors de la récupération des rendez-vous' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   // ==================== INCIDENT ENDPOINTS ====================
   '/api/v1/incidents': {
   get: {

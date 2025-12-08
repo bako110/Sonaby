@@ -11,6 +11,7 @@ class RendezvousService {
           siteId: rendezvousData.siteId,
           firstName: rendezvousData.firstName,
           lastName: rendezvousData.lastName,
+          personVistedName: rendezvousData.personVistedName,
           office: rendezvousData.office,
           serviceName: rendezvousData.serviceName,
           reason: rendezvousData.reason,
@@ -308,6 +309,89 @@ class RendezvousService {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
   }
+
+async getRendezvousBySite(siteId) {
+  if (!siteId) {
+    throw new Error("Le siteId doit être fourni");
+  }
+
+  try {
+    // Vérifier si le site existe
+    const siteExists = await prisma.site.findUnique({
+      where: { id: siteId },
+      select: { id: true }
+    });
+
+    if (!siteExists) {
+      throw new Error("Le site spécifié n'existe pas");
+    }
+
+    // 🔹 Calcul du lundi et dimanche de la semaine
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = dimanche, 1 = lundi ...
+    const mondayOffset = currentDay === 0 ? 6 : currentDay - 1;
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // Récupérer les rendez-vous pour le site et la semaine
+    const rendezvousList = await prisma.rendezvous.findMany({
+      where: {
+        siteId,
+        visitDate: {
+          gte: weekStart,
+          lte: weekEnd
+        }
+      },
+      include: {
+        organizer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true
+          }
+        },
+        site: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            city: true,
+            country: true
+          }
+        }
+      },
+      orderBy: {
+        visitDate: 'asc'
+      }
+    });
+
+    if (!rendezvousList.length) {
+      return {
+        success: true,
+        total: 0,
+        data: [],
+        message: "Aucun rendez-vous trouvé pour ce site cette semaine"
+      };
+    }
+
+    return {
+      success: true,
+      total: rendezvousList.length,
+      data: rendezvousList
+    };
+  } catch (error) {
+    throw new Error(`Erreur lors de la récupération des rendez-vous: ${error.message}`);
+  }
+}
+
+
 }
 
 module.exports = new RendezvousService();
