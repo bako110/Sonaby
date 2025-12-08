@@ -14,7 +14,7 @@ const nonDesirableRoutes = require('../modules/nondesirable/nondesirable.routes'
 const sosRoutes = require('../modules/sos/sos.routes');
 const blacklistRoutes = require('../modules/blacklist/blacklist.routes');
 const rendezvousRoutes = require('../modules/rendezvous/rendezvous.routes');
-const dashboardRoutes = require('../modules/dashboard');
+const dashboardRoutes = require('../modules/dashboard/dashboard.routes');
 const statsRoutes = require('../modules/stats/stats.routes');
 const uploadRoutes = require('../modules/upload')
 
@@ -35,7 +35,7 @@ router.use('/incidents', incidentRoutes);
 router.use('/nondesirables', nonDesirableRoutes);
 router.use('/sos', sosRoutes);
 // router.use('/blacklist', blacklistRoutes);
-router.use('/rendezvous', rendezvousRoutes);
+// router.use('/rendezvous', rendezvousRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/stats', statsRoutes);
 // router.use('/uploads', uploadRoutes)

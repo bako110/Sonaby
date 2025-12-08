@@ -795,7 +795,7 @@ const swaggerPathsFinal = {
   },
 
     // ==================== RENDEZVOUS PAR SITE ====================
-  '/api/v1/rendezvous/site/{siteId}': {
+  '/api/v1/appointments/site/{siteId}': {
     get: {
       tags: ['Appointments'],
       summary: "Récupère tous les rendez-vous d'un site",
@@ -1995,264 +1995,96 @@ const swaggerPathsFinal = {
     }
   },
   // ==================== DASHBOARD ENDPOINTS ====================
-  '/api/v1/dashboard/stats': {
-    get: {
-      tags: ['Dashboard'],
-      summary: '📊 Statistiques complètes du Dashboard SONABHY - Gestion des flux',
-      description: 'Récupère toutes les statistiques en temps réel du dashboard : visiteurs enregistrés, visites en cours, visites terminées, incidents signalés, liste détaillée des visiteurs présents, et statistiques des visites par état',
-      security: [{ bearerAuth: [] }],
-      responses: {
-        200: {
-          description: '✅ Statistiques complètes du dashboard récupérées avec succès',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: true },
-                  data: {
-                    type: 'object',
-                    properties: {
-                      // --- STATISTIQUES PRINCIPALES ---
-                      visitorsRegistered: { 
-                        type: 'integer', 
-                        example: 8,
-                        description: 'Nombre total de visiteurs enregistrés (non blacklistés)'
-                      },
-                      visitsInProgress: { 
-                        type: 'integer', 
-                        example: 3,
-                        description: 'Nombre de visites actuellement en cours (status: active, exitTime: null)'
-                      },
-                      visitsCompleted: { 
-                        type: 'integer', 
-                        example: 5,
-                        description: 'Nombre de visites terminées (status: finished)'
-                      },
-                      incidentsReported: { 
-                        type: 'integer', 
-                        example: 1,
-                        description: 'Nombre total d\'incidents signalés'
-                      },
-                      
-                      // --- STATISTIQUES PAR ÉTAT DES VISITES ---
-                      visitStats: {
-                        type: 'object',
-                        description: 'Statistiques détaillées des visites par état',
-                        properties: {
-                          totalVisits: { 
-                            type: 'integer', 
-                            example: 15,
-                            description: 'Nombre total de toutes les visites'
-                          },
-                          activeVisits: { 
-                            type: 'integer', 
-                            example: 3,
-                            description: 'Visites actives (personnes encore sur site)'
-                          },
-                          finishedVisits: { 
-                            type: 'integer', 
-                            example: 10,
-                            description: 'Visites terminées (sortie enregistrée)'
-                          },
-                          cancelledVisits: { 
-                            type: 'integer', 
-                            example: 2,
-                            description: 'Visites annulées'
-                          },
-                          visitsToday: { 
-                            type: 'integer', 
-                            example: 7,
-                            description: 'Visites du jour (entrées aujourd\'hui)'
-                          },
-                          visitsThisWeek: { 
-                            type: 'integer', 
-                            example: 28,
-                            description: 'Visites de la semaine'
-                          },
-                          visitsThisMonth: { 
-                            type: 'integer', 
-                            example: 95,
-                            description: 'Visites du mois'
-                          },
-                          averageVisitDuration: { 
-                            type: 'string', 
-                            example: '45 minutes',
-                            description: 'Durée moyenne des visites'
-                          },
-                          peakHour: { 
-                            type: 'string', 
-                            example: '10:00',
-                            description: 'Heure de pointe pour les entrées'
-                          }
-                        }
-                      },
-                      
-                      // --- VISITEURS PRÉSENTS ---
-                      visitorsPresent: {
-                        type: 'array',
-                        description: 'Liste des visiteurs actuellement sur site',
-                        items: {
-                          type: 'object',
-                          properties: {
-                            siteId: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000', description: 'ID du site filtré' },
-                            date: { type: 'string', example: '2025-11-28', description: 'Date du filtrage (YYYY-MM-DD)' },
-                            checkpointsFound: { type: 'integer', example: 3, description: 'Nombre de checkpoints trouvés pour ce site' },
-                            checkpointIds: { 
-                              type: 'array', 
-                              items: { type: 'string' },
-                              example: ['cbebf952-cc3f-11f0-aa39-0242ac140013', 'cbebf953-cc3f-11f0-aa39-0242ac140014'],
-                              description: 'Liste des IDs des checkpoints du site'
-                            },
-                            company: { type: 'string', example: 'Entreprise KABORE & Fils' },
-                            phone: { type: 'string', example: '+226 70 11 22 33' },
-                            service: { type: 'string', example: 'Direction Générale' },
-                            entryTime: { type: 'string', format: 'date-time', example: '2024-11-24T08:45:00.000Z' },
-                            reason: { type: 'string', example: 'Réunion direction générale' },
-                            checkpoint: { type: 'string', example: 'Entrée Principale' },
-                            site: { type: 'string', example: 'Siège Principal' }
-                          }
-                        }
-                      },
-                      
-                      // --- RÉSUMÉ ---
-                      summary: {
-                        type: 'object',
-                        properties: {
-                          totalVisitorsToday: { type: 'integer', example: 8 },
-                          hasVisitorsPresent: { type: 'boolean', example: true },
-                          presentCount: { type: 'integer', example: 3 },
-                          totalVisitorsInDb: { type: 'integer', example: 8 },
-                          occupancyRate: { type: 'string', example: '37.5%', description: 'Taux d\'occupation actuel' },
-                          securityLevel: { type: 'string', example: 'NORMAL', description: 'Niveau de sécurité basé sur les incidents' }
-                        }
-                      }
+ '/api/v1/dashboard/checkpoint-stats': {
+  get: {
+    tags: ['Dashboard'],
+    summary: 'Récupérer les statistiques journalières pour un checkpoint',
+    description: 'Retourne les statistiques chiffrées du jour pour un checkpoint spécifique',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        in: 'query',
+        name: 'checkpointId',
+        required: true,
+        schema: {
+          type: 'string',
+          format: 'uuid'
+        },
+        description: 'ID du checkpoint',
+        example: '123e4567-e89b-12d3-a456-426614174000'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Statistiques journalières du checkpoint récupérées avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { 
+                  type: 'boolean', 
+                  example: true 
+                },
+                data: {
+                  type: 'object',
+                  properties: {
+                    checkpointId: { 
+                      type: 'string', 
+                      format: 'uuid', 
+                      example: '123e4567-e89b-12d3-a456-426614174000' 
+                    },
+                    checkpointName: { 
+                      type: 'string', 
+                      example: 'Point de contrôle principal' 
+                    },
+                    visitsInProgress: { 
+                      type: 'integer', 
+                      description: 'Nombre de visites en cours aujourd\'hui', 
+                      example: 5 
+                    },
+                    visitsCompleted: { 
+                      type: 'integer', 
+                      description: 'Nombre de visites terminées aujourd\'hui', 
+                      example: 15 
+                    },
+                    totalVisitorsToday: { 
+                      type: 'integer', 
+                      description: 'Total des visiteurs aujourd\'hui (toutes visites du jour)', 
+                      example: 20 
+                    },
+                    incidentsCountToday: { 
+                      type: 'integer', 
+                      description: 'Total des incidents aujourd\'hui', 
+                      example: 2 
+                    },
+                    date: { 
+                      type: 'string', 
+                      format: 'date', 
+                      example: '2024-01-15' 
                     }
                   }
                 }
               }
             }
           }
-        },
-        401: { $ref: '#/components/responses/Unauthorized' },
-        403: { 
-          description: '❌ Accès refusé',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  message: { type: 'string', example: 'Accès refusé. Permissions insuffisantes.' }
-                }
-              }
-            }
-          }
-        },
-        500: { $ref: '#/components/responses/InternalServerError' }
-      }
-    }
-  },
-  '/api/v1/dashboard/visitors-present': {
-    get: {
-      tags: ['Dashboard'],
-      summary: '👥 Visiteurs Présents du Jour - Par Site',
-      description: 'Récupère la liste des visiteurs présents du jour pour un site spécifique. Retourne uniquement les visiteurs entrés aujourd\'hui et encore présents (pas de sortie enregistrée) pour le site spécifié.',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          in: 'query',
-          name: 'siteId',
-          required: true,
-          schema: {
-            type: 'string',
-            format: 'uuid'
-          },
-          description: 'ID du site pour lequel récupérer les visiteurs présents',
-          example: '550e8400-e29b-41d4-a716-446655440000'
         }
-      ],
-      responses: {
-        200: {
-          description: '✅ Liste des visiteurs présents du jour pour le site récupérée avec succès',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: true },
-                  data: {
-                    type: 'object',
-                    properties: {
-                      count: { type: 'integer', example: 2, description: 'Nombre de visiteurs présents' },
-                      visitors: {
-                        type: 'array',
-                        items: {
-                          type: 'object',
-                          properties: {
-                            visitId: { type: 'string', example: 'aa0e8400-e29b-41d4-a716-446655440001', description: 'ID de la visite' },
-                            visitor: {
-                              type: 'object',
-                              properties: {
-                                id: { type: 'string', example: '880e8400-e29b-41d4-a716-446655440001' },
-                                firstName: { type: 'string', example: 'BAKO' },
-                                lastName: { type: 'string', example: 'SIDONIE' },
-                                company: { type: 'string', example: 'Entreprise KABORE & Fils', nullable: true },
-                                phone: { type: 'string', example: '+22657443692', nullable: true },
-                                email: { type: 'string', example: 'bako.sidonie@email.com', nullable: true }
-                              }
-                            },
-                            visit: {
-                              type: 'object',
-                              properties: {
-                                entryTime: { type: 'string', format: 'date-time', example: '2025-11-28T08:45:00.000Z', description: 'Heure d\'entrée' },
-                                reason: { type: 'string', example: 'Réunion direction générale', description: 'Raison de la visite' },
-                                service: { type: 'string', example: 'Direction Générale', nullable: true, description: 'Service visité' },
-                                checkpoint: { type: 'string', example: 'Entrée Principale', description: 'Point de contrôle utilisé' },
-                                site: { type: 'string', example: 'Siège Social', description: 'Nom du site' },
-                                siteId: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000', description: 'ID du site' }
-                              }
-                            }
-                          }
-                        }
-                      },
-                      siteId: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000', description: 'ID du site filtré' },
-                      date: { type: 'string', example: '2025-11-28', description: 'Date du filtrage (YYYY-MM-DD)' },
-                      checkpointsFound: { type: 'integer', example: 3, description: 'Nombre de checkpoints trouvés pour ce site' },
-                      checkpointIds: { 
-                        type: 'array', 
-                        items: { type: 'string' },
-                        example: ['cbebf952-cc3f-11f0-aa39-0242ac140013', 'cbebf953-cc3f-11f0-aa39-0242ac140014'],
-                        description: 'Liste des IDs des checkpoints du site'
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        400: {
-          description: '❌ Requête invalide - siteId manquant',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean', example: false },
-                  message: { type: 'string', example: 'siteId est requis dans les paramètres de requête' }
-                }
-              }
-            }
-          }
-        },
-        401: { $ref: '#/components/responses/Unauthorized' },
-        500: { $ref: '#/components/responses/InternalServerError' }
+      },
+      400: { 
+        description: 'Paramètre checkpointId manquant' 
+      },
+      401: { 
+        description: 'Non autorisé - Token manquant ou invalide' 
+      },
+      404: { 
+        description: 'Checkpoint non trouvé' 
+      },
+      500: { 
+        description: 'Erreur serveur interne' 
       }
     }
-  },
-  
-
+  }
+},
   // ==================== STATS ENDPOINTS ====================
   '/api/v1/stats': {
     get: {

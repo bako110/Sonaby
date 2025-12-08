@@ -6,6 +6,8 @@ const createAppointmentSchema = z.object({
   firstName: z.string().min(1, 'Le prénom est requis'),
   lastName: z.string().min(1, 'Le nom est requis'),
   office: z.string().min(1, 'Le bureau est requis'),
+  personVisitedName:z.string().optional(),
+  groupCode:z.string().optional(),
   serviceName: z.string().min(1, 'Le nom du service est requis'),
   reason: z.string().min(1, 'La raison est requise'),
   visitDate: z.string().min(1, 'La date de visite est requise'),
