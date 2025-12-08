@@ -12,17 +12,126 @@ const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class CheckpointController {
   getFilteredCheckpoints = asyncHandler(async (req, res) => {
-    // Valider les filtres avec le schéma
-    const validatedFilters = checkpointQuerySchema.parse(req.query);
-    
-    const filters = {
-      ...validatedFilters,
-      page: validatedFilters.page || 1,
-      limit: validatedFilters.limit || 10
+  try {
+    // 1. Récupérer tous les paramètres de requête
+    const {
+      search,
+      siteId,
+      zone,
+      checkpointType,
+      status,
+      priority,
+      agentId,
+      dateCreationDebut,
+      dateCreationFin,
+      avecAgent,
+      enAlerte,
+      page = 1,
+      limit = 10
+    } = req.query;
+
+    // 2. Validation des dates
+    if (dateCreationDebut && dateCreationFin) {
+      const debut = new Date(dateCreationDebut);
+      const fin = new Date(dateCreationFin);
+      
+      if (isNaN(debut.getTime()) || isNaN(fin.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Format de date invalide. Utilisez YYYY-MM-DD'
+        });
+      }
+      
+      if (debut > fin) {
+        return res.status(400).json({
+          success: false,
+          message: 'La date de début ne peut pas être après la date de fin'
+        });
+      }
+    }
+
+    // 3. Validation UUID
+    const isValidUUID = (uuid) => {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(uuid);
     };
 
+    if (siteId && !isValidUUID(siteId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format UUID invalide pour siteId'
+      });
+    }
+    
+    if (agentId && !isValidUUID(agentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format UUID invalide pour agentId'
+      });
+    }
+
+    // 4. Validation des enum (types)
+    const validCheckpointTypes = ['internal', 'external', 'virtual'];
+    const validStatuses = ['active', 'inactive', 'maintenance'];
+    const validPriorities = ['low', 'medium', 'high', 'critical'];
+    const validBooleanFilters = ['true', 'false'];
+
+    if (checkpointType && !validCheckpointTypes.includes(checkpointType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Type de checkpoint invalide. Valeurs autorisées: ${validCheckpointTypes.join(', ')}`
+      });
+    }
+
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Statut invalide. Valeurs autorisées: ${validStatuses.join(', ')}`
+      });
+    }
+
+    if (priority && !validPriorities.includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        message: `Priorité invalide. Valeurs autorisées: ${validPriorities.join(', ')}`
+      });
+    }
+
+    if (avecAgent && !validBooleanFilters.includes(avecAgent)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valeur invalide pour 'avecAgent'. Utilisez 'true' ou 'false'"
+      });
+    }
+
+    if (enAlerte && !validBooleanFilters.includes(enAlerte)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valeur invalide pour 'enAlerte'. Utilisez 'true' ou 'false'"
+      });
+    }
+
+    // 5. Construction des filtres
+    const filters = {
+      search: search || undefined,
+      siteId: siteId || undefined,
+      zone: zone || undefined,
+      checkpointType: checkpointType || undefined,
+      status: status || undefined,
+      priority: priority || undefined,
+      agentId: agentId || undefined,
+      dateCreationDebut: dateCreationDebut || undefined,
+      dateCreationFin: dateCreationFin || undefined,
+      avecAgent: avecAgent || undefined,
+      enAlerte: enAlerte || undefined,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    };
+
+    // 6. Appel au service
     const result = await checkpointService.getFilteredCheckpoints(filters);
     
+    // 7. Réponse
     res.status(200).json({
       success: true,
       message: 'Checkpoints filtrés récupérés avec succès',
@@ -31,27 +140,76 @@ class CheckpointController {
       filterOptions: result.filterOptions,
       filters: filters
     });
-  });
+
+  } catch (error) {
+    console.error('Error in getFilteredCheckpoints:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des checkpoints filtrés'
+    });
+  }
+});
 
   getFilterOptions = asyncHandler(async (req, res) => {
-    try {
-      // Construire les filtres à partir des query params (sauf les options)
-      const { page, limit, ...currentFilters } = req.query;
-      
-      const filterOptions = await checkpointService.getFilterOptions(currentFilters);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Options de filtre récupérées avec succès',
-        data: filterOptions
-      });
-    } catch (error) {
-      res.status(500).json({
+  try {
+    // 1. Récupérer les filtres
+    const {
+      siteId,
+      zone,
+      checkpointType,
+      status,
+      priority,
+      agentId
+    } = req.query;
+
+    // 2. Validation UUID
+    const isValidUUID = (uuid) => {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      return uuidRegex.test(uuid);
+    };
+
+    if (siteId && !isValidUUID(siteId)) {
+      return res.status(400).json({
         success: false,
-        message: error.message
+        message: 'Format UUID invalide pour siteId'
       });
     }
-  });
+    
+    if (agentId && !isValidUUID(agentId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format UUID invalide pour agentId'
+      });
+    }
+
+    // 3. Construction des pré-filtres
+    const currentFilters = {};
+    
+    if (siteId) currentFilters.siteId = siteId;
+    if (zone) currentFilters.zone = zone;
+    if (checkpointType) currentFilters.checkpointType = checkpointType;
+    if (status) currentFilters.status = status;
+    if (priority) currentFilters.priority = priority;
+    if (agentId) currentFilters.agentId = agentId;
+
+    // 4. Appel au service
+    const filterOptions = await checkpointService.getFilterOptions(currentFilters);
+    
+    // 5. Réponse
+    res.status(200).json({
+      success: true,
+      message: 'Options de filtre récupérées avec succès',
+      data: filterOptions
+    });
+    
+  } catch (error) {
+    console.error('Error in getFilterOptions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des options de filtre'
+    });
+  }
+});
 
   createCheckpoint = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN et AGENT_GESTION

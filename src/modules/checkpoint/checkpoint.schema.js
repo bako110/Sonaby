@@ -49,21 +49,30 @@ const checkpointIdSchema = z.object({
 
 // Schéma de requête avec filtres
 const checkpointQuerySchema = z.object({
-  page: z.string().optional().transform(val => val ? parseInt(val) : 1),
-  limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
   search: z.string().optional(),
-  siteId: z.string().optional(),
-  name: z.string().optional(),
-  status: z.string().optional(),
-  checkpointType: z.string().optional(),
-  priority: z.string().optional(),
-  agentId: z.string().optional(),
-  active: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
-  // Filtres avancés
-  dateCreationStart: z.string().datetime().optional(),
-  dateCreationEnd: z.string().datetime().optional(),
-  hasAgent: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
-  inAlert: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
+  siteId: z.string().uuid().optional(),
+  zone: z.string().optional(),
+  checkpointType: z.enum(['internal', 'external', 'virtual']).optional(),
+  status: z.enum(['active', 'inactive', 'maintenance']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  agentId: z.string().uuid().optional(),
+  dateCreationDebut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateCreationFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  avecAgent: z.enum(['true', 'false']).optional(),
+  enAlerte: z.enum(['true', 'false']).optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10)
+}).refine((data) => {
+  // Validation croisée des dates
+  if (data.dateCreationDebut && data.dateCreationFin) {
+    const debut = new Date(data.dateCreationDebut);
+    const fin = new Date(data.dateCreationFin);
+    return debut <= fin;
+  }
+  return true;
+}, {
+  message: "La date de début ne peut pas être après la date de fin",
+  path: ["dateCreationDebut"]
 });
 
 // Schéma pour l'assignation d'agent(s) à checkpoint

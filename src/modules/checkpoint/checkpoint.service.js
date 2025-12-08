@@ -859,6 +859,207 @@ async unassignAgent(checkpointId, agentId) {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
   }
+
+  async getCheckpointsWithFilters(filters) {
+  const whereConditions = {};
+
+  // 1. Filtre de recherche texte
+  if (filters.search) {
+    whereConditions.OR = [
+      { name: { contains: filters.search, mode: 'insensitive' } },
+      { description: { contains: filters.search, mode: 'insensitive' } },
+      // Si tu as un champ SOS ID
+      // { sosId: { contains: filters.search, mode: 'insensitive' } }
+    ];
+  }
+
+  // 2. Filtres simples
+  if (filters.siteId) whereConditions.siteId = filters.siteId;
+  if (filters.zone) whereConditions.zone = filters.zone;
+  if (filters.checkpointType) whereConditions.type = filters.checkpointType;
+  if (filters.status) whereConditions.status = filters.status;
+  if (filters.priority) whereConditions.priority = filters.priority;
+  if (filters.agentId) whereConditions.agentId = filters.agentId;
+
+  // 3. Filtre avec/sans agent
+  if (filters.avecAgent === 'true') {
+    whereConditions.agentId = { not: null };
+  } else if (filters.avecAgent === 'false') {
+    whereConditions.agentId = null;
+  }
+
+  // 4. Filtre en alerte (ajuste selon ton modèle)
+  if (filters.enAlerte === 'true') {
+    whereConditions.isAlert = true;
+  } else if (filters.enAlerte === 'false') {
+    whereConditions.isAlert = false;
+  }
+
+  // 5. Filtres de date
+  if (filters.dateCreationDebut || filters.dateCreationFin) {
+    whereConditions.createdAt = {};
+    
+    if (filters.dateCreationDebut) {
+      const debut = new Date(filters.dateCreationDebut);
+      debut.setHours(0, 0, 0, 0);
+      whereConditions.createdAt.gte = debut;
+    }
+    
+    if (filters.dateCreationFin) {
+      const fin = new Date(filters.dateCreationFin);
+      fin.setHours(23, 59, 59, 999);
+      whereConditions.createdAt.lte = fin;
+    }
+  }
+
+  // 6. Pagination
+  const skip = (filters.page - 1) * filters.limit;
+  
+  // 7. Exécution de la requête
+  const [checkpoints, total] = await this.checkpointRepository.findAndCount({
+    where: whereConditions,
+    skip,
+    take: filters.limit,
+    order: { createdAt: 'DESC' },
+    relations: ['site', 'agent'] // Ajuste selon tes relations
+  });
+
+  // 8. Récupération des options de filtre dynamiques
+  const filterOptions = await this.getDynamicFilterOptions(whereConditions);
+
+  return {
+    success: true,
+    message: 'Checkpoints filtrés récupérés avec succès',
+    data: checkpoints.map(checkpoint => ({
+      id: checkpoint.id,
+      name: checkpoint.name,
+      description: checkpoint.description,
+      siteId: checkpoint.siteId,
+      siteName: checkpoint.site?.name,
+      zone: checkpoint.zone,
+      type: checkpoint.type,
+      status: checkpoint.status,
+      priority: checkpoint.priority,
+      agentId: checkpoint.agentId,
+      agentName: checkpoint.agent?.name,
+      createdAt: checkpoint.createdAt,
+      updatedAt: checkpoint.updatedAt,
+      isAlert: checkpoint.isAlert
+    })),
+    pagination: {
+      page: filters.page,
+      limit: filters.limit,
+      total,
+      totalPages: Math.ceil(total / filters.limit),
+      hasNext: filters.page < Math.ceil(total / filters.limit),
+      hasPrev: filters.page > 1
+    },
+    filterOptions,
+    filters: filters
+  };
+}
+
+async getFilterOptions(preFilters) {
+  // Construire les conditions de base
+  const baseWhere = {};
+  
+  if (preFilters && preFilters.siteId) baseWhere.siteId = preFilters.siteId;
+  if (preFilters && preFilters.zone) baseWhere.zone = preFilters.zone;
+  if (preFilters && preFilters.checkpointType) baseWhere.type = preFilters.checkpointType;
+  if (preFilters && preFilters.status) baseWhere.status = preFilters.status;
+  if (preFilters && preFilters.priority) baseWhere.priority = preFilters.priority;
+  if (preFilters && preFilters.agentId) baseWhere.agentId = preFilters.agentId;
+
+  try {
+    // Récupérer toutes les données en parallèle
+    const [sites, zonesResult, typesResult, statusesResult, prioritiesResult, agents] = await Promise.all([
+      // 1. Sites disponibles
+      this.siteRepository.find({
+        where: preFilters && preFilters.siteId ? { id: preFilters.siteId } : {},
+        select: ['id', 'name'],
+        order: { name: 'ASC' }
+      }),
+      
+      // 2. Zones distinctes
+      this.checkpointRepository
+        .createQueryBuilder('checkpoint')
+        .select('DISTINCT(checkpoint.zone)', 'zone')
+        .where(baseWhere)
+        .orderBy('checkpoint.zone', 'ASC')
+        .getRawMany(),
+      
+      // 3. Types de checkpoints distincts
+      this.checkpointRepository
+        .createQueryBuilder('checkpoint')
+        .select('DISTINCT(checkpoint.type)', 'type')
+        .where(baseWhere)
+        .orderBy('checkpoint.type', 'ASC')
+        .getRawMany(),
+      
+      // 4. Statuts distincts
+      this.checkpointRepository
+        .createQueryBuilder('checkpoint')
+        .select('DISTINCT(checkpoint.status)', 'status')
+        .where(baseWhere)
+        .orderBy('checkpoint.status', 'ASC')
+        .getRawMany(),
+      
+      // 5. Priorités distinctes
+      this.checkpointRepository
+        .createQueryBuilder('checkpoint')
+        .select('DISTINCT(checkpoint.priority)', 'priority')
+        .where(baseWhere)
+        .orderBy('checkpoint.priority', 'ASC')
+        .getRawMany(),
+      
+      // 6. Agents disponibles
+      this.agentRepository.find({
+        where: preFilters && preFilters.agentId ? { id: preFilters.agentId } : {},
+        select: ['id', 'name'],
+        order: { name: 'ASC' }
+      })
+    ]);
+
+    // Formater les résultats
+    const zones = zonesResult
+      .map(z => z.zone)
+      .filter(zone => zone !== null && zone !== undefined);
+    
+    const checkpointTypes = typesResult
+      .map(t => t.type)
+      .filter(type => type !== null && type !== undefined);
+    
+    const statuses = statusesResult
+      .map(s => s.status)
+      .filter(status => status !== null && status !== undefined);
+    
+    const priorities = prioritiesResult
+      .map(p => p.priority)
+      .filter(priority => priority !== null && priority !== undefined);
+
+    return {
+      sites: sites.map(site => ({ id: site.id, name: site.name })),
+      zones: zones,
+      checkpointTypes: checkpointTypes,
+      statuses: statuses,
+      priorities: priorities,
+      agents: agents.map(agent => ({ id: agent.id, name: agent.name }))
+    };
+    
+  } catch (error) {
+    console.error('Error getting filter options:', error);
+    // Retourner des valeurs par défaut en cas d'erreur
+    return {
+      sites: [],
+      zones: [],
+      checkpointTypes: [],
+      statuses: [],
+      priorities: [],
+      agents: []
+    };
+  }
+}
+  
 }
 
 module.exports = new CheckpointService();
