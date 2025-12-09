@@ -1,13 +1,9 @@
-
 const { prisma } = require('../../config/prisma');
-// console.log('Prisma dans ce fichier:', prisma);
-
- // En haut du fichier, importez le service d'upload
-const uploadService = require('../upload'); // Adaptez le chemin
-
+const uploadService = require('../upload');
+const notificationService = require('../notification/notification.service');
 
 class NonDesirableService {
-  // 1️⃣ Création d'un "indésirable" connu
+  // 1️⃣ Création d'un "indésirable" connu avec notification
   async createNonDesirable(nonDesirableData, reportedBy) {
     try {
       const { visitorId, reason } = nonDesirableData;
@@ -81,6 +77,54 @@ class NonDesirableService {
         });
         return nonDesirable;
       });
+
+      // ============ NOTIFICATION ============
+      try {
+        // Récupérer les détails du reporter
+        const reporter = await prisma.user.findUnique({
+          where: { id: reportedBy },
+          select: { firstName: true, lastName: true }
+        });
+
+        // Notification aux administrateurs
+        await notificationService.notifyByRole('ADMIN', {
+          type: 'BLACKLIST',
+          title: '🚨 Nouveau visiteur blacklisté',
+          message: `${visitor.firstName} ${visitor.lastName} a été ajouté à la blacklist par ${reporter.firstName} ${reporter.lastName}`,
+          priority: 'high',
+          entityType: 'BLACKLIST',
+          entityId: result.id,
+          siteId: null, // À adapter si vous avez le site
+          createdBy: reportedBy,
+          metadata: {
+            action: 'visitor_blacklisted',
+            visitorId: visitor.id,
+            visitorName: `${visitor.firstName} ${visitor.lastName}`,
+            reason: reason
+          }
+        });
+
+        // Notification à l'utilisateur qui a effectué l'action
+        await notificationService.notifyUser(reportedBy, {
+          type: 'BLACKLIST',
+          title: '✅ Visiteur blacklisté',
+          message: `Vous avez ajouté ${visitor.firstName} ${visitor.lastName} à la blacklist`,
+          priority: 'medium',
+          entityType: 'BLACKLIST',
+          entityId: result.id,
+          siteId: null,
+          createdBy: reportedBy,
+          metadata: {
+            action: 'blacklist_created',
+            visitorId: visitor.id,
+            visitorName: `${visitor.firstName} ${visitor.lastName}`
+          }
+        });
+      } catch (notificationError) {
+        console.error('Erreur lors de l\'envoi des notifications:', notificationError);
+        // Ne pas bloquer le processus principal
+      }
+      // ======================================
 
       return {
         success: true,
@@ -466,163 +510,203 @@ class NonDesirableService {
     }
   }
 
-
-
-// Dans la classe NonDesirableService, remplacez la fonction createUnknownNonDesirable par :
-
-
-
+  // 5️⃣ Création d'un "indésirable inconnu" avec notification
   async createUnknownNonDesirable({ validatedData, reportedBy, files = {} }) {
-  try {
-    console.log('Données reçues dans le service:', { validatedData, reportedBy, files });
+    try {
+      console.log('Données reçues dans le service:', { validatedData, reportedBy, files });
 
-    const {
-      firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
-      givingDate, expirationDate, phone, email, company, nationality,
-      reason, incidentDate, incidentLocation, severityLevel
-    } = validatedData;
+      const {
+        firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
+        givingDate, expirationDate, phone, email, company, nationality,
+        reason, incidentDate, incidentLocation, severityLevel
+      } = validatedData;
 
-    if (!firstName || !lastName || !reason) {
-      throw new Error('Prénom, nom et raison sont requis');
-    }
-
-    const parseDate = (dateString) => {
-      if (!dateString) return null;
-      if (dateString.includes('/')) {
-        const [day, month, year] = dateString.split('/');
-        return new Date(year, month - 1, day);
+      if (!firstName || !lastName || !reason) {
+        throw new Error('Prénom, nom et raison sont requis');
       }
-      const date = new Date(dateString);
-      return isNaN(date.getTime()) ? null : date;
-    };
 
-    // Gestion des fichiers uploadés
-    let photoUrl = validatedData.photoUrl || '';
-    let attachedFileUrl = '';
-    let attachedFileName = '';
-    let attachedFileType = '';
-    let attachedFileSize = 0;
-
-    if (files.photo?.[0]) {
-      photoUrl = uploadService.getPublicUrl(files.photo[0]);
-      console.log('Image uploadée comme photo:', photoUrl);
-    }
-
-    if (files.idScanUrl?.[0]) {
-      attachedFileUrl = uploadService.getPublicUrl(files.idScanUrl[0]);
-      attachedFileName = files.idScanUrl[0].originalname;
-      attachedFileType = files.idScanUrl[0].mimetype;
-      attachedFileSize = files.idScanUrl[0].size;
-      console.log('Document uploadé:', attachedFileName);
-    }
-
-    const fullReason = {
-      mainReason: reason,
-      personalInfo: { firstName, lastName, birthDate, birthPlace, sexe, nationality },
-      identification: { idType, idNumber, givingDate, expirationDate },
-      contact: { phone, email, company },
-      incident: { incidentDate, incidentLocation, severityLevel },
-      photos: { photoUrl },
-      document: { attachedFileUrl, attachedFileName, attachedFileType, attachedFileSize }
-    };
-
-    const result = await prisma.$transaction(async (tx) => {
-      const nonDesirableEntry = await tx.nonDesirable.create({
-        data: {
-          visitorId: null,
-          reason: JSON.stringify(fullReason),
-          reportedBy,
-          firstName: firstName || "Inconnu",
-          lastName: lastName || "Inconnu",
-          birthDate: parseDate(birthDate),
-          birthPlace: birthPlace || "",
-          sexe: sexe || "M",
-          nationality: nationality || "",
-          phone: phone || "",
-          email: email || "",
-          company: company || "",
-          idType: idType || "",
-          idNumber: idNumber || "",
-          photoUrl: photoUrl || "",
-          givingDate: parseDate(givingDate),
-          expirationDate: parseDate(expirationDate),
-          incidentDate: parseDate(incidentDate),
-          incidentLocation: incidentLocation || "",
-          severityLevel: severityLevel || 2,
-          attachedFileUrl: attachedFileUrl || "",
-          attachedFileName: attachedFileName || "",
-          attachedFileType: attachedFileType || "",
-          attachedFileSize: attachedFileSize || 0,
-          createdBy: reportedBy || "system"
+      const parseDate = (dateString) => {
+        if (!dateString) return null;
+        if (dateString.includes('/')) {
+          const [day, month, year] = dateString.split('/');
+          return new Date(year, month - 1, day);
         }
+        const date = new Date(dateString);
+        return isNaN(date.getTime()) ? null : date;
+      };
+
+      // Gestion des fichiers uploadés
+      let photoUrl = validatedData.photoUrl || '';
+      let attachedFileUrl = '';
+      let attachedFileName = '';
+      let attachedFileType = '';
+      let attachedFileSize = 0;
+
+      if (files.photo?.[0]) {
+        photoUrl = uploadService.getPublicUrl(files.photo[0]);
+        console.log('Image uploadée comme photo:', photoUrl);
+      }
+
+      if (files.idScanUrl?.[0]) {
+        attachedFileUrl = uploadService.getPublicUrl(files.idScanUrl[0]);
+        attachedFileName = files.idScanUrl[0].originalname;
+        attachedFileType = files.idScanUrl[0].mimetype;
+        attachedFileSize = files.idScanUrl[0].size;
+        console.log('Document uploadé:', attachedFileName);
+      }
+
+      const fullReason = {
+        mainReason: reason,
+        personalInfo: { firstName, lastName, birthDate, birthPlace, sexe, nationality },
+        identification: { idType, idNumber, givingDate, expirationDate },
+        contact: { phone, email, company },
+        incident: { incidentDate, incidentLocation, severityLevel },
+        photos: { photoUrl },
+        document: { attachedFileUrl, attachedFileName, attachedFileType, attachedFileSize }
+      };
+
+      const result = await prisma.$transaction(async (tx) => {
+        const nonDesirableEntry = await tx.nonDesirable.create({
+          data: {
+            visitorId: null,
+            reason: JSON.stringify(fullReason),
+            reportedBy,
+            firstName: firstName || "Inconnu",
+            lastName: lastName || "Inconnu",
+            birthDate: parseDate(birthDate),
+            birthPlace: birthPlace || "",
+            sexe: sexe || "M",
+            nationality: nationality || "",
+            phone: phone || "",
+            email: email || "",
+            company: company || "",
+            idType: idType || "",
+            idNumber: idNumber || "",
+            photoUrl: photoUrl || "",
+            givingDate: parseDate(givingDate),
+            expirationDate: parseDate(expirationDate),
+            incidentDate: parseDate(incidentDate),
+            incidentLocation: incidentLocation || "",
+            severityLevel: severityLevel || 2,
+            attachedFileUrl: attachedFileUrl || "",
+            attachedFileName: attachedFileName || "",
+            attachedFileType: attachedFileType || "",
+            attachedFileSize: attachedFileSize || 0,
+            createdBy: reportedBy || "system"
+          }
+        });
+
+        await tx.blacklistHistory.create({
+          data: {
+            visitorId: null,
+            firstName: nonDesirableEntry.firstName,
+            lastName: nonDesirableEntry.lastName,
+            idType: nonDesirableEntry.idType,
+            idNumber: nonDesirableEntry.idNumber,
+            phone: nonDesirableEntry.phone,
+            email: nonDesirableEntry.email,
+            nationality: nonDesirableEntry.nationality,
+            birthDate: nonDesirableEntry.birthDate,
+            birthPlace: nonDesirableEntry.birthPlace,
+            action: 'BLACKLIST',
+            reason,
+            severityLevel: nonDesirableEntry.severityLevel,
+            incidentDate: nonDesirableEntry.incidentDate,
+            incidentLocation: nonDesirableEntry.incidentLocation,
+            createdBy: reportedBy,
+            nonDesirableId: nonDesirableEntry.id
+          }
+        });
+
+        return nonDesirableEntry;
       });
 
-      await tx.blacklistHistory.create({
-        data: {
-          visitorId: null,
-          firstName: nonDesirableEntry.firstName,
-          lastName: nonDesirableEntry.lastName,
-          idType: nonDesirableEntry.idType,
-          idNumber: nonDesirableEntry.idNumber,
-          phone: nonDesirableEntry.phone,
-          email: nonDesirableEntry.email,
-          nationality: nonDesirableEntry.nationality,
-          birthDate: nonDesirableEntry.birthDate,
-          birthPlace: nonDesirableEntry.birthPlace,
-          action: 'BLACKLIST',
-          reason,
-          severityLevel: nonDesirableEntry.severityLevel,
-          incidentDate: nonDesirableEntry.incidentDate,
-          incidentLocation: nonDesirableEntry.incidentLocation,
+      // ============ NOTIFICATION ============
+      try {
+        // Récupérer les détails du reporter
+        const reporter = await prisma.user.findUnique({
+          where: { id: reportedBy },
+          select: { firstName: true, lastName: true }
+        });
+
+        // Notification aux administrateurs
+        await notificationService.notifyByRole('ADMIN', {
+          type: 'BLACKLIST',
+          title: '🚨 Nouveau profil indésirable',
+          message: `Un nouveau profil indésirable a été créé par ${reporter.firstName} ${reporter.lastName}: ${firstName} ${lastName}`,
+          priority: 'high',
+          entityType: 'BLACKLIST',
+          entityId: result.id,
+          siteId: null,
           createdBy: reportedBy,
-          nonDesirableId: nonDesirableEntry.id
-        }
-      });
+          metadata: {
+            action: 'unknown_blacklisted',
+            nonDesirableId: result.id,
+            personName: `${firstName} ${lastName}`,
+            reason: reason
+          }
+        });
 
-      return nonDesirableEntry;
-    });
-
-    return {
-      success: true,
-      data: {
-        id: result.id,
-        type: 'unknown',
-        visitorId: null,
-        reason,
-        createdAt: result.createdAt,
-        updatedAt: result.updatedAt,
-        firstName: result.firstName,
-        lastName: result.lastName,
-        birthDate: result.birthDate,
-        birthPlace: result.birthPlace,
-        sexe: result.sexe,
-        nationality: result.nationality,
-        phone: result.phone,
-        email: result.email,
-        company: result.company,
-        idType: result.idType,
-        idNumber: result.idNumber,
-        photoUrl: result.photoUrl,
-        givingDate: result.givingDate,
-        expirationDate: result.expirationDate,
-        isBlacklisted: true,
-        blacklistReason: reason,
-        severityLevel: result.severityLevel,
-        incidentDate: result.incidentDate,
-        incidentLocation: result.incidentLocation,
-        attachedFileUrl: result.attachedFileUrl,
-        attachedFileName: result.attachedFileName,
-        reporter: { id: reportedBy }
+        // Notification à l'utilisateur qui a effectué l'action
+        await notificationService.notifyUser(reportedBy, {
+          type: 'BLACKLIST',
+          title: '✅ Profil indésirable créé',
+          message: `Vous avez créé un profil indésirable pour ${firstName} ${lastName}`,
+          priority: 'medium',
+          entityType: 'BLACKLIST',
+          entityId: result.id,
+          siteId: null,
+          createdBy: reportedBy,
+          metadata: {
+            action: 'unknown_blacklist_created',
+            personName: `${firstName} ${lastName}`
+          }
+        });
+      } catch (notificationError) {
+        console.error('Erreur lors de l\'envoi des notifications:', notificationError);
       }
-    };
-  } catch (error) {
-    console.error('Erreur complète dans le service:', error);
-    throw new Error(`Erreur lors de la création de l'indésirable inconnu: ${error.message}`);
+      // ======================================
+
+      return {
+        success: true,
+        data: {
+          id: result.id,
+          type: 'unknown',
+          visitorId: null,
+          reason,
+          createdAt: result.createdAt,
+          updatedAt: result.updatedAt,
+          firstName: result.firstName,
+          lastName: result.lastName,
+          birthDate: result.birthDate,
+          birthPlace: result.birthPlace,
+          sexe: result.sexe,
+          nationality: result.nationality,
+          phone: result.phone,
+          email: result.email,
+          company: result.company,
+          idType: result.idType,
+          idNumber: result.idNumber,
+          photoUrl: result.photoUrl,
+          givingDate: result.givingDate,
+          expirationDate: result.expirationDate,
+          isBlacklisted: true,
+          blacklistReason: reason,
+          severityLevel: result.severityLevel,
+          incidentDate: result.incidentDate,
+          incidentLocation: result.incidentLocation,
+          attachedFileUrl: result.attachedFileUrl,
+          attachedFileName: result.attachedFileName,
+          reporter: { id: reportedBy }
+        }
+      };
+    } catch (error) {
+      console.error('Erreur complète dans le service:', error);
+      throw new Error(`Erreur lors de la création de l'indésirable inconnu: ${error.message}`);
+    }
   }
-}
 
-
-  // 6️⃣ Suppression d'un "indésirable connu"
+  // 6️⃣ Suppression d'un "indésirable connu" avec notification
   async removeNonDesirable(visitorId, removedBy, reason) {
     try {
       const visitor = await prisma.visitor.findUnique({
@@ -660,19 +744,73 @@ class NonDesirableService {
         return { success: true, deletedCount: deleted.count };
       });
 
+      // ============ NOTIFICATION ============
+      try {
+        // Récupérer les détails du remover
+        const remover = await prisma.user.findUnique({
+          where: { id: removedBy },
+          select: { firstName: true, lastName: true }
+        });
+
+        // Notification aux administrateurs
+        await notificationService.notifyByRole('ADMIN', {
+          type: 'BLACKLIST',
+          title: '🔄 Visiteur retiré de la blacklist',
+          message: `${visitor.firstName} ${visitor.lastName} a été retiré de la blacklist par ${remover.firstName} ${remover.lastName}`,
+          priority: 'medium',
+          entityType: 'BLACKLIST',
+          entityId: visitorId,
+          siteId: null,
+          createdBy: removedBy,
+          metadata: {
+            action: 'visitor_unblacklisted',
+            visitorId: visitor.id,
+            visitorName: `${visitor.firstName} ${visitor.lastName}`,
+            reason: reason
+          }
+        });
+
+        // Notification à l'utilisateur qui a effectué l'action
+        await notificationService.notifyUser(removedBy, {
+          type: 'BLACKLIST',
+          title: '✅ Blacklist supprimée',
+          message: `Vous avez retiré ${visitor.firstName} ${visitor.lastName} de la blacklist`,
+          priority: 'low',
+          entityType: 'BLACKLIST',
+          entityId: visitorId,
+          siteId: null,
+          createdBy: removedBy,
+          metadata: {
+            action: 'blacklist_removed',
+            visitorId: visitor.id,
+            visitorName: `${visitor.firstName} ${visitor.lastName}`
+          }
+        });
+      } catch (notificationError) {
+        console.error('Erreur lors de l\'envoi des notifications:', notificationError);
+      }
+      // ======================================
+
       return result;
     } catch (error) {
       throw new Error(`Erreur lors de la suppression de l'indésirable: ${error.message}`);
     }
   }
 
-  // 7️⃣ Suppression d'une entrée "indésirable"
+  // 7️⃣ Suppression d'une entrée "indésirable" avec notification
   async deleteNonDesirable(id) {
     try {
       const existing = await prisma.nonDesirable.findUnique({
         where: { id },
         include: {
           visitor: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true
+            }
+          },
+          reporter: {
             select: {
               id: true,
               firstName: true,
@@ -688,6 +826,52 @@ class NonDesirableService {
       await prisma.nonDesirable.delete({
         where: { id }
       });
+
+      // ============ NOTIFICATION ============
+      try {
+        const personName = existing.visitor 
+          ? `${existing.visitor.firstName} ${existing.visitor.lastName}`
+          : `${existing.firstName || 'Inconnu'} ${existing.lastName || 'Inconnu'}`;
+
+        // Notification à l'utilisateur qui avait créé l'entrée
+        if (existing.reporter && existing.reporter.id) {
+          await notificationService.notifyUser(existing.reporter.id, {
+            type: 'BLACKLIST',
+            title: '🗑️ Entrée indésirable supprimée',
+            message: `Votre entrée indésirable pour "${personName}" a été supprimée du système`,
+            priority: 'low',
+            entityType: 'BLACKLIST',
+            entityId: id,
+            siteId: null,
+            createdBy: 'system',
+            metadata: {
+              action: 'blacklist_entry_deleted',
+              nonDesirableId: id,
+              personName: personName
+            }
+          });
+        }
+
+        // Notification aux administrateurs
+        await notificationService.notifyByRole('ADMIN', {
+          type: 'BLACKLIST',
+          title: '🗑️ Entrée indésirable supprimée',
+          message: `L'entrée indésirable pour "${personName}" a été supprimée`,
+          priority: 'low',
+          entityType: 'BLACKLIST',
+          entityId: id,
+          siteId: null,
+          createdBy: 'system',
+          metadata: {
+            action: 'blacklist_entry_deleted',
+            nonDesirableId: id,
+            personName: personName
+          }
+        });
+      } catch (notificationError) {
+        console.error('Erreur lors de l\'envoi des notifications:', notificationError);
+      }
+      // ======================================
 
       return {
         success: true,
@@ -734,12 +918,23 @@ class NonDesirableService {
     }
   }
 
-  // 9️⃣ Suppression d'un "indésirable inconnu"
+  // 9️⃣ Suppression d'un "indésirable inconnu" avec notification
   async removeUnknown(id, reason, reportedBy) {
     try {
       const entry = await prisma.nonDesirable.findUnique({
         where: { id },
-        select: { id: true, firstName: true, lastName: true }
+        select: { 
+          id: true, 
+          firstName: true, 
+          lastName: true,
+          reporter: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true
+            }
+          }
+        }
       });
 
       if (!entry) {
@@ -764,6 +959,63 @@ class NonDesirableService {
 
       await prisma.nonDesirable.delete({ where: { id: entry.id } });
 
+      // ============ NOTIFICATION ============
+      try {
+        const personName = `${entry.firstName || ''} ${entry.lastName || ''}`.trim() || 'Personne inconnue';
+
+        // Notification à l'utilisateur qui avait créé l'entrée
+        if (entry.reporter && entry.reporter.id) {
+          await notificationService.notifyUser(entry.reporter.id, {
+            type: 'BLACKLIST',
+            title: '🔄 Profil indésirable supprimé',
+            message: `Votre profil indésirable "${personName}" a été supprimé`,
+            priority: 'low',
+            entityType: 'BLACKLIST',
+            entityId: id,
+            siteId: null,
+            createdBy: reportedBy || 'system',
+            metadata: {
+              action: 'unknown_blacklist_removed',
+              nonDesirableId: id,
+              personName: personName,
+              reason: reason
+            }
+          });
+        }
+
+        // Notification à l'utilisateur qui a effectué la suppression
+        if (reportedBy && reportedBy !== 'system') {
+          const remover = await prisma.user.findUnique({
+            where: { id: reportedBy },
+            select: { firstName: true, lastName: true }
+          });
+
+          if (remover) {
+            // Notification aux administrateurs
+            await notificationService.notifyByRole('ADMIN', {
+              type: 'BLACKLIST',
+              title: '🔄 Profil indésirable supprimé',
+              message: `Le profil indésirable "${personName}" a été supprimé par ${remover.firstName} ${remover.lastName}`,
+              priority: 'medium',
+              entityType: 'BLACKLIST',
+              entityId: id,
+              siteId: null,
+              createdBy: reportedBy,
+              metadata: {
+                action: 'unknown_blacklist_removed',
+                nonDesirableId: id,
+                personName: personName,
+                reason: reason,
+                removedBy: `${remover.firstName} ${remover.lastName}`
+              }
+            });
+          }
+        }
+      } catch (notificationError) {
+        console.error('Erreur lors de l\'envoi des notifications:', notificationError);
+      }
+      // ======================================
+
       return {
         success: true,
         message: `Indésirable supprimé avec succès: ${entry.firstName || ""} ${entry.lastName || ""}`,
@@ -774,18 +1026,102 @@ class NonDesirableService {
     }
   }
 
-  // Récupérer un indésirable inconnu par ID
-async getUnknownById(id) {
-  const entry = await prisma.nonDesirable.findUnique({ where: { id } });
-  if (!entry || entry.visitorId) return null; // exclure les connus
-  try {
-    return { ...entry, type: 'unknown', reason: JSON.parse(entry.reason) };
-  } catch {
-    return { ...entry, type: 'unknown', reason: entry.reason }; // fallback si JSON invalide
+  // 🔟 Récupérer un indésirable inconnu par ID
+  async getUnknownById(id) {
+    const entry = await prisma.nonDesirable.findUnique({ where: { id } });
+    if (!entry || entry.visitorId) return null; // exclure les connus
+    try {
+      return { ...entry, type: 'unknown', reason: JSON.parse(entry.reason) };
+    } catch {
+      return { ...entry, type: 'unknown', reason: entry.reason }; // fallback si JSON invalide
+    }
   }
-}
 
+  // 🔟+1 Détection automatique d'un visiteur blacklisté avec notification
+  async detectBlacklistedVisitor(visitorData, userId) {
+    try {
+      // Rechercher dans la base de données par différents critères
+      const existingBlacklisted = await prisma.nonDesirable.findFirst({
+        where: {
+          OR: [
+            { 
+              visitor: {
+                idNumber: visitorData.idNumber,
+                isBlacklisted: true
+              }
+            },
+            {
+              idNumber: visitorData.idNumber
+            }
+          ]
+        },
+        include: {
+          visitor: true
+        }
+      });
 
+      if (existingBlacklisted) {
+        const personName = existingBlacklisted.visitor 
+          ? `${existingBlacklisted.visitor.firstName} ${existingBlacklisted.visitor.lastName}`
+          : `${existingBlacklisted.firstName} ${existingBlacklisted.lastName}`;
+
+        // ============ NOTIFICATION D'ALERTE ============
+        await notificationService.notifyUser(userId, {
+          type: 'ALERT',
+          title: '🚨 Visiteur blacklisté détecté',
+          message: `Le visiteur "${personName}" est dans la liste des indésirables`,
+          priority: 'high',
+          entityType: 'BLACKLIST',
+          entityId: existingBlacklisted.id,
+          siteId: null,
+          createdBy: 'system',
+          metadata: {
+            action: 'blacklist_detected',
+            nonDesirableId: existingBlacklisted.id,
+            personName: personName,
+            reason: existingBlacklisted.reason,
+            matchType: existingBlacklisted.visitor ? 'known' : 'unknown'
+          }
+        });
+
+        // Notification aux administrateurs
+        await notificationService.notifyByRole('ADMIN', {
+          type: 'ALERT',
+          title: '🚨 Détection blacklist',
+          message: `Un visiteur blacklisté a été détecté: "${personName}"`,
+          priority: 'high',
+          entityType: 'BLACKLIST',
+          entityId: existingBlacklisted.id,
+          siteId: null,
+          createdBy: 'system',
+          metadata: {
+            action: 'blacklist_detected_admin',
+            nonDesirableId: existingBlacklisted.id,
+            personName: personName,
+            detectedBy: userId
+          }
+        });
+        // ==============================================
+
+        return {
+          detected: true,
+          blacklistedEntry: existingBlacklisted,
+          message: 'Visiteur détecté dans la liste des indésirables'
+        };
+      }
+
+      return {
+        detected: false,
+        message: 'Visiteur non trouvé dans la liste des indésirables'
+      };
+    } catch (error) {
+      console.error('Erreur lors de la détection du visiteur blacklisté:', error);
+      return {
+        detected: false,
+        error: error.message
+      };
+    }
+  }
 }
 
 module.exports = new NonDesirableService();

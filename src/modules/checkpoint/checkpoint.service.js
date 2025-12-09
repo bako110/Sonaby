@@ -772,71 +772,156 @@ if (inAlert !== undefined) {
     }
   }
 
-  async unassignAgent(checkpointId, agentId) {
+ async unassignAgent(checkpointId, agentId) {
     try {
-      // Vérifier que le checkpoint existe
-      const checkpoint = await prisma.checkpoint.findUnique({
-        where: { id: checkpointId },
-      });
-      if (!checkpoint) throw new Error("Checkpoint non trouvé");
+        // Vérifier que le checkpoint existe
+        const checkpoint = await prisma.checkpoint.findUnique({
+            where: { id: checkpointId },
+            select: {
+                id: true,
+                agentId: true,  // Récupérer l'agent assigné direct
+                name: true
+            }
+        });
+        if (!checkpoint) throw new Error("Checkpoint non trouvé");
 
-      // Vérifier que l'agent existe (rôle AGENT_CONTROLE)
-      const agent = await prisma.user.findFirst({
-        where: { id: agentId, role: "AGENT_CONTROLE" },
-      });
-      if (!agent) throw new Error("Agent non trouvé");
-
-      // Transaction pour désaffecter et supprimer l'affectation
-      await prisma.$transaction([
-        // 1️⃣ Mettre le checkpoint à null si c'est cet agent
-        prisma.checkpoint.update({
-          where: { id: checkpointId },
-          data: { agentId: null },
-        }),
-
-        // 2️⃣ Retirer le checkpoint de l’agent (relation many-to-many)
-        prisma.user.update({
-          where: { id: agentId },
-          data: {
-            assignedCheckpoints: {
-              disconnect: { id: checkpointId },
+        // Vérifier que l'agent existe (rôle AGENT_CONTROLE)
+        const agent = await prisma.user.findFirst({
+            where: {
+                id: agentId,
+                role: "AGENT_CONTROLE"
             },
-          },
-        }),
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                // Vérifier s'il a ce checkpoint dans assignedCheckpoints
+                assignedCheckpoints: {
+                    where: { id: checkpointId },
+                    select: { id: true }
+                }
+            }
+        });
+        if (!agent) throw new Error("Agent non trouvé");
 
-        // 3️⃣ Supprimer complètement l’affectation active
-        prisma.agentCheckpointAssignment.deleteMany({
-          where: { checkpointId, userId: agentId },
-        }),
-      ]);
+        console.log(`🔍 Désaffectation de l'agent ${agent.firstName} ${agent.lastName} du checkpoint ${checkpoint.name}`);
 
-      // Récupérer le checkpoint mis à jour
-      const checkpointWithAgents = await prisma.checkpoint.findUnique({
-        where: { id: checkpointId },
-        include: {
-          agentAssignments: {
-            include: {
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  phone: true,
+        // Vérifier s'il y a une assignation directe
+        const hasDirectAssignment = checkpoint.agentId === agentId;
+        const hasManyToManyAssignment = agent.assignedCheckpoints.length > 0;
+
+        if (!hasDirectAssignment && !hasManyToManyAssignment) {
+            console.warn(`⚠️ L'agent ${agentId} n'est pas assigné au checkpoint ${checkpointId}`);
+        }
+
+        // Préparer les opérations de transaction
+        const transactionOperations = [];
+
+        // 1️⃣ Mettre le checkpoint.agentId à null si c'est cet agent
+        if (hasDirectAssignment) {
+            transactionOperations.push(
+                prisma.checkpoint.update({
+                    where: { id: checkpointId },
+                    data: { agentId: null },
+                })
+            );
+            console.log(`✅ Retrait de l'assignation directe (agentId → null)`);
+        }
+
+        // 2️⃣ Retirer le checkpoint de l’agent (relation many-to-many assignedCheckpoints)
+        if (hasManyToManyAssignment) {
+            transactionOperations.push(
+                prisma.user.update({
+                    where: { id: agentId },
+                    data: {
+                        assignedCheckpoints: {
+                            disconnect: { id: checkpointId },
+                        },
+                    },
+                })
+            );
+            console.log(`✅ Retrait de la relation many-to-many assignedCheckpoints`);
+        }
+
+        // 3️⃣ SUPPRIMER l’affectation dans AgentCheckpointAssignment
+        transactionOperations.push(
+            prisma.agentCheckpointAssignment.deleteMany({
+                where: {
+                    checkpointId: checkpointId,
+                    userId: agentId
                 },
-              },
-            },
-          },
-          site: true,
-        },
-      });
+            })
+        );
+        console.log(`✅ Suppression des enregistrements AgentCheckpointAssignment`);
 
-      return checkpointWithAgents;
+        // Exécuter toutes les opérations en transaction
+        await prisma.$transaction(transactionOperations);
+
+        console.log(`✅ Agent ${agentId} désaffecté du checkpoint ${checkpointId}`);
+
+        // Récupérer le checkpoint mis à jour
+        const updatedCheckpoint = await prisma.checkpoint.findUnique({
+            where: { id: checkpointId },
+            include: {
+                agentAssignments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                phone: true,
+                            },
+                        },
+                    },
+                },
+                site: {
+                    select: {
+                        id: true,
+                        name: true,
+                        city: true
+                    }
+                },
+                // Agent assigné direct
+                agent: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true
+                    }
+                },
+                // Tous les agents assignés via many-to-many
+                assignedAgents: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true
+                    }
+                }
+            },
+        });
+
+        return {
+            success: true,
+            message: "Agent désaffecté avec succès",
+            checkpoint: updatedCheckpoint,
+            removedAssignments: {
+                direct: hasDirectAssignment,
+                manyToMany: hasManyToManyAssignment
+            }
+        };
+
     } catch (error) {
-      throw new Error(
-        `Erreur lors de la désaffectation de l'agent: ${error.message}`
-      );
+        console.error("❌ Erreur lors de la désaffectation:", error);
+        throw new Error(
+            `Erreur lors de la désaffectation de l'agent: ${error.message}`
+        );
     }
-  }
+}
+
 
   async getCheckpointAgents(checkpointId) {
     try {

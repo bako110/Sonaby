@@ -13,10 +13,10 @@ class NotificationService {
           userId: userId,
           entityType: entityType,
           entityId: entityId,
-          // Recherche dans metadata JSON
+          // Recherche dans metadata JSON - syntaxe Prisma 5.x
           metadata: {
-            path: ['action'],
-            equals: action
+            path: '$.action',
+            string_contains: action
           },
           // Vérifier dans la fenêtre de temps spécifiée
           createdAt: {

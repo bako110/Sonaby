@@ -1,5 +1,6 @@
 const notificationService = require('./notification.service');
 const { asyncHandler } = require('../../middleware/asyncHandler');
+const { prisma } = require('../../config/prisma');
 
 class NotificationController {
   
@@ -9,7 +10,7 @@ class NotificationController {
    */
   getNotifications = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { 
         unread, 
         type, 
@@ -70,7 +71,7 @@ class NotificationController {
    */
   getSiteNotifications = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId; 
       const { siteId } = req.params;
       const { 
         type, 
@@ -139,7 +140,7 @@ class NotificationController {
    */
   getNotificationById = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { id } = req.params;
 
       const notification = await notificationService.getNotificationById(id, userId);
@@ -172,7 +173,7 @@ class NotificationController {
    */
   markAsRead = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { id } = req.params;
 
       const notification = await notificationService.markAsRead(id, userId);
@@ -206,7 +207,7 @@ class NotificationController {
    */
   markAllAsRead = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { siteId } = req.body; // Optionnel : marquer seulement pour un site spécifique
 
       const result = await notificationService.markAllAsRead(userId, siteId);
@@ -232,7 +233,7 @@ class NotificationController {
    */
   getUnreadCount = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { siteId } = req.query; // Optionnel : compter seulement pour un site
 
       const count = await notificationService.getUnreadCount(userId, siteId);
@@ -260,7 +261,7 @@ class NotificationController {
    */
   deleteNotification = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { id } = req.params;
 
       const notification = await notificationService.deleteNotification(id, userId);
@@ -295,7 +296,7 @@ class NotificationController {
    */
   createTestNotification = asyncHandler(async (req, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.userId;
       const { siteId } = req.body;
       
       // Données de test

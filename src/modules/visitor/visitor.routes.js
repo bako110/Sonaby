@@ -1,30 +1,21 @@
 const express = require('express');
 const visitorController = require('./visitor.controller');
 const { authenticateToken } = require('../../middleware/authMiddleware');
-const multer = require('multer');
-
+const { uploadVisitor } = require('../../middleware/upload');
 
 const router = express.Router();
 
 // Middleware d'authentification pour toutes les routes
 router.use(authenticateToken);
 
-// Configuration Multer pour les uploads de fichiers
-// Configuration Multer pour les uploads
-// Utiliser la mémoire pour Multer (tu peux changer si tu veux stocker sur disque directement)
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-// Middleware pour gérer les erreurs de fichiers uploadés
-function handleUploadErrors(err, req, res, next) {
-  if (err instanceof multer.MulterError) {
-    return res.status(400).json({ success: false, message: err.message });
-  } else if (err) {
-    return res.status(400).json({ success: false, message: err.message });
-  }
-  next();
-}
-
+const handleUpload = (req, res, next) => {
+  uploadVisitor(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+};
 
 /**
  * @swagger
@@ -829,8 +820,7 @@ router.get('/week-planning/:siteId', visitorController.getWeekPlanning);
  */
 router.post(
   '/',
-  upload.fields([{ name: 'photoUrl', maxCount: 1 }, { name: 'idScanUrl', maxCount: 1 }]),
-  handleUploadErrors,
+  handleUpload,
   visitorController.createVisitor
 );
 

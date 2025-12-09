@@ -8,6 +8,11 @@ function createDirectoryPath(baseDir, subFolder = '') {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
 
+  // Créer le répertoire de base s'il n'existe pas
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+  }
+
   const dirPath = path.join(baseDir, subFolder, year.toString(), month, day);
 
   if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });

@@ -40,7 +40,7 @@ router.use('/sos', sosRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/stats', statsRoutes);
 // router.use('/uploads', uploadRoutes)
-router.use('./notifications', notificationRoutes)
+router.use('/notifications', notificationRoutes)
 
 // Route de santé de l'API
 router.get('/health', (req, res) => {

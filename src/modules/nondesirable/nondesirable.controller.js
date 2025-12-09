@@ -1,6 +1,7 @@
 const nonDesirableService = require('./nondesirable.service');
 const { createNonDesirableSchema, createUnknownNonDesirableSchema, removeUnknownSchema,nonDesirableIdSchema, nonDesirableQuerySchema } = require('./nondesirable.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
+const { prisma } = require('../../config/prisma');
 
 class NonDesirableController {
   createNonDesirable = asyncHandler(async (req, res) => {

@@ -64,7 +64,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Servir les fichiers statiques
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/non-desirables', express.static(path.join(__dirname, '..', 'uploads', 'non-desirables')));
+app.use('/visitors', express.static(path.join(__dirname, '..', 'uploads', 'visitors')));
 
 // Middleware pour gérer les requêtes OPTIONS (CORS preflight)
 app.options('*', (req, res) => {
