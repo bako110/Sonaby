@@ -1,29 +1,141 @@
 const visitorService = require('./visitor.service');
-const { createVisitorWithTransform, updateVisitorSchema, visitorIdSchema, visitorQuerySchema, weekPlanningSchema } = require('./visitor.schema');
+const { createVisitorWithTransform, updateVisitorSchema, visitorIdSchema, visitorQuerySchema, weekPlanningSchema,visitorFilterSchema } = require('./visitor.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 const path = require('path');
 const fs = require('fs');
 
 class VisitorController {
     getFilteredVisitors = asyncHandler(async (req, res) => {
-        const filters = {
-            ...req.query,
-            page: parseInt(req.query.page) || 1,
-            limit: parseInt(req.query.limit) || 10
-        };
+  try {
+    // Vérifier les permissions
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Permissions insuffisantes pour filtrer les visiteurs.'
+      });
+    }
 
-        const result = await visitorService.getFilteredVisitors(filters);
-        
-        res.status(200).json({
-            success: true,
-            message: 'Visiteurs filtrés récupérés avec succès',
-            data: result.visitors,
-            pagination: result.pagination,
-            filterOptions: result.filterOptions,
-            filters: filters
-        });
+    // Valider les filtres avec le nouveau schéma
+    const validatedFilters = visitorFilterSchema.parse(req.query);
+    
+    // Mapping des noms de paramètres pour le service
+    const filtersForService = {
+      // Filtres de base
+      search: validatedFilters.search || undefined,
+      idType: validatedFilters.idType || undefined,
+      idNumber: validatedFilters.idNumber || undefined,
+      company: validatedFilters.company || undefined,
+      isBlacklisted: validatedFilters.isBlacklisted || undefined,
+      sexe: validatedFilters.sexe || undefined,
+      
+      // Filtres dates d'identité
+      givingDateStart: validatedFilters.givingDateStart || undefined,
+      givingDateEnd: validatedFilters.givingDateEnd || undefined,
+      expirationDateStart: validatedFilters.expirationDateStart || undefined,
+      expirationDateEnd: validatedFilters.expirationDateEnd || undefined,
+      birthDateStart: validatedFilters.birthDateStart || undefined,
+      birthDateEnd: validatedFilters.birthDateEnd || undefined,
+      
+      // Filtres dates création/mise à jour
+      dateCreationDebut: validatedFilters.dateCreationDebut || undefined,
+      dateCreationFin: validatedFilters.dateCreationFin || undefined,
+      dateUpdateDebut: validatedFilters.dateUpdateDebut || undefined,
+      dateUpdateFin: validatedFilters.dateUpdateFin || undefined,
+      
+      // Filtres relationnels
+      siteId: validatedFilters.siteId || undefined,
+      checkpointId: validatedFilters.checkpointId || undefined,
+      actif: validatedFilters.actif || undefined,
+      avecBadge: validatedFilters.avecBadge || undefined,
+      avecIncidents: validatedFilters.avecIncidents || undefined,
+      avecVisites: validatedFilters.avecVisites || undefined,
+      visiteSiteId: validatedFilters.visiteSiteId || undefined,
+      visiteCheckpointId: validatedFilters.visiteCheckpointId || undefined,
+      
+      // Filtres démographiques
+      residence: validatedFilters.residence || undefined,
+      birthPlace: validatedFilters.birthPlace || undefined,
+      emergencyContactName: validatedFilters.emergencyContactName || undefined,
+      emergencyContactPhone: validatedFilters.emergencyContactPhone || undefined,
+      email: validatedFilters.email || undefined,
+      phone: validatedFilters.phone || undefined,
+      
+      // Pagination
+      page: validatedFilters.page || 1,
+      limit: validatedFilters.limit || 10
+    };
+
+    // Nettoyer les valeurs undefined
+    Object.keys(filtersForService).forEach(key => {
+      if (filtersForService[key] === undefined) {
+        delete filtersForService[key];
+      }
     });
 
+    console.log('=== DEBUG: Filtres envoyés au service ===');
+    console.log(filtersForService);
+
+    const result = await visitorService.getFilteredVisitors(filtersForService);
+    
+    // Vérifier que result n'est pas undefined
+    if (!result) {
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur interne : le service n\'a retourné aucun résultat'
+      });
+    }
+    
+    // S'assurer que visitors est toujours un tableau
+    const visitors = Array.isArray(result.visitors) ? result.visitors : [];
+    
+    // S'assurer que pagination existe
+    const pagination = result.pagination || {
+      page: filtersForService.page || 1,
+      limit: filtersForService.limit || 10,
+      total: visitors.length,
+      totalPages: Math.ceil(visitors.length / (filtersForService.limit || 10)),
+      hasNext: false,
+      hasPrev: false
+    };
+    
+    // S'assurer que filterOptions existe
+    const filterOptions = result.filterOptions || {};
+
+    res.status(200).json({
+      success: true,
+      message: `${visitors.length} visiteur(s) trouvé(s)`,
+      data: visitors,
+      pagination,
+      filterOptions,
+      filters: filtersForService
+    });
+
+  } catch (error) {
+    console.error('Error in getFilteredVisitors:', error);
+    
+    // CORRECTION : Gestion sécurisée de l'erreur Zod
+    if (error.name === 'ZodError') {
+      const errorDetails = Array.isArray(error.errors) 
+        ? error.errors.map(err => ({
+            field: Array.isArray(err.path) ? err.path.join('.') : String(err.path),
+            message: err.message || 'Erreur de validation'
+          }))
+        : [{ field: 'unknown', message: 'Erreur de validation Zod' }];
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Données de filtrage invalides',
+        errors: errorDetails
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des visiteurs filtrés',
+      error: error.message
+    });
+  }
+});
     getFilterOptions = asyncHandler(async (req, res) => {
         try {
             const { page, limit, ...currentFilters } = req.query;

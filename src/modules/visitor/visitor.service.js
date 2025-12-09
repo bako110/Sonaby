@@ -4,393 +4,518 @@ const path = require('path');
 
 class VisitorService {
   async getFilteredVisitors(filters = {}) {
-    try {
-      const {
-        search,
-        isBlacklisted,
-        idType,
-        company,
-        dateFrom,
-        dateTo,
-        siteId,
-        checkpointId,
-        dateCreationDebut,
-        dateCreationFin,
-        actif,
-        avecBadge,
-        avecIncidents,
-        page = 1,
-        limit = 10
-      } = filters;
+  try {
+    const {
+      search,
+      idType,
+      idNumber,
+      company,
+      isBlacklisted,
+      sexe,
+      givingDateStart,
+      givingDateEnd,
+      expirationDateStart,
+      expirationDateEnd,
+      birthDateStart,
+      birthDateEnd,
+      dateCreationDebut,
+      dateCreationFin,
+      dateUpdateDebut,
+      dateUpdateFin,
+      siteId,
+      checkpointId,
+      actif,
+      avecBadge,
+      avecIncidents,
+      avecVisites,
+      visiteSiteId,
+      visiteCheckpointId,
+      residence,
+      birthPlace,
+      emergencyContactName,
+      emergencyContactPhone,
+      email,
+      phone,
+      page = 1,
+      limit = 10,
+    } = filters;
 
-      const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
+    
+    // Construction de la clause WHERE - CORRECTION : PAS DE 'mode'
+    const whereClause = {};
+
+    // 1. Filtre par recherche générale (SANS mode)
+    if (search && search.trim() !== '') {
+      whereClause.OR = [
+        { firstName: { contains: search } }, // SANS mode
+        { lastName: { contains: search } },
+        { idNumber: { contains: search } },
+        { company: { contains: search } },
+        { email: { contains: search } },
+        { phone: { contains: search } }
+      ];
+    }
+
+    // 2. Filtres simples (textuels aussi SANS mode)
+    if (idType && idType.trim() !== '') {
+      whereClause.idType = idType;
+    }
+
+    if (idNumber && idNumber.trim() !== '') {
+      whereClause.idNumber = { contains: idNumber }; // SANS mode
+    }
+
+    if (company && company.trim() !== '') {
+      whereClause.company = { contains: company }; // SANS mode
+    }
+
+    if (isBlacklisted !== undefined) {
+      whereClause.isBlacklisted = isBlacklisted === 'true';
+    }
+
+    if (sexe && sexe.trim() !== '') {
+      whereClause.sexe = sexe;
+    }
+
+    if (residence && residence.trim() !== '') {
+      whereClause.residence = { contains: residence }; // SANS mode
+    }
+
+    if (birthPlace && birthPlace.trim() !== '') {
+      whereClause.birthPlace = { contains: birthPlace }; // SANS mode
+    }
+
+    if (emergencyContactName && emergencyContactName.trim() !== '') {
+      whereClause.emergencyContactName = { contains: emergencyContactName }; // SANS mode
+    }
+
+    if (emergencyContactPhone && emergencyContactPhone.trim() !== '') {
+      whereClause.emergencyContactPhone = { contains: emergencyContactPhone }; // SANS mode
+    }
+
+    if (email && email.trim() !== '') {
+      whereClause.email = { contains: email }; // SANS mode
+    }
+
+    if (phone && phone.trim() !== '') {
+      whereClause.phone = { contains: phone }; // SANS mode
+    }
+
+    // 3. Filtres de date (identité)
+    if (givingDateStart || givingDateEnd) {
+      whereClause.givingDate = {};
+      if (givingDateStart) {
+        whereClause.givingDate.gte = givingDateStart;
+      }
+      if (givingDateEnd) {
+        whereClause.givingDate.lte = givingDateEnd;
+      }
+    }
+
+    if (expirationDateStart || expirationDateEnd) {
+      whereClause.expirationDate = {};
+      if (expirationDateStart) {
+        whereClause.expirationDate.gte = expirationDateStart;
+      }
+      if (expirationDateEnd) {
+        whereClause.expirationDate.lte = expirationDateEnd;
+      }
+    }
+
+    if (birthDateStart || birthDateEnd) {
+      whereClause.birthDate = {};
+      if (birthDateStart) {
+        whereClause.birthDate.gte = birthDateStart;
+      }
+      if (birthDateEnd) {
+        whereClause.birthDate.lte = birthDateEnd;
+      }
+    }
+
+    // 4. Filtres de date (création/mise à jour)
+    if (dateCreationDebut || dateCreationFin) {
+      whereClause.createdAt = {};
+      if (dateCreationDebut) {
+        const start = new Date(dateCreationDebut);
+        start.setHours(0, 0, 0, 0);
+        whereClause.createdAt.gte = start;
+      }
+      if (dateCreationFin) {
+        const end = new Date(dateCreationFin);
+        end.setHours(23, 59, 59, 999);
+        whereClause.createdAt.lte = end;
+      }
+    }
+
+    if (dateUpdateDebut || dateUpdateFin) {
+      whereClause.updatedAt = {};
+      if (dateUpdateDebut) {
+        const start = new Date(dateUpdateDebut);
+        start.setHours(0, 0, 0, 0);
+        whereClause.updatedAt.gte = start;
+      }
+      if (dateUpdateFin) {
+        const end = new Date(dateUpdateFin);
+        end.setHours(23, 59, 59, 999);
+        whereClause.updatedAt.lte = end;
+      }
+    }
+
+    // 5. Filtres relationnels (visites)
+    if (siteId || checkpointId || actif || avecVisites || visiteSiteId || visiteCheckpointId) {
+      whereClause.visits = {
+        some: {}
+      };
       
-      // Construction de la clause WHERE
-      const whereClause = {};
-
-      // Filtres de base
-      if (search) {
-        whereClause.OR = [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-          { idNumber: { contains: search, mode: 'insensitive' } },
-          { company: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search, mode: 'insensitive' } }
-        ];
+      if (siteId) {
+        whereClause.visits.some.checkpoint = {
+          siteId: siteId
+        };
       }
-
-      if (isBlacklisted !== undefined) {
-        whereClause.isBlacklisted = isBlacklisted === 'true';
+      
+      if (checkpointId) {
+        whereClause.visits.some.checkpointId = checkpointId;
       }
-
-      if (idType) {
-        whereClause.idType = idType;
+      
+      if (visiteSiteId) {
+        whereClause.visits.some.checkpoint = {
+          ...whereClause.visits.some.checkpoint,
+          siteId: visiteSiteId
+        };
       }
-
-      if (company) {
-        whereClause.company = { contains: company, mode: 'insensitive' };
+      
+      if (visiteCheckpointId) {
+        whereClause.visits.some.checkpointId = visiteCheckpointId;
       }
-
-      // Filtres avancés
-      if (dateFrom || dateTo) {
+      
+      if (actif === 'true') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        whereClause.visits.some.entryTime = {
+          ...whereClause.visits.some.entryTime,
+          gte: thirtyDaysAgo
+        };
+      } else if (actif === 'false') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         whereClause.visits = {
+          none: {
+            entryTime: {
+              gte: thirtyDaysAgo
+            }
+          }
+        };
+      }
+      
+      if (avecVisites === 'true') {
+        // Garde le 'some' déjà défini
+      } else if (avecVisites === 'false') {
+        whereClause.visits = {
+          none: {}
+        };
+      }
+    }
+
+    // 6. Filtre avec/sans badge
+    if (avecBadge !== undefined) {
+      if (avecBadge === 'true') {
+        whereClause.photoUrl = { not: null };
+      } else if (avecBadge === 'false') {
+        whereClause.photoUrl = null;
+      }
+    }
+
+    // 7. Filtre avec/sans incidents
+    if (avecIncidents !== undefined) {
+      if (avecIncidents === 'true') {
+        whereClause.incidents = {
           some: {}
         };
-        if (dateFrom) {
-          whereClause.visits.some.entryTime = {
-            ...whereClause.visits.some.entryTime,
-            gte: new Date(dateFrom)
-          };
-        }
-        if (dateTo) {
-          whereClause.visits.some.entryTime = {
-            ...whereClause.visits.some.entryTime,
-            lte: new Date(dateTo)
-          };
-        }
-      }
-
-      if (siteId) {
-        whereClause.visits = {
-          ...whereClause.visits,
-          some: {
-            checkpoint: {
-              siteId: siteId
-            }
-          }
+      } else if (avecIncidents === 'false') {
+        whereClause.incidents = {
+          none: {}
         };
       }
-
-      if (checkpointId) {
-        whereClause.visits = {
-          ...whereClause.visits,
-          some: {
-            checkpointId: checkpointId
-          }
-        };
-      }
-
-      if (dateCreationDebut || dateCreationFin) {
-        whereClause.createdAt = {};
-        if (dateCreationDebut) {
-          whereClause.createdAt.gte = new Date(dateCreationDebut);
-        }
-        if (dateCreationFin) {
-          whereClause.createdAt.lte = new Date(dateCreationFin);
-        }
-      }
-
-      if (actif !== undefined) {
-        if (actif === 'true') {
-          // Visiteurs avec des visites actives ou récentes
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          whereClause.visits = {
-            ...whereClause.visits,
-            some: {
-              entryTime: {
-                gte: thirtyDaysAgo
-              }
-            }
-          };
-        } else if (actif === 'false') {
-          // Visiteurs sans visites récentes
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          whereClause.visits = {
-            none: {
-              entryTime: {
-                gte: thirtyDaysAgo
-              }
-            }
-          };
-        }
-      }
-
-      if (avecBadge !== undefined) {
-        if (avecBadge === 'true') {
-          whereClause.badgeUrl = { not: null };
-        } else if (avecBadge === 'false') {
-          whereClause.badgeUrl = null;
-        }
-      }
-
-      if (avecIncidents !== undefined) {
-        if (avecIncidents === 'true') {
-          whereClause.incidents = {
-            some: {}
-          };
-        } else if (avecIncidents === 'false') {
-          whereClause.incidents = {
-            none: {}
-          };
-        }
-      }
-
-      const [visitors, total] = await Promise.all([
-        prisma.visitor.findMany({
-          where: whereClause,
-          skip,
-          take: limit,
-          include: {
-            visits: {
-              take: 5,
-              orderBy: { entryTime: 'desc' },
-              include: {
-                checkpoint: {
-                  select: {
-                    id: true,
-                    name: true,
-                    site: {
-                      select: {
-                        id: true,
-                        name: true,
-                        code: true
-                      }
-                    }
-                  }
-                },
-                _count: {
-                  select: {
-                    incidents: true
-                  }
-                }
-              }
-            },
-            incidents: {
-              take: 3,
-              orderBy: { createdAt: 'desc' }
-            },
-            _count: {
-              select: {
-                visits: true,
-                incidents: true
-              }
-            }
-          },
-          orderBy: [
-            { createdAt: 'desc' },
-            { lastName: 'asc' },
-            { firstName: 'asc' }
-          ]
-        }),
-        prisma.visitor.count({ where: whereClause })
-      ]);
-
-      return {
-        visitors,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-          hasNext: page * limit < total,
-          hasPrev: page > 1
-        },
-        filterOptions: await this.getFilterOptions(whereClause)
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la récupération des visiteurs filtrés: ${error.message}`);
     }
-  }
 
-  async getFilterOptions(currentFilters = {}) {
-    try {
-      // Récupérer tous les types d'ID uniques
-      const idTypes = await prisma.visitor.groupBy({
-        by: ['idType'],
-        where: {
-          ...currentFilters,
-          idType: { not: null }
-        },
-        _count: {
-          idType: true
-        },
-        orderBy: {
-          idType: 'asc'
-        }
-      });
+    console.log('=== DEBUG: whereClause ===');
+    console.log(JSON.stringify(whereClause, null, 2));
 
-      // Récupérer toutes les entreprises uniques
-      const companies = await prisma.visitor.groupBy({
-        by: ['company'],
-        where: {
-          ...currentFilters,
-          company: { not: null }
-        },
-        _count: {
-          company: true
-        },
-        orderBy: {
-          company: 'asc'
-        }
-      });
-
-      // Récupérer tous les sites pour le filtre site
-      const sites = await prisma.site.findMany({
-        where: currentFilters.siteId ? { id: currentFilters.siteId } : {},
+    const [visitors, total] = await Promise.all([
+      prisma.visitor.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        include: {
+  visits: {
+    take: 5,
+    orderBy: { entryTime: 'desc' },
+    include: {
+      checkpoint: {
         select: {
           id: true,
           name: true,
-          code: true,
-          city: true,
-          _count: {
-            select: {
-              checkpoints: {
-                where: {
-                  visits: {
-                    some: {
-                      visitor: currentFilters
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        orderBy: {
-          name: 'asc'
-        }
-      });
-
-      // Récupérer tous les checkpoints pour le filtre checkpoint
-      const checkpoints = await prisma.checkpoint.findMany({
-        where: currentFilters.checkpointId ? { id: currentFilters.checkpointId } : {},
-        select: {
-          id: true,
-          name: true,
-          zone: true,
-          checkpointType: true,
           site: {
             select: {
               id: true,
               name: true,
               code: true
             }
-          },
-          _count: {
-            select: {
-              visits: {
-                where: {
-                  visitor: currentFilters
+          }
+        }
+      },
+      _count: {
+        select: {
+          incidents: true
+        }
+      }
+    }
+  },
+  incidents: {
+  take: 3,
+  orderBy: { createdAt: 'desc' },
+  select: {
+    id: true,
+    titre: true,
+    description: true,
+    typeIncident: true,      // ⬅️ CHANGÉ: type_incident → typeIncident
+    severite: true,
+    priorite: true,
+    source: true,
+    dateIncident: true,      // ⬅️ CHANGÉ: date_incident → dateIncident
+    siteId: true,            // ⬅️ CHANGÉ: site_id → siteId
+    visiteurId: true,        // ⬅️ CHANGÉ: visiteur_id → visiteurId
+    actionsImmediates: true, // ⬅️ CHANGÉ: actions_immediates → actionsImmediates
+    temoinPresent: true,     // ⬅️ CHANGÉ: temoin_present → temoinPresent
+    notifierAgents: true,    // ⬅️ CHANGÉ: notifier_agents → notifierAgents
+    isResolved: true,        // ⬅️ CHANGÉ: is_resolved → isResolved
+    resolvedAt: true,        // ⬅️ CHANGÉ: resolved_at → resolvedAt
+    resolutionNotes: true,   // ⬅️ CHANGÉ: resolution_notes → resolutionNotes
+    reportedBy: true,        // ⬅️ CHANGÉ: reported_by → reportedBy
+    createdAt: true,
+    updatedAt: true
+  }
+},
+  _count: {
+    select: {
+      visits: true,
+      incidents: true
+    }
+  }
+},
+        orderBy: [
+          { createdAt: 'desc' },
+          { lastName: 'asc' },
+          { firstName: 'asc' }
+        ]
+      }),
+      prisma.visitor.count({
+        where: whereClause  // MÊME whereClause car on a enlevé tous les 'mode'
+      })
+    ]);
+
+    return {
+      visitors,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      },
+      filterOptions: await this.getFilterOptions(whereClause)
+    };
+  } catch (error) {
+    throw new Error(`Erreur lors de la récupération des visiteurs filtrés: ${error.message}`);
+  }
+}
+
+  async getFilterOptions(currentFilters = {}) {
+  try {
+    // Récupérer tous les types d'ID uniques
+    const idTypes = await prisma.visitor.groupBy({
+      by: ['idType'],
+      where: {
+        ...currentFilters,
+        idType: { not: null, not: '' }
+      },
+      _count: {
+        idType: true
+      },
+      orderBy: {
+        idType: 'asc'
+      }
+    });
+
+    // Récupérer toutes les entreprises uniques
+    const companies = await prisma.visitor.groupBy({
+      by: ['company'],
+      where: {
+        ...currentFilters,
+        company: { not: null, not: '' }
+      },
+      _count: {
+        company: true
+      },
+      orderBy: {
+        company: 'asc'
+      }
+    });
+
+    // Récupérer tous les sites pour le filtre site
+    const sites = await prisma.site.findMany({
+      where: currentFilters.siteId ? { id: currentFilters.siteId } : {},
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        city: true,
+        _count: {
+          select: {
+            checkpoints: {
+              where: {
+                visits: {
+                  some: {
+                    visitor: currentFilters
+                  }
                 }
               }
             }
           }
-        },
-        orderBy: {
-          name: 'asc'
         }
-      });
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
 
-      // Récupérer les statistiques de blacklist
-      const blacklistStats = await prisma.visitor.groupBy({
-        by: ['isBlacklisted'],
-        where: currentFilters,
-        _count: {
-          isBlacklisted: true
-        }
-      });
-
-      // Récupérer les statistiques de badges
-      const badgeStats = await prisma.visitor.groupBy({
-        by: ['badgeUrl'],
-        where: {
-          ...currentFilters,
-          badgeUrl: { not: null }
-        },
-        _count: {
-          badgeUrl: true
-        }
-      });
-
-      // Récupérer les statistiques d'incidents
-      const incidentStats = await prisma.visitor.groupBy({
-        by: ['id'],
-        where: {
-          ...currentFilters,
-          incidents: {
-            some: {}
+    // Récupérer tous les checkpoints pour le filtre checkpoint
+    const checkpoints = await prisma.checkpoint.findMany({
+      where: currentFilters.checkpointId ? { id: currentFilters.checkpointId } : {},
+      select: {
+        id: true,
+        name: true,
+        zone: true,
+        checkpointType: true,
+        site: {
+          select: {
+            id: true,
+            name: true,
+            code: true
           }
         },
         _count: {
-          id: true
-        }
-      });
-
-      const withIncidentsCount = incidentStats.length;
-      const withoutIncidentsCount = await prisma.visitor.count({
-        where: {
-          ...currentFilters,
-          incidents: {
-            none: {}
+          select: {
+            visits: {
+              where: {
+                visitor: currentFilters
+              }
+            }
           }
         }
-      });
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
 
-      const withBadgeCount = badgeStats.reduce((sum, stat) => sum + stat._count.badgeUrl, 0);
-      const withoutBadgeCount = await prisma.visitor.count({
-        where: {
-          ...currentFilters,
-          badgeUrl: null
+    // Récupérer les statistiques de blacklist
+    const blacklistStats = await prisma.visitor.groupBy({
+      by: ['isBlacklisted'],
+      where: currentFilters,
+      _count: {
+        isBlacklisted: true
+      }
+    });
+
+    // Récupérer les statistiques de photos (utilise photoUrl, pas badgeUrl)
+    const photoStats = await prisma.visitor.groupBy({
+      by: ['photoUrl'],
+      where: {
+        ...currentFilters,
+        photoUrl: { not: null, not: '' }
+      },
+      _count: {
+        photoUrl: true
+      }
+    });
+
+    // Récupérer les statistiques d'incidents
+    const incidentStats = await prisma.visitor.groupBy({
+      by: ['id'],
+      where: {
+        ...currentFilters,
+        incidents: {
+          some: {}
         }
-      });
+      },
+      _count: {
+        id: true
+      }
+    });
 
-      return {
-        idTypes: idTypes.map(it => ({ value: it.idType, label: it.idType, count: it._count.idType })),
-        companies: companies.map(c => ({ value: c.company, label: c.company, count: c._count.company })),
-        sites: sites.map(s => ({ 
-          value: s.id, 
-          label: `${s.name} (${s.code})`, 
-          count: s._count.checkpoints, 
-          city: s.city 
-        })),
-        checkpoints: checkpoints.map(cp => ({ 
-          value: cp.id, 
-          label: `${cp.name} (${cp.zone})`, 
-          count: cp._count.visits,
-          zone: cp.zone,
-          checkpointType: cp.checkpointType,
-          site: cp.site
-        })),
-        blacklistOptions: [
-          { value: 'true', label: 'Oui', count: blacklistStats.find(s => s.isBlacklisted === true)?._count.isBlacklisted || 0 },
-          { value: 'false', label: 'Non', count: blacklistStats.find(s => s.isBlacklisted === false)?._count.isBlacklisted || 0 }
-        ],
-        badgeOptions: [
-          { value: 'true', label: 'Avec badge', count: withBadgeCount },
-          { value: 'false', label: 'Sans badge', count: withoutBadgeCount }
-        ],
-        incidentOptions: [
-          { value: 'true', label: 'Avec incidents', count: withIncidentsCount },
-          { value: 'false', label: 'Sans incidents', count: withoutIncidentsCount }
-        ]
-      };
-    } catch (error) {
-      throw new Error(`Erreur lors de la récupération des options de filtre: ${error.message}`);
-    }
+    const withIncidentsCount = incidentStats.length;
+    const withoutIncidentsCount = await prisma.visitor.count({
+      where: {
+        ...currentFilters,
+        incidents: {
+          none: {}
+        }
+      }
+    });
+
+    const withPhotoCount = photoStats.reduce((sum, stat) => sum + stat._count.photoUrl, 0);
+    const withoutPhotoCount = await prisma.visitor.count({
+      where: {
+        ...currentFilters,
+        photoUrl: null
+      }
+    });
+
+    return {
+      idTypes: idTypes.map(it => ({ value: it.idType, label: it.idType, count: it._count.idType })),
+      companies: companies.map(c => ({ value: c.company, label: c.company, count: c._count.company })),
+      sites: sites.map(s => ({ 
+        value: s.id, 
+        label: `${s.name} (${s.code})`, 
+        count: s._count.checkpoints, 
+        city: s.city 
+      })),
+      checkpoints: checkpoints.map(cp => ({ 
+        value: cp.id, 
+        label: `${cp.name} (${cp.zone})`, 
+        count: cp._count.visits,
+        zone: cp.zone,
+        checkpointType: cp.checkpointType,
+        site: cp.site
+      })),
+      blacklistOptions: [
+        { 
+          value: 'true', 
+          label: 'Oui', 
+          count: blacklistStats.find(s => s.isBlacklisted === true)?._count.isBlacklisted || 0 
+        },
+        { 
+          value: 'false', 
+          label: 'Non', 
+          count: blacklistStats.find(s => s.isBlacklisted === false)?._count.isBlacklisted || 0 
+        }
+      ],
+      photoOptions: [
+        { value: 'true', label: 'Avec photo', count: withPhotoCount },
+        { value: 'false', label: 'Sans photo', count: withoutPhotoCount }
+      ],
+      incidentOptions: [
+        { value: 'true', label: 'Avec incidents', count: withIncidentsCount },
+        { value: 'false', label: 'Sans incidents', count: withoutIncidentsCount }
+      ]
+    };
+  } catch (error) {
+    throw new Error(`Erreur lors de la récupération des options de filtre: ${error.message}`);
   }
+}
   
 
 async createOrFindVisitor(visitorData) {
