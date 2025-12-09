@@ -173,175 +173,370 @@ const swaggerPaths = {
     }
   },
 
-  // ==================== USER ENDPOINTS ====================
-  '/api/v1/users': {
-    get: {
-      tags: ['Users'],
-      summary: 'Lister tous les utilisateurs',
-      description: 'Récupérer la liste paginée des utilisateurs',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: 'page',
-          in: 'query',
-          schema: { type: 'string' },
-          description: 'Numéro de page'
+// ==================== USER ENDPOINTS ====================
+'/api/v1/users': {
+  get: {
+    tags: ['Users'],
+    summary: 'Lister tous les utilisateurs',
+    description: 'Récupérer la liste paginée et filtrée des utilisateurs',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'page',
+        in: 'query',
+        schema: { 
+          type: 'integer',
+          minimum: 1,
+          default: 1
         },
-        {
-          name: 'limit',
-          in: 'query',
-          schema: { type: 'string' },
-          description: 'Nombre d\'éléments par page'
+        description: 'Numéro de page (défaut: 1)'
+      },
+      {
+        name: 'limit',
+        in: 'query',
+        schema: { 
+          type: 'integer',
+          minimum: 1,
+          maximum: 100,
+          default: 10
         },
-        {
-          name: 'search',
-          in: 'query',
-          schema: { type: 'string' },
-          description: 'Terme de recherche'
-        }
-      ],
-      responses: {
-        200: {
-          description: 'Liste des utilisateurs',
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/PaginatedResponse' }
-            }
-          }
+        description: 'Nombre d\'éléments par page (max: 100, défaut: 10)'
+      },
+      {
+        name: 'search',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Recherche globale (nom, prénom, email, matricule, téléphone)'
+      },
+      {
+        name: 'role',
+        in: 'query',
+        schema: {
+          type: 'string',
+          enum: ['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']
         },
-        401: { $ref: '#/components/responses/Unauthorized' }
+        description: 'Filtrer par rôle'
+      },
+      {
+        name: 'isActive',
+        in: 'query',
+        schema: {
+          type: 'string',
+          enum: ['true', 'false']
+        },
+        description: 'Filtrer par statut actif/inactif'
+      },
+      {
+        name: 'siteId',
+        in: 'query',
+        schema: { 
+          type: 'string',
+          format: 'uuid'
+        },
+        description: 'Filtrer par site assigné'
+      },
+      {
+        name: 'matricule',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Filtrer par matricule exact'
+      },
+      {
+        name: 'firstName',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Filtrer par prénom'
+      },
+      {
+        name: 'lastName',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Filtrer par nom'
+      },
+      {
+        name: 'email',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Filtrer par email'
+      },
+      {
+        name: 'phone',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Filtrer par téléphone'
+      },
+      {
+        name: 'username',
+        in: 'query',
+        schema: { type: 'string' },
+        description: 'Filtrer par nom d\'utilisateur'
+      },
+      {
+        name: 'dateCreatedStart',
+        in: 'query',
+        schema: { 
+          type: 'string',
+          format: 'date'
+        },
+        description: 'Date de création (début) - format: YYYY-MM-DD'
+      },
+      {
+        name: 'dateCreatedEnd',
+        in: 'query',
+        schema: { 
+          type: 'string',
+          format: 'date'
+        },
+        description: 'Date de création (fin) - format: YYYY-MM-DD'
+      },
+      {
+        name: 'dateUpdatedStart',
+        in: 'query',
+        schema: { 
+          type: 'string',
+          format: 'date'
+        },
+        description: 'Date de mise à jour (début) - format: YYYY-MM-DD'
+      },
+      {
+        name: 'dateUpdatedEnd',
+        in: 'query',
+        schema: { 
+          type: 'string',
+          format: 'date'
+        },
+        description: 'Date de mise à jour (fin) - format: YYYY-MM-DD'
+      },
+      {
+        name: 'sortBy',
+        in: 'query',
+        schema: {
+          type: 'string',
+          enum: ['firstName', 'lastName', 'email', 'createdAt', 'updatedAt', 'role']
+        },
+        description: 'Champ de tri'
+      },
+      {
+        name: 'sortOrder',
+        in: 'query',
+        schema: {
+          type: 'string',
+          enum: ['asc', 'desc'],
+          default: 'asc'
+        },
+        description: 'Ordre de tri (ascendant/descendant)'
       }
-    },
-    post: {
-      tags: ['Users'],
-      summary: 'Créer un nouvel utilisateur',
-      description: 'Créer un nouvel utilisateur (ADMIN uniquement)',
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
+    ],
+    responses: {
+      200: {
+        description: 'Liste paginée des utilisateurs avec options de filtre',
         content: {
           'application/json': {
-            schema: { $ref: '#/components/schemas/CreateUserInput' }
-          }
-        }
-      },
-      responses: {
-        201: {
-          description: 'Utilisateur créé',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  data: { $ref: '#/components/schemas/User' }
-                }
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                message: { type: 'string' },
+                data: {
+                  type: 'object',
+                  properties: {
+                    users: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/User' }
+                    },
+                    pagination: {
+                      type: 'object',
+                      properties: {
+                        page: { type: 'integer' },
+                        limit: { type: 'integer' },
+                        total: { type: 'integer' },
+                        totalPages: { type: 'integer' },
+                        hasNext: { type: 'boolean' },
+                        hasPrev: { type: 'boolean' }
+                      }
+                    },
+                    filterOptions: {
+                      type: 'object',
+                      properties: {
+                        roles: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              value: { type: 'string' },
+                              label: { type: 'string' },
+                              count: { type: 'integer' }
+                            }
+                          }
+                        },
+                        sites: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              value: { type: 'string' },
+                              label: { type: 'string' },
+                              count: { type: 'integer' },
+                              city: { type: 'string' }
+                            }
+                          }
+                        },
+                        statusOptions: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              value: { type: 'string' },
+                              label: { type: 'string' },
+                              count: { type: 'integer' }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                filters: { type: 'object' }
               }
             }
           }
-        },
-        400: { $ref: '#/components/responses/BadRequest' },
-        401: { $ref: '#/components/responses/Unauthorized' },
-        403: { $ref: '#/components/responses/Forbidden' }
-      }
+        }
+      },
+      400: { $ref: '#/components/responses/BadRequest' },
+      401: { $ref: '#/components/responses/Unauthorized' },
+      403: { $ref: '#/components/responses/Forbidden' }
     }
   },
+  post: {
+    tags: ['Users'],
+    summary: 'Créer un nouvel utilisateur',
+    description: 'Créer un nouvel utilisateur (ADMIN uniquement)',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/CreateUserInput' }
+        }
+      }
+    },
+    responses: {
+      201: {
+        description: 'Utilisateur créé',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: { $ref: '#/components/schemas/User' }
+              }
+            }
+          }
+        }
+      },
+      400: { $ref: '#/components/responses/BadRequest' },
+      401: { $ref: '#/components/responses/Unauthorized' },
+      403: { $ref: '#/components/responses/Forbidden' }
+    }
+  }
+},
 
-  '/api/v1/users/{id}': {
-    get: {
-      tags: ['Users'],
-      summary: 'Récupérer un utilisateur par ID',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: 'id',
-          in: 'path',
-          required: true,
-          schema: { type: 'string', format: 'uuid' },
-          description: 'ID de l\'utilisateur'
-        }
-      ],
-      responses: {
-        200: {
-          description: 'Utilisateur trouvé',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  data: { $ref: '#/components/schemas/User' }
-                }
-              }
-            }
-          }
-        },
-        404: { $ref: '#/components/responses/NotFound' }
-      }
-    },
-    put: {
-      tags: ['Users'],
-      summary: 'Mettre à jour un utilisateur',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: 'id',
-          in: 'path',
-          required: true,
-          schema: { type: 'string', format: 'uuid' }
-        }
-      ],
-      requestBody: {
+'/api/v1/users/{id}': {
+  get: {
+    tags: ['Users'],
+    summary: 'Récupérer un utilisateur par ID',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
         required: true,
+        schema: { type: 'string', format: 'uuid' },
+        description: 'ID de l\'utilisateur'
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Utilisateur trouvé',
         content: {
           'application/json': {
-            schema: { $ref: '#/components/schemas/UpdateUserInput' }
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: { $ref: '#/components/schemas/User' }
+              }
+            }
           }
         }
       },
-      responses: {
-        200: {
-          description: 'Utilisateur mis à jour',
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  success: { type: 'boolean' },
-                  data: { $ref: '#/components/schemas/User' }
-                }
+      404: { $ref: '#/components/responses/NotFound' }
+    }
+  },
+  put: {
+    tags: ['Users'],
+    summary: 'Mettre à jour un utilisateur',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' }
+      }
+    ],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/UpdateUserInput' }
+        }
+      }
+    },
+    responses: {
+      200: {
+        description: 'Utilisateur mis à jour',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean' },
+                data: { $ref: '#/components/schemas/User' }
               }
             }
           }
-        },
-        404: { $ref: '#/components/responses/NotFound' }
-      }
-    },
-    delete: {
-      tags: ['Users'],
-      summary: 'Supprimer un utilisateur',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        {
-          name: 'id',
-          in: 'path',
-          required: true,
-          schema: { type: 'string', format: 'uuid' }
         }
-      ],
-      responses: {
-        200: {
-          description: 'Utilisateur supprimé',
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/ApiResponse' }
-            }
-          }
-        },
-        404: { $ref: '#/components/responses/NotFound' }
-      }
+      },
+      404: { $ref: '#/components/responses/NotFound' }
     }
   },
+  delete: {
+    tags: ['Users'],
+    summary: 'Supprimer un utilisateur',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'id',
+        in: 'path',
+        required: true,
+        schema: { type: 'string', format: 'uuid' }
+      }
+    ],
+    responses: {
+      200: {
+        description: 'Utilisateur supprimé',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ApiResponse' }
+          }
+        }
+      },
+      404: { $ref: '#/components/responses/NotFound' }
+    }
+  }
+},
 
   
   // ==================== SITE ENDPOINTS ====================

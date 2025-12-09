@@ -90,9 +90,26 @@ const updateAuthSettingsSchema = z.object({
   preferredAuthMethod: z.enum(['PASSWORD', 'FACE_ID', 'FINGERPRINT', 'BIOMETRIC', 'QR_CODE']).optional()
 });
 
+const userFilterSchema = z.object({
+  // 🔍 Recherche globale (cherche dans plusieurs champs)
+  search: z.string().optional(),
+  
+  // 🏷️ Filtres spécifiques
+  role: z.enum(['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE']).optional(),
+  isActive: z.enum(['true', 'false']).optional(),
+  
+  // 🏢 Filtres relationnels
+  siteId: z.string().uuid().optional(), // Utilisateurs assignés à un site spécifique
+  
+  // 📊 Pagination
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10)
+});
+
 module.exports = {
   createUserSchema,
   updateUserSchema,
   updatePasswordSchema,
-  updateAuthSettingsSchema
+  updateAuthSettingsSchema,
+  userFilterSchema 
 };

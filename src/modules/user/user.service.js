@@ -494,6 +494,214 @@ class UserService {
       }
     };
   }
+
+  // Ajoute après la méthode getAllUsers dans user.service.js
+
+async getFilteredUsers(filters = {}) {
+  try {
+    const {
+      search,
+      role,
+      isActive,
+      siteId,
+      page = 1,
+      limit = 10
+    } = filters;
+
+    // Convertir en number
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 10;
+    
+    const skip = (pageNumber - 1) * limitNumber;
+    
+    // Construction de la clause WHERE
+    const whereClause = {};
+
+    // 1. Recherche globale
+    if (search && search.trim() !== '') {
+      whereClause.OR = [
+        { firstName: { contains: search } },
+        { lastName: { contains: search } },
+        { email: { contains: search } },
+        { matricule: { contains: search } },
+        // { username: { contains: search } }, // ENLEVE POUR L'INSTANT
+        { phone: { contains: search } }
+      ];
+    }
+
+    // 2. Filtre par rôle
+    if (role && role.trim() !== '') {
+      whereClause.role = role;
+    }
+
+    // 3. Filtre par statut actif
+    if (isActive !== undefined) {
+      whereClause.isActive = isActive === 'true';
+    }
+
+    // 4. Filtre par site
+    if (siteId && siteId.trim() !== '') {
+      whereClause.assignedSites = {
+        some: {
+          siteId: siteId
+        }
+      };
+    }
+
+    console.log('=== DEBUG: Filtres utilisateurs ===');
+    console.log('Where clause:', JSON.stringify(whereClause, null, 2));
+    console.log('Pagination:', { page: pageNumber, limit: limitNumber, skip });
+
+    // Exécuter les requêtes en parallèle
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: whereClause,
+        skip,
+        take: limitNumber,
+        include: {  // <-- CHANGE select EN include
+          assignedSites: {
+            select: {
+              site: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true
+                }
+              }
+            }
+          },
+          permissions: {
+            select: {
+              permission: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: [
+          { createdAt: 'desc' },
+          { lastName: 'asc' },
+          { firstName: 'asc' }
+        ]
+      }),
+      prisma.user.count({
+        where: whereClause
+      })
+    ]);
+
+    // Récupérer les options de filtre
+    const filterOptions = await this.getFilterOptions(whereClause);
+
+    return {
+      users,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        total,
+        totalPages: Math.ceil(total / limitNumber),
+        hasNext: pageNumber * limitNumber < total,
+        hasPrev: pageNumber > 1
+      },
+      filterOptions
+    };
+  } catch (error) {
+    console.error('❌ Erreur getFilteredUsers:', error);
+    throw new Error(`Erreur lors de la récupération des utilisateurs filtrés: ${error.message}`);
+  }
+}
+
+async getFilterOptions(currentFilters = {}) {
+  try {
+    // Récupérer tous les rôles uniques
+    const roles = await prisma.user.groupBy({
+      by: ['role'],
+      where: currentFilters,
+      _count: {
+        role: true
+      },
+      orderBy: {
+        role: 'asc'
+      }
+    });
+
+    // Récupérer tous les sites disponibles pour le filtre
+    const sites = await prisma.site.findMany({
+      where: {
+        assignedUsers: {  // <-- CHANGE userSites EN assignedUsers
+          some: {
+            user: currentFilters
+          }
+        }
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        city: true,
+        _count: {
+          select: {
+            assignedUsers: {  // <-- CHANGE userSites EN assignedUsers
+              where: {
+                user: currentFilters
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        name: 'asc'
+      }
+    });
+
+    // Statistiques de statut
+    const activeStats = await prisma.user.groupBy({
+      by: ['isActive'],
+      where: currentFilters,
+      _count: {
+        isActive: true
+      }
+    });
+
+    const activeCount = activeStats.find(s => s.isActive === true)?._count.isActive || 0;
+    const inactiveCount = activeStats.find(s => s.isActive === false)?._count.isActive || 0;
+
+    return {
+      roles: roles.map(r => ({
+        value: r.role,
+        label: this.getRoleLabel(r.role),
+        count: r._count.role
+      })),
+      sites: sites.map(s => ({
+        value: s.id,
+        label: `${s.name} (${s.code})`,
+        count: s._count.assignedUsers,  // <-- CHANGE userSites EN assignedUsers
+        city: s.city
+      })),
+      statusOptions: [
+        { value: 'true', label: 'Actif', count: activeCount },
+        { value: 'false', label: 'Inactif', count: inactiveCount }
+      ]
+    };
+  } catch (error) {
+    console.error('❌ Erreur getFilterOptions:', error);
+    throw new Error(`Erreur lors de la récupération des options de filtre: ${error.message}`);
+  }
+}
+
+// Méthode utilitaire pour traduire les rôles
+getRoleLabel(role) {
+  const roleLabels = {
+    'ADMIN': 'Administrateur',
+    'AGENT_GESTION': 'Agent Gestion',
+    'AGENT_CONTROLE': 'Agent Contrôle',
+    'CHEF_SERVICE': 'Chef Service'
+  };
+  return roleLabels[role] || role;
+}
 }
 
 module.exports = new UserService();

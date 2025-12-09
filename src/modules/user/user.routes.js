@@ -2,6 +2,7 @@
 const express = require('express');
 const userController = require('./user.controller');
 const { authenticateToken, allowRoles } = require('../../middleware/authMiddleware');
+const { asyncHandler } = require('../../middleware/asyncHandler'); // <-- AJOUTE CETTE LIGNE
 
 const router = express.Router();
 
@@ -125,10 +126,24 @@ router.delete('/:id', allowRoles('ADMIN'), userController.deleteUser);
  *               items:
  *                 $ref: '#/components/schemas/User'
  */
+// router.get(
+//   '/',
+//   allowRoles('ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'),
+//   userController.getAllUsers
+// );
+
+// REMPLACE LA ROUTE CI-DESSUS PAR CELLE-CI :
 router.get(
   '/',
   allowRoles('ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'),
-  userController.getAllUsers
+  asyncHandler(async (req, res, next) => {
+    // Si des paramètres de filtrage sont présents, utiliser getFilteredUsers
+    if (Object.keys(req.query).length > 0) {
+      return userController.getFilteredUsers(req, res, next);
+    }
+    // Sinon, utiliser getAllUsers (pour compatibilité)
+    return userController.getAllUsers(req, res, next);
+  })
 );
 
 /**
