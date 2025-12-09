@@ -23,6 +23,16 @@ class UserService {
       }
     }
 
+    // Vérifier username unique
+    if (data.username) {
+      const existingUsername = await prisma.user.findUnique({
+        where: { username: data.username }
+      });
+      if (existingUsername) {
+        throw new Error('Un utilisateur avec ce nom d\'utilisateur existe déjà');
+      }
+    }
+
     // Vérifier que les sites existent (obligatoire pour les agents)
     // if (!data.assignedSites || data.assignedSites.length === 0) {
     //   throw new Error('Au moins un site doit être assigné à un utilisateur');
@@ -135,6 +145,7 @@ class UserService {
         email: true,
         firstName: true,
         lastName: true,
+        username: true, // Ajouté
         role: true,
         isActive: true,
         phone: true,

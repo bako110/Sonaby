@@ -65,19 +65,23 @@ class AuthService {
 
     // Vérifier si c'est un email, téléphone ou username
     const isEmail = identifier.includes('@');
+    const isPhone = /^[0-9+\-\s()]{10,20}$/.test(identifier);
     
-    // Construire la condition OR pour rechercher par email, phone OU username
-    const whereCondition = {
-        OR: []
-    };
+    // Construire la condition pour rechercher par email, phone OU username
+    let whereCondition;
     
     if (isEmail) {
         // Si c'est un email
-        whereCondition.OR.push({ email: identifier });
+        whereCondition = { email: identifier };
+    } else if (isPhone) {
+        // Si c'est un téléphone
+        whereCondition = { phone: identifier };
     } else {
-        // Si ce n'est pas un email, ça pourrait être un téléphone OU un username
-        whereCondition.OR.push({ phone: identifier });
-        whereCondition.OR.push({ username: identifier }); // ← Ajout pour username
+        // Sinon, c'est un username (vérifier aussi si c'est vide)
+        if (!identifier || identifier.trim() === '') {
+            throw new AppError(401, 'Identifiant requis');
+        }
+        whereCondition = { username: identifier };
     }
 
     const user = await prisma.user.findFirst({
@@ -86,25 +90,31 @@ class AuthService {
             id: true,
             email: true,
             phone: true,
-            username: true, // ← Ajouter username
+            username: true,
             passwordHash: true,
             firstName: true,
             lastName: true,
             role: true,
             isActive: true,
-            createdAt: true
+            matricule: true,
+            createdAt: true,
+            updatedAt: true
         }
     });
 
     console.log('🔍 [LOGIN DEBUG] Utilisateur trouvé:', user ? 'Oui' : 'Non');
     
-    if (!user || !user.isActive) {
-        throw new AppError(401, 'Invalid credentials');
+    if (!user) {
+        throw new AppError(401, 'Identifiant ou mot de passe incorrect');
+    }
+
+    if (!user.isActive) {
+        throw new AppError(403, 'Votre compte est désactivé. Veuillez contacter un administrateur.');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-        throw new AppError(401, 'Invalid credentials');
+        throw new AppError(401, 'Identifiant ou mot de passe incorrect');
     }
 
     const tokens = await this.generateTokens(user.id, user.role);
@@ -113,7 +123,7 @@ class AuthService {
     let additionalData = {};
 
     // ----------------------------------------------------------
-    // 1️⃣ AGENT DE CONTRÔLE → dashboard déjà existant
+    // 1️⃣ AGENT DE CONTRÔLE → dashboard
     // ----------------------------------------------------------
     if (user.role === 'AGENT_CONTROLE') {
         try {
@@ -127,7 +137,8 @@ class AuthService {
                     lastName: user.lastName,
                     email: user.email,
                     phone: user.phone,
-                    username: user.username, // ← Ajouter username
+                    username: user.username,
+                    matricule: user.matricule,
                     role: user.role,
                     permissions: []
                 },
@@ -182,8 +193,36 @@ class AuthService {
         ...tokens,
         ...additionalData
     };
-}
+  }
 
+  async generateTokens(userId, role) {
+    const accessToken = jwt.sign(
+      { userId, role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Sauvegarder le refresh token
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: userId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
+      }
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer'
+    };
+  }
 
    
     // Rafraîchir le token

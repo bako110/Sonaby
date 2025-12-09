@@ -37,13 +37,46 @@ model User {
   reportedIncidents     VisitIncident[]             @relation("IncidentReporter")
   organizedGroups       VisitorGroup[]
   createdVisits         Visit[]                     @relation("VisitCreator")
-  notifications         Notification[]               @relation("UserNotifications")
-  createdNotifications  Notification[]               @relation("CreatedNotifications")
+  notifications         Notification[]              @relation("UserNotifications")
+  createdNotifications  Notification[]              @relation("CreatedNotifications")
 
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
   @@index([matricule], map: "idx_users_matricule")
   @@map("users")
+}
+
+model Notification {
+  id         String   @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  type       String   @db.VarChar(50)
+  title      String   @db.VarChar(255)
+  message    String   @db.Text
+  priority   String   @default("medium") @db.VarChar(20)
+  isRead     Boolean  @default(false) @map("is_read")
+  readAt     DateTime? @map("read_at") @db.Timestamp(0)
+  entityType String   @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.Char(36)
+  userId     String?  @map("user_id") @db.Char(36)
+  siteId     String?  @map("site_id") @db.Char(36)
+  createdBy  String?  @map("created_by") @db.Char(36)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(0)
+  metadata   Json?
+  
+  // Relations
+  user       User?    @relation("UserNotifications", fields: [userId], references: [id], onDelete: SetNull)
+  creator    User?    @relation("CreatedNotifications", fields: [createdBy], references: [id], onDelete: SetNull)
+  site       Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  
+  // Indexes
+  @@index([userId], map: "idx_notifications_user_id")
+  @@index([type], map: "idx_notifications_type")
+  @@index([priority], map: "idx_notifications_priority")
+  @@index([isRead], map: "idx_notifications_is_read")
+  @@index([entityType, entityId], map: "idx_notifications_entity")
+  @@index([createdAt], map: "idx_notifications_created_at")
+  
+  @@map("notifications")
 }
 
 model Site {
@@ -95,7 +128,7 @@ model Site {
   incidents                  Incident[]
   rendezvous                 Rendezvous[] @relation("SiteRendezvous")
   assignedUsers              UserSite[]
-  notifications              Notification[] @relation("SiteNotifications")
+  notifications              Notification[]
 
   @@index([code], map: "idx_sites_code")
   @@index([status], map: "idx_sites_status")
@@ -207,8 +240,6 @@ model Service {
   @@index([chefId], map: "chef_id")
   @@map("services")
 }
-
-
 
 model Rendezvous {
   id                String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
@@ -567,34 +598,4 @@ model UserSite {
   @@index([userId], map: "idx_user_sites_user")
   @@index([siteId], map: "idx_user_sites_site")
   @@map("user_sites")
-}
-
-model Notification {
-  id              String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  type            String    @db.VarChar(50)
-  title           String    @db.VarChar(255)
-  message         String    @db.Text
-  priority        String    @default("medium") @db.VarChar(20)
-  isRead          Boolean   @default(false) @map("is_read")
-  readAt          DateTime? @map("read_at") @db.Timestamp(0)
-  entityType      String    @map("entity_type") @db.VarChar(50)
-  entityId        String?   @map("entity_id") @db.Char(36)
-  userId          String?   @map("user_id") @db.Char(36)
-  siteId          String?   @map("site_id") @db.Char(36)
-  createdBy       String?   @map("created_by") @db.Char(36)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(0)
-  metadata        Json?
-  
-  user            User?     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  creator         User?     @relation("CreatedNotifications", fields: [createdBy], references: [id])
-  site            Site?     @relation("SiteNotifications", fields: [siteId], references: [id])
-  
-  @@index([userId], map: "idx_notifications_user_id")
-  @@index([type], map: "idx_notifications_type")
-  @@index([priority], map: "idx_notifications_priority")
-  @@index([isRead], map: "idx_notifications_is_read")
-  @@index([entityType, entityId], map: "idx_notifications_entity")
-  @@index([createdAt], map: "idx_notifications_created_at")
-  @@map("notifications")
 }

@@ -17,6 +17,7 @@ const rendezvousRoutes = require('../modules/rendezvous/rendezvous.routes');
 const dashboardRoutes = require('../modules/dashboard/dashboard.routes');
 const statsRoutes = require('../modules/stats/stats.routes');
 const uploadRoutes = require('../modules/upload')
+const notificationRoutes = require ('../modules/notification/notification.routes')
 
 const router = express.Router();
 
@@ -39,6 +40,7 @@ router.use('/sos', sosRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/stats', statsRoutes);
 // router.use('/uploads', uploadRoutes)
+router.use('./notifications', notificationRoutes)
 
 // Route de santé de l'API
 router.get('/health', (req, res) => {
