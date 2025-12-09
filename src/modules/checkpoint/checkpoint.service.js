@@ -892,15 +892,9 @@ if (inAlert !== undefined) {
                         email: true
                     }
                 },
-                // Tous les agents assignés via many-to-many
-                assignedAgents: {
-                    select: {
-                        id: true,
-                        firstName: true,
-                        lastName: true,
-                        email: true
-                    }
-                }
+                // Relations disponibles pour Checkpoint
+                sosAlerts: true,
+                visits: true
             },
         });
 

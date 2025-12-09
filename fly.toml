@@ -9,8 +9,8 @@ primary_region = 'ams'
 [build]
 
 [deploy]
-# Génère le client Prisma avant de pousser la base de données
-release_command = 'npx prisma generate && npx prisma db push --accept-data-loss'
+# Génère le client Prisma uniquement (db push doit être fait manuellement si nécessaire)
+release_command = 'npx prisma generate'
 
 [http_service]
 internal_port = 5000

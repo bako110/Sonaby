@@ -3,8 +3,10 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class AppointmentService {
-  async createAppointment(appointmentData) {
+ async createAppointment(appointmentData) {
     try {
+      console.log('📅 Données reçues pour création de rendez-vous:', appointmentData);
+
       // Vérifier que l'organisateur existe
       const organizer = await prisma.user.findUnique({
         where: { id: appointmentData.organizerId }
@@ -15,21 +17,44 @@ class AppointmentService {
       }
 
       // Vérifier que le site existe
-      const site = await prisma.site.findUnique({
-        where: { id: appointmentData.siteId }
-      });
+      if (appointmentData.siteId) {
+        const site = await prisma.site.findUnique({
+          where: { id: appointmentData.siteId }
+        });
 
-      if (!site) {
-        throw new Error('Site non trouvé');
+        if (!site) {
+          throw new Error('Site non trouvé');
+        }
       }
 
+      // Traitement des dates
+      const processedData = {
+        ...appointmentData,
+        // Conserver la date de visite telle quelle (sans modification)
+        visitDate: appointmentData.visitDate ? new Date(appointmentData.visitDate) : null,
+        
+        // Pour les heures, si c'est déjà un Date, le garder, sinon créer avec la date d'aujourd'hui
+        startTime: appointmentData.startTime 
+          ? (appointmentData.startTime instanceof Date 
+              ? appointmentData.startTime 
+              : this.parseTimeToToday(appointmentData.startTime))
+          : null,
+          
+        endTime: appointmentData.endTime 
+          ? (appointmentData.endTime instanceof Date 
+              ? appointmentData.endTime 
+              : this.parseTimeToToday(appointmentData.endTime))
+          : null,
+        
+        // Ajouter la date de création actuelle
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      console.log('📅 Données traitées pour création:', processedData);
+
       const appointment = await prisma.rendezvous.create({
-        data: {
-          ...appointmentData,
-          visitDate: new Date(appointmentData.visitDate),
-          startTime: appointmentData.startTime ? new Date(`1970-01-01T${appointmentData.startTime}`) : null,
-          endTime: appointmentData.endTime ? new Date(`1970-01-01T${appointmentData.endTime}`) : null
-        },
+        data: processedData,
         include: {
           organizer: {
             select: {
@@ -40,7 +65,7 @@ class AppointmentService {
               role: true
             }
           },
-          site: {
+          site: appointmentData.siteId ? {
             select: {
               id: true,
               name: true,
@@ -48,14 +73,43 @@ class AppointmentService {
               city: true,
               country: true
             }
-          }
+          } : undefined
         }
       });
 
+      console.log('✅ Rendez-vous créé avec succès:', appointment.id);
       return appointment;
     } catch (error) {
-      console.error('Erreur lors de la création du rendez-vous:', error);
+      console.error('❌ Erreur lors de la création du rendez-vous:', error);
       throw error;
+    }
+  }
+
+  // Méthode utilitaire pour convertir une heure en Date avec la date d'aujourd'hui
+  parseTimeToToday(timeString) {
+    try {
+      // Si c'est déjà un objet Date, le retourner
+      if (timeString instanceof Date) {
+        return timeString;
+      }
+
+      // Si c'est une chaîne de caractères, la parser
+      if (typeof timeString === 'string') {
+        const today = new Date();
+        const [hours, minutes, seconds = '00'] = timeString.split(':');
+        
+        // Créer une nouvelle date avec la date d'aujourd'hui et l'heure fournie
+        const dateWithTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 
+                                      parseInt(hours), parseInt(minutes), parseInt(seconds));
+        
+        return dateWithTime;
+      }
+
+      // Si ce n'est ni une Date ni une string, retourner null
+      return null;
+    } catch (error) {
+      console.warn('⚠️ Erreur lors du parsing de l\'heure:', timeString, error);
+      return null;
     }
   }
 

@@ -336,7 +336,7 @@ class AuthService {
     async getAgentDashboardData(userId) {
     console.log("🔍 DEBUG → Chargement dashboard agent:", userId);
 
-    // 1️⃣ Charger l'utilisateur + sites
+    // 1️⃣ Charger l'utilisateur
     const user = await prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -352,12 +352,8 @@ class AuthService {
                 select: {
                     permission: { select: { name: true, description: true } }
                 }
-            },
-            assignedSites: {
-                select: {
-                    site: { select: { id: true, name: true, city: true, address: true } }
-                }
             }
+            // NOTE: On ne charge plus assignedSites ici
         }
     });
 
@@ -365,11 +361,18 @@ class AuthService {
         throw new AppError(404, "Agent non trouvé");
     }
 
-    // 2️⃣ Récupérer checkpoint assigné via AgentCheckpointAssignment
-    console.log("🔍 DEBUG → Recherche assignment checkpoint…");
+    // 2️⃣ Récupérer le checkpoint UNIQUEMENT via AgentCheckpointAssignment
+    console.log("🔍 DEBUG → Recherche UNIQUE dans AgentCheckpointAssignment…");
 
-    const assignments = await prisma.agentCheckpointAssignment.findMany({
-        where: { userId },
+    const assignment = await prisma.agentCheckpointAssignment.findFirst({
+        where: { 
+            userId: userId,
+            // Optionnel: vérifier que l'assignation est encore valide
+            // OR: [
+            //     { endDate: null },
+            //     { endDate: { gt: new Date() } }
+            // ]
+        },
         include: {
             checkpoint: {
                 include: {
@@ -379,38 +382,15 @@ class AuthService {
                     _count: { select: { visits: true, sosAlerts: true } }
                 }
             }
-        }
+        },
+        orderBy: { startDate: 'desc' } // Prend la plus récente
     });
 
-    let agentCheckpoint = assignments.length > 0 ? assignments[0].checkpoint : null;
+    console.log("🔍 DEBUG → Assignment trouvé:", assignment ? "OUI" : "NON");
 
-    console.log(
-        "🔍 DEBUG → Checkpoint trouvé via assignment:",
-        agentCheckpoint ? agentCheckpoint.name : "AUCUN"
-    );
-
-    // 3️⃣ Si aucun checkpoint via assignment → utiliser les sites assignés
-    if (!agentCheckpoint && user.assignedSites.length > 0) {
-        const siteId = user.assignedSites[0].site.id;
-
-        console.log("🔍 DEBUG → Lookup checkpoint par site assigné →", siteId);
-
-        agentCheckpoint = await prisma.checkpoint.findFirst({
-            where: { siteId },
-            include: {
-                site: { select: { id: true, name: true, city: true, address: true } },
-                _count: { select: { visits: true, sosAlerts: true } }
-            }
-        });
-
-        console.log(
-            "🔍 DEBUG → Checkpoint par site:",
-            agentCheckpoint ? agentCheckpoint.name : "AUCUN"
-        );
-    }
-
-    // 4️⃣ Si toujours rien → tableau vide
-    if (!agentCheckpoint) {
+    // 3️⃣ Si AUCUN assignment → tableau vide
+    if (!assignment) {
+        console.log("⚠️  Aucun checkpoint assigné via AgentCheckpointAssignment");
         return {
             agent: {
                 ...user,
@@ -432,11 +412,21 @@ class AuthService {
         };
     }
 
-    // 5️⃣ Récupérer visiteurs + visites du checkpoint
+    // Récupérer le checkpoint depuis l'assignment
+    const agentCheckpoint = assignment.checkpoint;
+    const checkpointId = agentCheckpoint.id; // ← L'ID UNIQUE du checkpoint
+
+    console.log(
+        "✅ Checkpoint trouvé via AgentCheckpointAssignment:",
+        agentCheckpoint.name,
+        "(ID:", checkpointId + ")"
+    );
+
+    // 4️⃣ Récupérer visiteurs + visites du checkpoint (avec son ID)
     const [visitors, visits] = await Promise.all([
         prisma.visitor.findMany({
             where: {
-                visits: { some: { checkpointId: agentCheckpoint.id } }
+                visits: { some: { checkpointId: checkpointId } } // ← Utilise checkpointId
             },
             select: {
                 id: true,
@@ -448,7 +438,7 @@ class AuthService {
                 createdAt: true,
                 _count: {
                     select: {
-                        visits: { where: { checkpointId: agentCheckpoint.id } }
+                        visits: { where: { checkpointId: checkpointId } } // ← Ici aussi
                     }
                 }
             },
@@ -457,7 +447,7 @@ class AuthService {
         }),
 
         prisma.visit.findMany({
-            where: { checkpointId: agentCheckpoint.id },
+            where: { checkpointId: checkpointId }, // ← Et ici
             include: {
                 visitor: true,
                 checkpoint: true
@@ -467,25 +457,26 @@ class AuthService {
         })
     ]);
 
-    // 6️⃣ Statistiques
+    // 5️⃣ Statistiques (toujours avec checkpointId)
     const [activeVisitsCount, todayVisitsCount, blacklistedVisitorsCount] = await Promise.all([
         prisma.visit.count({
-            where: { checkpointId: agentCheckpoint.id, status: "ACTIVE" }
+            where: { checkpointId: checkpointId, status: "ACTIVE" }
         }),
         prisma.visit.count({
             where: {
-                checkpointId: agentCheckpoint.id,
+                checkpointId: checkpointId,
                 entryTime: { gte: new Date(new Date().setHours(0, 0, 0, 0)) }
             }
         }),
         prisma.visitor.count({
             where: {
                 isBlacklisted: true,
-                visits: { some: { checkpointId: agentCheckpoint.id } }
+                visits: { some: { checkpointId: checkpointId } }
             }
         })
     ]);
 
+    // 6️⃣ Retourner les données
     return {
         agent: {
             ...user,
@@ -513,10 +504,15 @@ class AuthService {
                 agentCheckpoint._count.visits > 0
                     ? `${((activeVisitsCount / agentCheckpoint._count.visits) * 100).toFixed(2)}%`
                     : "0%"
+        },
+        // Optionnel: retourner l'ID du assignment aussi
+        assignmentInfo: {
+            assignmentId: assignment.id,
+            startDate: assignment.startDate,
+            endDate: assignment.endDate
         }
     };
 }
-
 }
 
 const authService = new AuthService();

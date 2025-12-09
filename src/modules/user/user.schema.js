@@ -13,10 +13,10 @@ const createUserSchema = z.object({
     .min(1, "Last name is required")
     .max(100, "Last name cannot exceed 100 characters"),
   username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(50, "Username cannot exceed 50 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores")
-    .optional(),
+    .optional()
+    .nullable(),
+  email: optionalEmailValidation,
+  
   email: emailValidation,
   password: z.string()
     .min(6, "Password must be at least 6 characters")
@@ -24,10 +24,7 @@ const createUserSchema = z.object({
   role: z.enum(['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'])
     .optional()
     .default('AGENT_CONTROLE'),
-  phone: z.string()
-    .regex(/^[0-9+\-\s()]{10,20}$/, "Phone number must be valid")
-    .optional()
-    .or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')).nullable(),
   isActive: z.boolean()
     .optional()
     .default(true),
@@ -54,16 +51,10 @@ const updateUserSchema = z.object({
     .max(100, "Last name cannot exceed 100 characters")
     .optional(),
   username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(50, "Username cannot exceed 50 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers and underscores")
     .optional()
-    .or(z.literal('')),
+    .nullable(),
   email: optionalEmailValidation,
-  phone: z.string()
-    .regex(/^[0-9+\-\s()]{10,20}$/, "Phone number must be valid")
-    .optional()
-    .or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')).nullable(),
   role: z.enum(['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'])
     .optional(),
   isActive: z.boolean()

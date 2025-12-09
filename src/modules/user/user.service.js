@@ -23,17 +23,22 @@ class UserService {
       }
     }
 
-    // Vérifier que les sites existent (obligatoire pour les agents)
-    if (!data.assignedSites || data.assignedSites.length === 0) {
-      throw new Error('Au moins un site doit être assigné à un utilisateur');
+    // Vérifier que les sites existent (obligatoire seulement pour les agents, pas pour les chefs de service)
+    if (data.role !== 'CHEF_SERVICE') {
+      if (!data.assignedSites || data.assignedSites.length === 0) {
+        throw new Error('Au moins un site doit être assigné à un utilisateur');
+      }
     }
 
-    const sites = await prisma.site.findMany({
-      where: { id: { in: data.assignedSites } }
-    });
+    // Vérifier que les sites existent (seulement si des sites sont fournis)
+    if (data.assignedSites && data.assignedSites.length > 0) {
+      const sites = await prisma.site.findMany({
+        where: { id: { in: data.assignedSites } }
+      });
 
-    if (sites.length !== data.assignedSites.length) {
-      throw new Error('Un ou plusieurs sites spécifiés n\'existent pas');
+      if (sites.length !== data.assignedSites.length) {
+        throw new Error('Un ou plusieurs sites spécifiés n\'existent pas');
+      }
     }
 
     // ---------------------------
