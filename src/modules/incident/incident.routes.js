@@ -19,4 +19,10 @@ router.get(
     incidentController.getWeeklyIncidents
 );
 
+
+router.get(
+  '/checkpoint/:checkpointId',
+  incidentController.getIncidentsByCheckpoint
+);
+
 module.exports = router;

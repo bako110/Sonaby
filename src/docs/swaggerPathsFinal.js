@@ -1133,7 +1133,108 @@ const swaggerPathsFinal = {
       }
     }
   },
-
+ '/api/v1/incidents/checkpoint/{checkpointId}': {
+  get: {
+    tags: ['Incidents'],
+    summary: '📍 Récupérer les incidents de la semaine pour un checkpoint',
+    description: 'Retourne tous les incidents du site associé au checkpoint pour la semaine en cours (lundi à dimanche).',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { 
+        name: 'checkpointId', 
+        in: 'path', 
+        required: true, 
+        schema: { 
+          type: 'string', 
+          format: 'uuid' 
+        }, 
+        description: 'ID du checkpoint' 
+      }
+    ],
+    responses: {
+      200: {
+        description: '✅ Incidents récupérés avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { 
+                  type: 'boolean', 
+                  example: true 
+                },
+                message: { 
+                  type: 'string', 
+                  example: '3 incident(s) trouvé(s) pour la semaine du checkpoint' 
+                },
+                data: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Incident' }
+                }
+              }
+            }
+          }
+        }
+      },
+      400: {
+        description: '❌ checkpointId manquant ou invalide',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Le checkpointId est requis.' }
+              }
+            }
+          }
+        }
+      },
+      404: {
+        description: '❌ Checkpoint non trouvé',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Checkpoint non trouvé avec l\'ID fourni' }
+              }
+            }
+          }
+        }
+      },
+      403: {
+        description: '❌ Accès refusé',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Accès refusé. Vous n\'avez pas les permissions nécessaires.' }
+              }
+            }
+          }
+        }
+      },
+      500: {
+        description: '❌ Erreur serveur',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Erreur lors de la récupération des incidents.' }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+},
 
 
 

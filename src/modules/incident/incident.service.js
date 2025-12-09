@@ -903,6 +903,68 @@ class IncidentService {
       };
     }
   }
+
+  async getWeeklyIncidentsByCheckpoint(checkpointId) {
+  try {
+    // Vérifier si le checkpoint existe et récupérer son site
+    const checkpoint = await prisma.checkpoint.findUnique({
+      where: { id: checkpointId },
+      select: { siteId: true }
+    });
+
+    if (!checkpoint) {
+      throw new Error('Checkpoint non trouvé');
+    }
+
+    // Calculer le début (lundi) et la fin (dimanche) de la semaine actuelle
+    const today = new Date();
+    
+    // Début de semaine (lundi)
+    const startOfWeek = new Date(today);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Fin de semaine (dimanche)
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Récupérer les incidents du site du checkpoint pour cette semaine
+    const incidents = await prisma.incident.findMany({
+      where: {
+        siteId: checkpoint.siteId,
+        dateIncident: {
+          gte: startOfWeek,
+          lte: endOfWeek
+        }
+      },
+      include: {
+        reporter: {
+          select: { 
+            id: true, 
+            firstName: true, 
+            lastName: true 
+          }
+        }
+      },
+      orderBy: {
+        dateIncident: 'desc'
+      }
+    });
+
+    return {
+      success: true,
+      message: `${incidents.length} incident(s) trouvé(s) pour la semaine du checkpoint ${checkpointId}`,
+      data: incidents
+    };
+
+  } catch (error) {
+    throw new Error(`Erreur: ${error.message}`);
+  }
+}
+
 }
 
 module.exports = new IncidentService();

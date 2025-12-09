@@ -238,6 +238,27 @@ class IncidentController {
     }
 });
 
+getIncidentsByCheckpoint = async (req, res) => {
+    try {
+      const { checkpointId } = req.params;
+      const filters = req.query; // Pour les filtres optionnels
+
+      const result = await incidentService.getWeeklyIncidentsByCheckpoint(checkpointId);
+
+      if (!result.success) {
+        return res.status(404).json(result);
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('Erreur contrôleur getIncidentsByCheckpoint:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur serveur lors de la récupération des incidents par checkpoint'
+      });
+    }
+  }
+
 }
 
 module.exports = new IncidentController();

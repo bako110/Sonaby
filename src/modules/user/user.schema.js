@@ -5,7 +5,8 @@ const createUserSchema = z.object({
   matricule: z.string()
     .min(1, 'Le matricule est requis')
     .max(50, 'Le matricule ne peut pas dépasser 50 caractères')
-    .optional(),
+    .optional()
+    .nullable(),
   firstName: z.string()
     .min(1, "First name is required")
     .max(100, "First name cannot exceed 100 characters"),
