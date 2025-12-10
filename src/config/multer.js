@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 
 // 🔹 1. Chemin de base : LOCAL ou PRODUCTION (Fly.io)
 const BASE_UPLOAD_DIR = process.env.FLY_APP_NAME
-  ? '/uploads'                           // Fly.io → dossier persistant
+  ? process.env.UPLOAD_DIR                           // Fly.io → dossier persistant
   : path.join(__dirname, '..', '..', 'uploads'); // Local → ./uploads/
 
 // 🔹 2. Vérifier/créer le dossier racine
