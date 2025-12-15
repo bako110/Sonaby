@@ -1,71 +1,29 @@
+// src/routes/notification.routes.js
 const express = require('express');
-const { authenticateToken } = require('../../middleware/authMiddleware');
-const notificationController = require('./notification.controller');
-
 const router = express.Router();
+const notificationController = require('./notification.controller');
+const { authenticateToken } = require('../../middleware/authMiddleware');
+
+// Toutes les routes nécessitent une authentification
+router.use(authenticateToken);
 
 /**
  * @swagger
  * tags:
  *   name: Notifications
- *   description: Gestion des notifications utilisateur
+ *   description: Gestion des notifications
  */
 
 /**
  * @swagger
- * /api/v1/notifications:
+ * /api/notifications:
  *   get:
- *     summary: Récupérer les notifications de l'utilisateur
+ *     summary: Récupère toutes les notifications de l'utilisateur
+ *     description: Retourne les notifications personnelles et globales
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: siteId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filtrer par site spécifique
- *       - in: query
- *         name: unread
- *         schema:
- *           type: boolean
- *         description: Filtrer uniquement les notifications non lues
- *       - in: query
- *         name: type
- *         schema:
- *           type: string
- *           enum: [SOS, INCIDENT, BLACKLIST, VISIT, RENDEZVOUS, SYSTEM, ALERT]
- *         description: Filtrer par type de notification
- *       - in: query
- *         name: priority
- *         schema:
- *           type: string
- *           enum: [low, medium, high]
- *         description: Filtrer par priorité
- *       - in: query
- *         name: entityType
- *         schema:
- *           type: string
- *         description: Filtrer par type d'entité (SOS, INCIDENT, etc.)
- *       - in: query
- *         name: entityId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filtrer par ID d'entité spécifique
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date-time
- *         description: Date de début pour filtrer
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date-time
- *         description: Date de fin pour filtrer
  *       - in: query
  *         name: limit
  *         schema:
@@ -73,14 +31,20 @@ const router = express.Router();
  *           default: 50
  *         description: Nombre maximum de notifications à retourner
  *       - in: query
- *         name: page
+ *         name: unreadOnly
  *         schema:
- *           type: integer
- *           default: 1
- *         description: Numéro de page pour la pagination
+ *           type: boolean
+ *           default: false
+ *         description: Retourner uniquement les notifications non lues
+ *       - in: query
+ *         name: includeGlobal
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure les notifications globales
  *     responses:
  *       200:
- *         description: Liste des notifications récupérée avec succès
+ *         description: Liste des notifications
  *         content:
  *           application/json:
  *             schema:
@@ -88,134 +52,66 @@ const router = express.Router();
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Notification'
+ *                 count:
+ *                   type: integer
+ *                   example: 15
+ *       401:
+ *         description: Non authentifié
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/', (req, res) => notificationController.getUserNotifications(req, res));
+
+/**
+ * @swagger
+ * /api/notifications/stats:
+ *   get:
+ *     summary: Récupère les statistiques des notifications
+ *     description: Retourne le nombre total, lu et non lu
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Statistiques des notifications
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
  *                   properties:
- *                     notifications:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Notification'
- *                     pagination:
- *                       type: object
- *                       properties:
- *                         total:
- *                           type: integer
- *                         page:
- *                           type: integer
- *                         limit:
- *                           type: integer
- *                         totalPages:
- *                           type: integer
- *                     unreadCount:
+ *                     total:
  *                       type: integer
+ *                       example: 25
+ *                     unread:
+ *                       type: integer
+ *                       example: 5
+ *                     read:
+ *                       type: integer
+ *                       example: 20
  *       401:
- *         description: Non autorisé
+ *         description: Non authentifié
  *       500:
  *         description: Erreur serveur
  */
-router.get('/', authenticateToken, notificationController.getNotifications);
+router.get('/stats', (req, res) => notificationController.getNotificationStats(req, res));
 
 /**
  * @swagger
- * /api/v1/notifications/site/{siteId}:
- *   get:
- *     summary: Récupérer les notifications d'un site (Admin/Site Manager)
- *     tags: [Notifications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: siteId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID du site
- *       - in: query
- *         name: type
- *         schema:
- *           type: string
- *         description: Filtrer par type de notification
- *       - in: query
- *         name: priority
- *         schema:
- *           type: string
- *         description: Filtrer par priorité
- *       - in: query
- *         name: userId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filtrer par utilisateur
- *       - in: query
- *         name: unread
- *         schema:
- *           type: boolean
- *         description: Filtrer uniquement les notifications non lues
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 50
- *         description: Nombre maximum de notifications
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Numéro de page
- *     responses:
- *       200:
- *         description: Notifications du site récupérées avec succès
- *       403:
- *         description: Accès non autorisé
- *       500:
- *         description: Erreur serveur
- */
-router.get('/site/:siteId', authenticateToken, notificationController.getSiteNotifications);
-
-/**
- * @swagger
- * /api/v1/notifications/{id}:
- *   get:
- *     summary: Récupérer une notification spécifique
- *     tags: [Notifications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID de la notification
- *     responses:
- *       200:
- *         description: Notification récupérée avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   $ref: '#/components/schemas/Notification'
- *       404:
- *         description: Notification non trouvée
- *       401:
- *         description: Non autorisé
- *       500:
- *         description: Erreur serveur
- */
-router.get('/:id', authenticateToken, notificationController.getNotificationById);
-
-/**
- * @swagger
- * /api/v1/notifications/{id}/read:
- *   patch:
- *     summary: Marquer une notification comme lue
+ * /api/notifications/{id}/read:
+ *   put:
+ *     summary: Marque une notification comme lue
+ *     description: Met à jour le statut de lecture d'une notification spécifique
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
@@ -230,62 +126,6 @@ router.get('/:id', authenticateToken, notificationController.getNotificationById
  *     responses:
  *       200:
  *         description: Notification marquée comme lue
- *       404:
- *         description: Notification non trouvée
- *       401:
- *         description: Non autorisé
- *       500:
- *         description: Erreur serveur
- */
-router.patch('/:id/read', authenticateToken, notificationController.markAsRead);
-
-/**
- * @swagger
- * /api/v1/notifications/read-all:
- *   post:
- *     summary: Marquer toutes les notifications comme lues
- *     tags: [Notifications]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               siteId:
- *                 type: string
- *                 format: uuid
- *                 description: ID du site (optionnel - marquer seulement les notifications de ce site)
- *     responses:
- *       200:
- *         description: Toutes les notifications marquées comme lues
- *       401:
- *         description: Non autorisé
- *       500:
- *         description: Erreur serveur
- */
-router.post('/read-all', authenticateToken, notificationController.markAllAsRead);
-
-/**
- * @swagger
- * /api/v1/notifications/unread/count:
- *   get:
- *     summary: Récupérer le nombre de notifications non lues
- *     tags: [Notifications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: siteId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID du site (optionnel - compter seulement les notifications de ce site)
- *     responses:
- *       200:
- *         description: Nombre de notifications non lues
  *         content:
  *           application/json:
  *             schema:
@@ -293,74 +133,389 @@ router.post('/read-all', authenticateToken, notificationController.markAllAsRead
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Notification marquée comme lue"
  *                 data:
- *                   type: object
- *                   properties:
- *                     unreadCount:
- *                       type: integer
- *                     siteId:
- *                       type: string
- *       401:
- *         description: Non autorisé
- *       500:
- *         description: Erreur serveur
- */
-router.get('/unread/count', authenticateToken, notificationController.getUnreadCount);
-
-/**
- * @swagger
- * /api/v1/notifications/{id}:
- *   delete:
- *     summary: Supprimer une notification
- *     tags: [Notifications]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID de la notification
- *     responses:
- *       200:
- *         description: Notification supprimée avec succès
+ *                   $ref: '#/components/schemas/Notification'
  *       404:
  *         description: Notification non trouvée
  *       401:
- *         description: Non autorisé
+ *         description: Non authentifié
  *       500:
  *         description: Erreur serveur
  */
-router.delete('/:id', authenticateToken, notificationController.deleteNotification);
+router.put('/:id/read', (req, res) => notificationController.markAsRead(req, res));
 
 /**
  * @swagger
- * /api/v1/notifications/test:
- *   post:
- *     summary: Créer une notification de test (développement uniquement)
+ * /api/notifications/read-all:
+ *   put:
+ *     summary: Marque toutes les notifications comme lues
+ *     description: Met à jour le statut de lecture de toutes les notifications
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               siteId:
- *                 type: string
- *                 format: uuid
- *                 description: ID du site pour la notification de test
  *     responses:
  *       200:
- *         description: Notification de test créée
+ *         description: Toutes les notifications marquées comme lues
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "10 notification(s) marquée(s) comme lue(s)"
+ *                 count:
+ *                   type: integer
+ *                   example: 10
  *       401:
- *         description: Non autorisé
+ *         description: Non authentifié
  *       500:
  *         description: Erreur serveur
  */
-router.post('/test', authenticateToken, notificationController.createTestNotification);
+router.put('/read-all', (req, res) => notificationController.markAllAsRead(req, res));
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Notification:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: ID de la notification
+ *           example: "123e4567-e89b-12d3-a456-426614174000"
+ *         type:
+ *           type: string
+ *           description: Type de notification
+ *           enum: [VISITOR_BLACKLISTED, VISITOR_UNBLACKLISTED, UNKNOWN_BLACKLISTED, UNKNOWN_UNBLACKLISTED, BLACKLIST_DETECTED]
+ *           example: "VISITOR_BLACKLISTED"
+ *         title:
+ *           type: string
+ *           description: Titre de la notification
+ *           example: "🚨 Visiteur blacklisté"
+ *         message:
+ *           type: string
+ *           description: Message de la notification
+ *           example: "John Doe a été ajouté à la blacklist"
+ *         priority:
+ *           type: string
+ *           description: Priorité de la notification
+ *           enum: [high, medium, low]
+ *           example: "high"
+ *         entityType:
+ *           type: string
+ *           description: Type d'entité concernée
+ *           example: "VISITOR"
+ *         entityId:
+ *           type: string
+ *           format: uuid
+ *           description: ID de l'entité concernée
+ *         isRead:
+ *           type: boolean
+ *           description: Statut de lecture
+ *           example: false
+ *         readAt:
+ *           type: string
+ *           format: date-time
+ *           description: Date de lecture
+ *         userId:
+ *           type: string
+ *           format: uuid
+ *           description: ID de l'utilisateur destinataire
+ *         siteId:
+ *           type: string
+ *           format: uuid
+ *           description: ID du site concerné
+ *         createdBy:
+ *           type: string
+ *           format: uuid
+ *           description: ID du créateur
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Date de création
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Date de mise à jour
+ *         metadata:
+ *           type: object
+ *           description: Métadonnées supplémentaires
+ *           properties:
+ *             isGlobal:
+ *               type: boolean
+ *               example: true
+ *             action:
+ *               type: string
+ *               example: "visitor_blacklisted"
+ *         creator:
+ *           $ref: '#/components/schemas/UserBasic'
+ *     
+ *     UserBasic:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         firstName:
+ *           type: string
+ *         lastName:
+ *           type: string
+ *         email:
+ *           type: string
+ *           format: email
+ *   
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+/**
+ * @swagger
+ * /notifications/user/all:
+ *   get:
+ *     summary: Récupère TOUTES les notifications d'un utilisateur (SOS, incidents, indésirables)
+ *     description: |
+ *       Récupère toutes les notifications d'un utilisateur avec filtrage avancé et statistiques.
+ *       
+ *       Catégories incluses :
+ *       - SOS (alertes, résolutions, général)
+ *       - Incidents (création, mise à jour, résolution)
+ *       - Indésirables (blacklist, détection)
+ *       - Autres notifications
+ *       
+ *       Filtres disponibles :
+ *       - Par type (SOS, incidents, indésirables)
+ *       - Par statut de lecture (lu/non lu)
+ *       - Par catégorie (personnelle, site, globale)
+ *       
+ *       Retourne des statistiques détaillées.
+ *     tags:
+ *       - Notifications
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: ID de l'utilisateur
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Nombre maximum de notifications par catégorie
+ *       - in: query
+ *         name: unreadOnly
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure uniquement les notifications non lues
+ *       - in: query
+ *         name: includeSOS
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure les notifications SOS
+ *       - in: query
+ *         name: includeIncidents
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure les notifications d'incidents
+ *       - in: query
+ *         name: includeUndesirables
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure les notifications d'indésirables
+ *       - in: query
+ *         name: includePersonal
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure les notifications personnelles
+ *       - in: query
+ *         name: includeSite
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure les notifications de site
+ *       - in: query
+ *         name: includeGlobal
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Inclure les notifications globales
+ *     responses:
+ *       200:
+ *         description: Toutes les notifications groupées avec statistiques
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sos:
+ *                       type: array
+ *                       description: Notifications SOS (alertes et résolutions)
+ *                       items:
+ *                         $ref: '#/components/schemas/Notification'
+ *                     incidents:
+ *                       type: array
+ *                       description: Notifications d'incidents
+ *                       items:
+ *                         $ref: '#/components/schemas/Notification'
+ *                     undesirables:
+ *                       type: array
+ *                       description: Notifications d'indésirables
+ *                       items:
+ *                         $ref: '#/components/schemas/Notification'
+ *                     others:
+ *                       type: array
+ *                       description: Autres notifications
+ *                       items:
+ *                         $ref: '#/components/schemas/Notification'
+ *                     statistics:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 45
+ *                           description: Nombre total de notifications
+ *                         unread:
+ *                           type: integer
+ *                           example: 12
+ *                           description: Nombre de notifications non lues
+ *                         read:
+ *                           type: integer
+ *                           example: 33
+ *                           description: Nombre de notifications lues
+ *                         byType:
+ *                           type: object
+ *                           properties:
+ *                             sos:
+ *                               type: object
+ *                               properties:
+ *                                 total:
+ *                                   type: integer
+ *                                   example: 8
+ *                                 unread:
+ *                                   type: integer
+ *                                   example: 3
+ *                             incidents:
+ *                               type: object
+ *                               properties:
+ *                                 total:
+ *                                   type: integer
+ *                                   example: 15
+ *                                 unread:
+ *                                   type: integer
+ *                                   example: 5
+ *                             undesirables:
+ *                               type: object
+ *                               properties:
+ *                                 total:
+ *                                   type: integer
+ *                                   example: 10
+ *                                 unread:
+ *                                   type: integer
+ *                                   example: 2
+ *                             others:
+ *                               type: object
+ *                               properties:
+ *                                 total:
+ *                                   type: integer
+ *                                   example: 12
+ *                                 unread:
+ *                                   type: integer
+ *                                   example: 2
+ *                         byCategory:
+ *                           type: object
+ *                           properties:
+ *                             personal:
+ *                               type: integer
+ *                               example: 5
+ *                               description: Notifications personnelles
+ *                             site:
+ *                               type: integer
+ *                               example: 25
+ *                               description: Notifications de site
+ *                             global:
+ *                               type: integer
+ *                               example: 15
+ *                               description: Notifications globales
+ *                         userAccess:
+ *                           type: object
+ *                           properties:
+ *                             sitesAccessible:
+ *                               type: integer
+ *                               example: 3
+ *                               description: Nombre de sites accessibles
+ *                             sitesWithNotifications:
+ *                               type: integer
+ *                               example: 2
+ *                               description: Nombre de sites avec notifications
+ *                         filtersApplied:
+ *                           type: object
+ *                           properties:
+ *                             unreadOnly:
+ *                               type: boolean
+ *                               example: true
+ *                             includeSOS:
+ *                               type: boolean
+ *                               example: true
+ *                             includeIncidents:
+ *                               type: boolean
+ *                               example: true
+ *                             includeUndesirables:
+ *                               type: boolean
+ *                               example: true
+ *                             includePersonal:
+ *                               type: boolean
+ *                               example: true
+ *                             includeSite:
+ *                               type: boolean
+ *                               example: true
+ *                             includeGlobal:
+ *                               type: boolean
+ *                               example: true
+ *       400:
+ *         description: Requête invalide (userId manquant ou paramètres invalides)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "userId est requis"
+ *       401:
+ *         description: Non authentifié
+ *       500:
+ *         description: Erreur serveur
+ */
+router.get('/user/all', notificationController.getAllUserNotifications);
 
 module.exports = router;

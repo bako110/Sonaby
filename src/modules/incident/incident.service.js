@@ -1,7 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
-const notificationService = require('../notification/notification.service');
-
 const prisma = new PrismaClient();
+const notificationService = require('../notification/notification.service');
 
 class IncidentService {
   async createIncident(incidentData, reportedBy) {
@@ -11,20 +10,20 @@ class IncidentService {
         throw new Error('Titre, description, dateIncident et siteId sont requis');
       }
 
-      // 🔹 Vérifier que le site existe (CORRECTION ICI - pas de relation manager)
-      const site = await prisma.site.findUnique({ 
+      // 🔹 Vérifier que le site existe
+      const site = await prisma.site.findUnique({
         where: { id: incidentData.siteId },
-        select: { // Utiliser select au lieu de include pour les champs scalaires
+        select: {
           id: true,
           name: true,
           address: true,
           city: true,
-          managerEmail: true, // ✅ Champ scalaire, pas de relation
-          manager: true,      // ✅ Champ scalaire pour le nom du manager
-          managerPhone: true, // ✅ Champ scalaire
+          managerEmail: true,
+          manager: true,
+          managerPhone: true,
         }
       });
-      
+
       if (!site) throw new Error('Site non trouvé');
 
       // 🔹 Récupérer les agents assignés au site via UserSite
@@ -59,7 +58,7 @@ class IncidentService {
 
       // 🔹 Vérifier l'utilisateur rapporteur
       if (!reportedBy) throw new Error('Utilisateur rapporteur requis');
-      const reporter = await prisma.user.findUnique({ 
+      const reporter = await prisma.user.findUnique({
         where: { id: reportedBy },
         select: {
           id: true,
@@ -103,17 +102,17 @@ class IncidentService {
         await this.notifyAgents(incident);
       }
 
-      return { 
-        success: true, 
-        message: 'Incident créé avec succès', 
-        data: incident 
+      return {
+        success: true,
+        message: 'Incident créé avec succès',
+        data: incident
       };
 
     } catch (error) {
       console.error('Erreur création incident:', error);
-      return { 
-        success: false, 
-        message: `Erreur lors de la création de l'incident: ${error.message}` 
+      return {
+        success: false,
+        message: `Erreur lors de la création de l'incident: ${error.message}`
       };
     }
   }
@@ -140,27 +139,16 @@ class IncidentService {
       });
 
       // 1. Notification au rapporteur
-      await notificationService.createNotification({
-        type: 'INCIDENT',
-        title: `📋 Incident créé - ${incident.titre}`,
-        message: `Vous avez créé un incident "${incident.titre}" sur le site ${site.name}`,
-        priority: incident.severite === 'CRITIQUE' || incident.severite === 'HAUTE' ? 'high' : 'medium',
-        entityType: 'INCIDENT',
-        entityId: incident.id,
-        userId: reporter.id,
+      await notificationService.createIncidentCreatedNotification({
+        incidentId: incident.id,
+        incidentTitle: incident.titre,
         siteId: site.id,
-        createdBy: reporter.id,
-        metadata: {
-          incidentId: incident.id,
-          incidentTitle: incident.titre,
-          severity: incident.severite,
-          priority: incident.priorite,
-          siteId: site.id,
-          siteName: site.name,
-          reporterName: `${reporter.firstName} ${reporter.lastName}`,
-          visitorInvolved: visitor ? `${visitor.firstName} ${visitor.lastName}` : null,
-          action: 'incident_created'
-        }
+        siteName: site.name,
+        reporterId: reporter.id,
+        reporterName: `${reporter.firstName} ${reporter.lastName}`,
+        severity: incident.severite,
+        priority: incident.priorite,
+        visitorInvolved: visitor ? `${visitor.firstName} ${visitor.lastName}` : null
       });
 
       // 2. Notification aux agents assignés au site
@@ -170,25 +158,13 @@ class IncidentService {
           .map(agent => agent.id);
 
         if (agentIds.length > 0) {
-          // Notification groupée aux agents
-          await notificationService.createGroupNotification({
-            type: 'INCIDENT',
-            title: `🚨 Nouvel incident sur votre site`,
-            message: `Un incident "${incident.titre}" (${incident.severite}) a été signalé sur ${site.name} par ${reporter.firstName} ${reporter.lastName}`,
-            priority: incident.severite === 'CRITIQUE' ? 'high' : 'medium',
-            entityType: 'INCIDENT',
-            entityId: incident.id,
-            userIds: agentIds,
+          await notificationService.createIncidentAgentAlertNotification({
+            incidentId: incident.id,
+            incidentTitle: incident.titre,
             siteId: site.id,
-            createdBy: reporter.id,
-            metadata: {
-              incidentId: incident.id,
-              incidentTitle: incident.titre,
-              severity: incident.severite,
-              siteName: site.name,
-              reporterName: `${reporter.firstName} ${reporter.lastName}`,
-              action: 'site_agent_alert'
-            }
+            siteName: site.name,
+            severity: incident.severite,
+            reporterName: `${reporter.firstName} ${reporter.lastName}`
           });
         }
       }
@@ -200,25 +176,19 @@ class IncidentService {
           .map(admin => admin.id);
 
         if (adminIds.length > 0) {
-          await notificationService.createGroupNotification({
-            type: 'INCIDENT',
-            title: `⚠️ Nouvel incident signalé`,
-            message: `Incident "${incident.titre}" (${incident.severite}) sur ${site.name}`,
-            priority: incident.severite === 'CRITIQUE' ? 'high' : 'medium',
-            entityType: 'INCIDENT',
-            entityId: incident.id,
-            userIds: adminIds,
-            siteId: site.id,
-            createdBy: reporter.id,
-            metadata: {
+          for (const admin of admins) {
+            await notificationService.createIncidentCreatedNotification({
               incidentId: incident.id,
               incidentTitle: incident.titre,
-              severity: incident.severite,
+              siteId: site.id,
               siteName: site.name,
-              reporterName: `${reporter.firstName} ${reporter.lastName}`,
-              action: 'admin_incident_alert'
-            }
-          });
+              reporterId: admin.id,
+              reporterName: `${admin.firstName} ${admin.lastName}`,
+              severity: incident.severite,
+              priority: incident.priorite,
+              visitorInvolved: visitor ? `${visitor.firstName} ${visitor.lastName}` : null
+            });
+          }
         }
       }
 
@@ -232,34 +202,60 @@ class IncidentService {
         });
 
         if (managerUser && managerUser.id !== reporter.id) {
-          await notificationService.createNotification({
-            type: 'INCIDENT',
-            title: `🏢 Incident sur votre site`,
-            message: `Un incident "${incident.titre}" a été signalé sur ${site.name}`,
-            priority: incident.severite === 'CRITIQUE' ? 'high' : 'medium',
-            entityType: 'INCIDENT',
-            entityId: incident.id,
-            userId: managerUser.id,
+          await notificationService.createIncidentManagerAlertNotification({
+            incidentId: incident.id,
+            incidentTitle: incident.titre,
             siteId: site.id,
-            createdBy: reporter.id,
-            metadata: {
-              incidentId: incident.id,
-              incidentTitle: incident.titre,
-              severity: incident.severite,
-              siteName: site.name,
-              managerName: site.manager || 'Manager',
-              reporterName: `${reporter.firstName} ${reporter.lastName}`,
-              action: 'site_manager_alert'
-            }
+            siteName: site.name,
+            severity: incident.severite,
+            reporterName: `${reporter.firstName} ${reporter.lastName}`,
+            managerName: site.manager || 'Manager'
           });
         }
       }
 
       console.log('✅ Notifications incident envoyées avec succès');
-      
+
     } catch (error) {
       console.error('❌ Erreur lors de l\'envoi des notifications incident:', error);
       // Ne pas bloquer la création de l'incident
+    }
+  }
+
+  /**
+   * Envoyer notification de mise à jour d'incident
+   */
+  async sendIncidentUpdateNotification(incident, updatedById) {
+    try {
+      const updater = await prisma.user.findUnique({
+        where: { id: updatedById },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true
+        }
+      });
+
+      if (!updater) {
+        console.error('❌ Utilisateur metteur à jour non trouvé');
+        return;
+      }
+
+      // Notification au rapporteur original
+      if (incident.reportedBy && incident.reportedBy !== updatedById) {
+        await notificationService.createIncidentUpdatedNotification({
+          incidentId: incident.id,
+          incidentTitle: incident.titre,
+          siteId: incident.siteId,
+          updatedById: updatedById,
+          updatedByName: `${updater.firstName} ${updater.lastName}`
+        });
+      }
+
+      console.log('✅ Notification mise à jour incident envoyée');
+
+    } catch (error) {
+      console.error('❌ Erreur notification mise à jour incident:', error);
     }
   }
 
@@ -269,7 +265,7 @@ class IncidentService {
   async sendIncidentResolutionNotification(incident, resolvedById) {
     try {
       console.log('🔔 Envoi notification résolution incident');
-      
+
       // Récupérer le résolveur
       const resolver = await prisma.user.findUnique({
         where: { id: resolvedById },
@@ -314,23 +310,13 @@ class IncidentService {
 
       // 1. Notification au rapporteur original
       if (incident.reportedBy && incident.reportedBy !== resolvedById) {
-        await notificationService.createNotification({
-          type: 'INCIDENT',
-          title: `✅ Incident résolu - ${incident.titre}`,
-          message: `Votre incident "${incident.titre}" a été résolu par ${resolver.firstName} ${resolver.lastName}`,
-          priority: 'medium',
-          entityType: 'INCIDENT',
-          entityId: incident.id,
-          userId: incident.reportedBy,
+        await notificationService.createIncidentResolvedNotification({
+          incidentId: incident.id,
+          incidentTitle: incident.titre,
           siteId: incident.siteId,
-          createdBy: resolvedById,
-          metadata: {
-            incidentId: incident.id,
-            incidentTitle: incident.titre,
-            resolvedByName: `${resolver.firstName} ${resolver.lastName}`,
-            resolvedAt: new Date().toISOString(),
-            action: 'incident_resolved_to_reporter'
-          }
+          siteName: siteDetails.name,
+          resolvedById: resolvedById,
+          resolvedByName: `${resolver.firstName} ${resolver.lastName}`
         });
       }
 
@@ -341,23 +327,13 @@ class IncidentService {
           .filter(agentId => agentId !== resolvedById && agentId !== incident.reportedBy);
 
         if (agentIds.length > 0) {
-          await notificationService.createGroupNotification({
-            type: 'INCIDENT',
-            title: `✅ Incident résolu`,
-            message: `L'incident "${incident.titre}" sur ${siteDetails.name} a été résolu par ${resolver.firstName} ${resolver.lastName}`,
-            priority: 'medium',
-            entityType: 'INCIDENT',
-            entityId: incident.id,
-            userIds: agentIds,
+          await notificationService.createIncidentResolvedNotification({
+            incidentId: incident.id,
+            incidentTitle: incident.titre,
             siteId: incident.siteId,
-            createdBy: resolvedById,
-            metadata: {
-              incidentId: incident.id,
-              incidentTitle: incident.titre,
-              resolvedByName: `${resolver.firstName} ${resolver.lastName}`,
-              siteName: siteDetails.name,
-              action: 'incident_resolved_to_agents'
-            }
+            siteName: siteDetails.name,
+            resolvedById: resolvedById,
+            resolvedByName: `${resolver.firstName} ${resolver.lastName}`
           });
         }
       }
@@ -371,35 +347,23 @@ class IncidentService {
         });
 
         if (managerUser && managerUser.id !== resolvedById) {
-          await notificationService.createNotification({
-            type: 'INCIDENT',
-            title: `✅ Incident résolu sur votre site`,
-            message: `L'incident "${incident.titre}" sur ${siteDetails.name} a été résolu par ${resolver.firstName} ${resolver.lastName}`,
-            priority: 'medium',
-            entityType: 'INCIDENT',
-            entityId: incident.id,
-            userId: managerUser.id,
+          await notificationService.createIncidentResolvedNotification({
+            incidentId: incident.id,
+            incidentTitle: incident.titre,
             siteId: incident.siteId,
-            createdBy: resolvedById,
-            metadata: {
-              incidentId: incident.id,
-              incidentTitle: incident.titre,
-              resolvedByName: `${resolver.firstName} ${resolver.lastName}`,
-              siteName: siteDetails.name,
-              action: 'incident_resolved_to_manager'
-            }
+            siteName: siteDetails.name,
+            resolvedById: resolvedById,
+            resolvedByName: `${resolver.firstName} ${resolver.lastName}`
           });
         }
       }
 
       console.log('✅ Notification résolution incident envoyée');
-      
+
     } catch (error) {
       console.error('❌ Erreur notification résolution incident:', error);
     }
   }
-
-  // ... (RESTE DU CODE IDENTIQUE À VOTRE VERSION PRÉCÉDENTE, SAUF LES AUTRES MÉTHODES QU'ON VA CORRIGER SIMILAIREMENT)
 
   async getIncidents(filters = {}) {
     try {
@@ -703,13 +667,13 @@ class IncidentService {
         prisma.incident.count({ where }),
 
         // Incidents résolus
-        prisma.incident.count({ 
-          where: { ...where, isResolved: true } 
+        prisma.incident.count({
+          where: { ...where, isResolved: true }
         }),
 
         // Incidents en attente
-        prisma.incident.count({ 
-          where: { ...where, isResolved: false } 
+        prisma.incident.count({
+          where: { ...where, isResolved: false }
         }),
 
         // Incidents par sévérité
@@ -802,53 +766,6 @@ class IncidentService {
     }
   }
 
-  /**
-   * Envoyer notification de mise à jour d'incident
-   */
-  async sendIncidentUpdateNotification(incident, updatedById) {
-    try {
-      const updater = await prisma.user.findUnique({
-        where: { id: updatedById },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true
-        }
-      });
-
-      if (!updater) {
-        console.error('❌ Utilisateur metteur à jour non trouvé');
-        return;
-      }
-
-      // Notification au rapporteur original
-      if (incident.reportedBy && incident.reportedBy !== updatedById) {
-        await notificationService.createNotification({
-          type: 'INCIDENT',
-          title: `✏️ Incident mis à jour`,
-          message: `Votre incident "${incident.titre}" a été mis à jour par ${updater.firstName} ${updater.lastName}`,
-          priority: 'medium',
-          entityType: 'INCIDENT',
-          entityId: incident.id,
-          userId: incident.reportedBy,
-          siteId: incident.siteId,
-          createdBy: updatedById,
-          metadata: {
-            incidentId: incident.id,
-            incidentTitle: incident.titre,
-            updatedByName: `${updater.firstName} ${updater.lastName}`,
-            action: 'incident_updated'
-          }
-        });
-      }
-
-      console.log('✅ Notification mise à jour incident envoyée');
-      
-    } catch (error) {
-      console.error('❌ Erreur notification mise à jour incident:', error);
-    }
-  }
-
   async getWeeklyIncidentsBySite(siteId) {
     try {
       const now = new Date();
@@ -905,66 +822,174 @@ class IncidentService {
   }
 
   async getWeeklyIncidentsByCheckpoint(checkpointId) {
-  try {
-    // Vérifier si le checkpoint existe et récupérer son site
-    const checkpoint = await prisma.checkpoint.findUnique({
-      where: { id: checkpointId },
-      select: { siteId: true }
-    });
-
-    if (!checkpoint) {
-      throw new Error('Checkpoint non trouvé');
-    }
-
-    // Calculer le début (lundi) et la fin (dimanche) de la semaine actuelle
-    const today = new Date();
-    
-    // Début de semaine (lundi)
-    const startOfWeek = new Date(today);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-    startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    // Fin de semaine (dimanche)
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    endOfWeek.setHours(23, 59, 59, 999);
-
-    // Récupérer les incidents du site du checkpoint pour cette semaine
-    const incidents = await prisma.incident.findMany({
-      where: {
-        siteId: checkpoint.siteId,
-        dateIncident: {
-          gte: startOfWeek,
-          lte: endOfWeek
-        }
-      },
-      include: {
-        reporter: {
-          select: { 
-            id: true, 
-            firstName: true, 
-            lastName: true 
+    try {
+      // Vérifier si le checkpoint existe et récupérer son site
+      const checkpoint = await prisma.checkpoint.findUnique({
+        where: { id: checkpointId },
+        include: {
+          site: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          agent: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              matricule: true
+            }
           }
         }
-      },
-      orderBy: {
-        dateIncident: 'desc'
+      });
+
+      if (!checkpoint) {
+        throw new Error('Checkpoint non trouvé');
       }
-    });
 
-    return {
-      success: true,
-      message: `${incidents.length} incident(s) trouvé(s) pour la semaine du checkpoint ${checkpointId}`,
-      data: incidents
-    };
+      // Calculer le début (lundi) et la fin (dimanche) de la semaine actuelle
+      const today = new Date();
 
-  } catch (error) {
-    throw new Error(`Erreur: ${error.message}`);
+      // Début de semaine (lundi)
+      const startOfWeek = new Date(today);
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      // Fin de semaine (dimanche)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+
+      // Récupérer les incidents du site du checkpoint pour cette semaine
+      const incidents = await prisma.incident.findMany({
+        where: {
+          siteId: checkpoint.siteId,
+          dateIncident: {
+            gte: startOfWeek,
+            lte: endOfWeek
+          }
+        },
+        include: {
+          reporter: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              matricule: true,
+              email: true
+            }
+          },
+          site: {
+            select: {
+              id: true,
+              name: true,
+              code: true
+            }
+          },
+          visiteur: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              idNumber: true,
+              idType: true,
+              company: true,
+              phone: true,
+              email: true,
+              phone: true
+            }
+          }
+        },
+        orderBy: {
+          dateIncident: 'desc'
+        }
+      });
+
+      // Transformer les incidents pour inclure les noms complets
+      const incidentsWithDetails = incidents.map(incident => ({
+        id: incident.id,
+        titre: incident.titre,
+        description: incident.description,
+        typeIncident: incident.typeIncident,
+        severite: incident.severite,
+        priorite: incident.priorite,
+        source: incident.source,
+        dateIncident: incident.dateIncident,
+        actionsImmediates: incident.actionsImmediates,
+        temoinPresent: incident.temoinPresent,
+        notifierAgents: incident.notifierAgents,
+        isResolved: incident.isResolved,
+        resolvedAt: incident.resolvedAt,
+        resolutionNotes: incident.resolutionNotes,
+        createdAt: incident.createdAt,
+        updatedAt: incident.updatedAt,
+
+        // Informations complètes du reporter
+        reporter: incident.reporter ? {
+          id: incident.reporter.id,
+          fullName: `${incident.reporter.firstName} ${incident.reporter.lastName}`,
+          firstName: incident.reporter.firstName,
+          lastName: incident.reporter.lastName,
+          matricule: incident.reporter.matricule,
+          email: incident.reporter.email
+        } : null,
+
+        // Informations complètes du site
+        site: incident.site ? {
+          id: incident.site.id,
+          name: incident.site.name,
+          code: incident.site.code
+        } : null,
+
+        // Informations complètes du visiteur (si applicable)
+        visiteur: incident.visiteur ? {
+          id: incident.visiteur.id,
+          fullName: `${incident.visiteur.firstName} ${incident.visiteur.lastName}`,
+          firstName: incident.visiteur.firstName,
+          lastName: incident.visiteur.lastName,
+          idNumber: incident.visiteur.idNumber,
+          idType: incident.visiteur.idType,
+          company: incident.visiteur.company,
+          phone: incident.visiteur.phone,
+          email: incident.visiteur.email
+        } : null
+      }));
+
+      return {
+        success: true,
+        message: `${incidents.length} incident(s) trouvé(s) pour la semaine`,
+        checkpointInfo: {
+          id: checkpoint.id,
+          name: checkpoint.name,
+          site: {
+            id: checkpoint.site.id,
+            name: checkpoint.site.name
+          },
+          agent: checkpoint.agent ? {
+            id: checkpoint.agent.id,
+            fullName: `${checkpoint.agent.firstName} ${checkpoint.agent.lastName}`,
+            matricule: checkpoint.agent.matricule
+          } : null
+        },
+        periode: {
+          debut: startOfWeek,
+          fin: endOfWeek
+        },
+        data: incidentsWithDetails
+      };
+
+    } catch (error) {
+      console.error('Erreur dans getWeeklyIncidentsByCheckpoint:', error);
+      return {
+        success: false,
+        message: `Erreur: ${error.message}`,
+        data: []
+      };
+    }
   }
-}
-
 }
 
 module.exports = new IncidentService();

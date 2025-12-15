@@ -187,6 +187,7 @@ class UserService {
         firstName: true,
         lastName: true,
         role: true,
+        username: true,
         isActive: true,
         phone: true,
         createdAt: true,
@@ -258,6 +259,7 @@ class UserService {
   }
 
   async updateUser(id, data) {
+  try {
     const existingUser = await this.getUserById(id);
     if (!existingUser) {
       throw new Error('Utilisateur non trouvé');
@@ -283,6 +285,16 @@ class UserService {
       }
     }
 
+    // Vérifier l'unicité du username si modifié
+    if (data.username && data.username !== existingUser.username) {
+      const usernameExists = await prisma.user.findUnique({
+        where: { username: data.username }
+      });
+      if (usernameExists) {
+        throw new Error('Un utilisateur avec ce nom d\'utilisateur existe déjà');
+      }
+    }
+
     // Vérifier que les sites existent
     if (data.assignedSites && data.assignedSites.length > 0) {
       const sites = await prisma.site.findMany({
@@ -293,11 +305,31 @@ class UserService {
       }
     }
 
-    // ✅ MODIFICATION : ACCEPTE TOUTES LES PERMISSIONS SANS VÉRIFICATION
+    // Vérifier que les checkpoints existent
+    if (data.assignedCheckpoints && data.assignedCheckpoints.length > 0) {
+      const checkpoints = await prisma.checkpoint.findMany({
+        where: { id: { in: data.assignedCheckpoints } }
+      });
+      if (checkpoints.length !== data.assignedCheckpoints.length) {
+        throw new Error('Un ou plusieurs checkpoints spécifiés n\'existent pas');
+      }
+    }
+
+    // Vérifier que le rôle existe dans la table user_roles
+    if (data.role && data.role !== existingUser.role) {
+      const roleExists = await prisma.user_roles.findUnique({
+        where: { role_name: data.role }
+      });
+      if (!roleExists) {
+        throw new Error(`Le rôle "${data.role}" n'existe pas dans le système`);
+      }
+    }
+
     console.log('🔐 Permissions reçues pour mise à jour:', data.permissions);
 
-    const { assignedSites, permissions, password, ...updateData } = data;
+    const { assignedSites, permissions, assignedCheckpoints, password, ...updateData } = data;
 
+    // Gérer le mot de passe
     if (password) {
       updateData.passwordHash = await bcrypt.hash(password, 12);
     }
@@ -319,7 +351,26 @@ class UserService {
       }
     }
 
-    // ✅ MODIFICATION : Mettre à jour les permissions (création automatique si nécessaire)
+    // Mettre à jour les checkpoints assignés
+    if (assignedCheckpoints !== undefined) {
+      // Supprimer les anciennes assignations de checkpoints
+      await prisma.agentCheckpointAssignment.deleteMany({
+        where: { userId: id }
+      });
+      
+      if (assignedCheckpoints.length > 0) {
+        // Créer de nouvelles assignations
+        const now = new Date();
+        updateOperations.agentAssignments = {
+          create: assignedCheckpoints.map(checkpointId => ({
+            checkpointId,
+            startDate: now
+          }))
+        };
+      }
+    }
+
+    // Mettre à jour les permissions (création automatique si nécessaire)
     if (permissions !== undefined) {
       await prisma.userPermission.deleteMany({
         where: { userId: id }
@@ -352,7 +403,8 @@ class UserService {
       }
     }
 
-    return prisma.user.update({
+    // Mettre à jour l'utilisateur
+    const updatedUser = await prisma.user.update({
       where: { id },
       data: updateOperations,
       select: {
@@ -361,6 +413,7 @@ class UserService {
         email: true,
         firstName: true,
         lastName: true,
+        username: true,
         role: true,
         isActive: true,
         phone: true,
@@ -372,7 +425,24 @@ class UserService {
               select: {
                 id: true,
                 name: true,
+                code: true,
                 city: true
+              }
+            }
+          }
+        },
+        assignedCheckpoints: {
+          select: {
+            checkpoint: {
+              select: {
+                id: true,
+                name: true,
+                site: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
               }
             }
           }
@@ -390,8 +460,24 @@ class UserService {
         }
       }
     });
-  }
 
+    // Formater la réponse
+    return {
+      ...updatedUser,
+      assignedSites: updatedUser.assignedSites.map(us => us.site),
+      assignedCheckpoints: updatedUser.assignedCheckpoints.map(ac => ({
+        id: ac.checkpoint.id,
+        name: ac.checkpoint.name,
+        site: ac.checkpoint.site
+      })),
+      permissions: updatedUser.permissions.map(up => up.permission)
+    };
+
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
+    throw error;
+  }
+}
   async deleteUser(id) {
     console.log(' [DEBUG] Suppression de l\'utilisateur:', id);
     

@@ -709,49 +709,51 @@ async createOrFindVisitor(visitorData) {
     }
   }
 
-  async getAllVisitors(page = 1, limit = 10, search = null, company = null) {
-    try {
-      const skip = (page - 1) * limit;
-      
-      let whereClause = {};
-      
-      if (search) {
-        whereClause.OR = [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search, mode: 'insensitive' } }
-        ];
-      }
+ async getAllVisitors(page = 1, limit = 10, search = null, company = null) {
+  try {
+    const skip = (page - 1) * limit;
 
-      if (company) {
-        whereClause.company = { contains: company, mode: 'insensitive' };
-      }
+    let whereClause = {};
 
-      const [visitors, total] = await Promise.all([
-        prisma.visitor.findMany({
-          where: whereClause,
-          skip,
-          take: limit,
-          orderBy: { createdAt: 'desc' }
-        }),
-        prisma.visitor.count({ where: whereClause })
-      ]);
-
-      return {
-        visitors,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit)
-        }
-      };
-    } catch (error) {
-      console.error('❌ Erreur getAllVisitors:', error);
-      throw new Error(`Erreur lors de la récupération des visiteurs: ${error.message}`);
+    if (search) {
+      const searchLower = search.toLowerCase(); // convertit la recherche en minuscules
+      whereClause.OR = [
+        { firstName: { contains: searchLower } },
+        { lastName: { contains: searchLower } },
+        { email: { contains: searchLower } },
+        { phone: { contains: searchLower } }
+      ];
     }
+
+    if (company) {
+      const companyLower = company.toLowerCase();
+      whereClause.company = { contains: companyLower };
+    }
+
+    const [visitors, total] = await Promise.all([
+      prisma.visitor.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.visitor.count({ where: whereClause })
+    ]);
+
+    return {
+      visitors,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  } catch (error) {
+    console.error('❌ Erreur getAllVisitors:', error);
+    throw new Error(`Erreur lors de la récupération des visiteurs: ${error.message}`);
   }
+}
 
   /**
  * Récupère le planning de la semaine pour un site (automatique)
@@ -1106,11 +1108,8 @@ async getWeekPlanning(siteId) {
               }
             }
           },
-          id_types: {
-            select: {
-              type_name: true
-            }
-          }
+          // id_types n'est pas une relation, c'est juste un champ string
+          // Pas besoin d'include ici
         }
       });
       

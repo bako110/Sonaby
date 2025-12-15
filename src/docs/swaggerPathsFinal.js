@@ -1695,40 +1695,132 @@ const swaggerPathsFinal = {
 
 
   // =================== SOS ENDPOINTS ====================
-  '/api/v1/sos': {
-    get: {
-      tags: ['SOS'],
-      summary: 'Lister toutes les alertes SOS',
-      security: [{ bearerAuth: [] }],
-      parameters: [
-        { name: 'page', in: 'query', schema: { type: 'string' } },
-        { name: 'limit', in: 'query', schema: { type: 'string' } },
-        { name: 'checkpointId', in: 'query', schema: { type: 'string' } },
-        { name: 'active', in: 'query', schema: { type: 'string' } }
-      ],
-      responses: {
-        200: {
-          description: 'Liste des alertes SOS',
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedResponse' } } }
-        }
-      }
-    },
-    post: {
-      tags: ['SOS'],
-      summary: 'Déclencher une alerte SOS',
-      security: [{ bearerAuth: [] }],
-      requestBody: {
-        required: true,
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateSosInput' } } }
-      },
-      responses: {
-        201: {
-          description: 'Alerte SOS déclenchée',
-          content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/SosAlert' } } } } }
-        }
+  // =================== SOS ENDPOINTS ====================
+'/api/v1/sos': {
+  get: {
+    tags: ['SOS'],
+    summary: 'Lister toutes les alertes SOS',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'page', in: 'query', schema: { type: 'string' } },
+      { name: 'limit', in: 'query', schema: { type: 'string' } },
+      { name: 'checkpointId', in: 'query', schema: { type: 'string' } },
+      { name: 'active', in: 'query', schema: { type: 'string' } }
+    ],
+    responses: {
+      200: {
+        description: 'Liste des alertes SOS',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedResponse' } } }
       }
     }
   },
+  post: {
+    tags: ['SOS'],
+    summary: 'Déclencher une alerte SOS avec template prédéfini',
+    description: 'Créer une alerte SOS en utilisant un template prédéfini. Le message sera automatiquement récupéré depuis la table sos_templates.',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['checkpointId', 'templateId'],
+            properties: {
+              checkpointId: {
+                type: 'string',
+                format: 'uuid',
+                example: '770e8400-e29b-41d4-a716-446655440002',
+                description: 'ID du checkpoint concerné'
+              },
+              templateId: {
+                type: 'integer',
+                example: 5,
+                description: 'ID du template prédéfini (table sos_templates)'
+              },
+              triggeredAt: {
+                type: 'string',
+                format: 'date-time',
+                description: 'Date/heure de déclenchement (optionnel)'
+              }
+            }
+          },
+          example: {
+            checkpointId: '770e8400-e29b-41d4-a716-446655440002',
+            templateId: 5
+          }
+        }
+      }
+    },
+    responses: {
+      201: {
+        description: 'Alerte SOS créée avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: {
+                  type: 'boolean',
+                  example: true
+                },
+                message: {
+                  type: 'string',
+                  example: 'SOS déclenché avec le template sélectionné'
+                },
+                data: {
+                  type: 'object',
+                  properties: {
+                    id: {
+                      type: 'string',
+                      format: 'uuid'
+                    },
+                    checkpointId: {
+                      type: 'string',
+                      format: 'uuid'
+                    },
+                    message: {
+                      type: 'string',
+                      description: 'Message récupéré du template'
+                    },
+                    triggeredBy: {
+                      type: 'string',
+                      format: 'uuid'
+                    },
+                    triggeredAt: {
+                      type: 'string',
+                      format: 'date-time'
+                    },
+                    isResolved: {
+                      type: 'boolean'
+                    },
+                    templateInfo: {
+                      type: 'object',
+                      properties: {
+                        id: {
+                          type: 'integer'
+                        },
+                        titre: {
+                          type: 'string'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      400: {
+        description: 'Données invalides ou SOS déjà actif'
+      },
+      404: {
+        description: 'Checkpoint ou template non trouvé'
+      }
+    }
+  }
+},
   '/api/v1/sos/{id}': {
     get: {
       tags: ['SOS'],
@@ -1864,6 +1956,217 @@ const swaggerPathsFinal = {
         },
         500: {
           description: 'Erreur serveur'
+        }
+      }
+    }
+  },
+
+
+  '/api/v1/sos/templates/admin_message': {
+    post: {
+      tags: ['SOS'],
+      summary: 'Créer un nouveau template SOS',
+      description: 'Créer un template de message SOS avec titre et message. Ces templates pourront être utilisés pour envoyer des alertes SOS.',
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['titre', 'message'],
+              properties: {
+                titre: {
+                  type: 'string',
+                  maxLength: 100,
+                  example: 'Urgence médicale',
+                  description: 'Titre du template SOS'
+                },
+                message: {
+                  type: 'string',
+                  example: 'Besoin d\'aide médicale immédiate',
+                  description: 'Contenu du message SOS'
+                }
+              }
+            }
+          }
+        }
+      },
+      responses: {
+        201: {
+          description: 'Template créé avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: { $ref: '#/components/schemas/SosTemplate' }
+                }
+              }
+            }
+          }
+        },
+        400: {
+          description: 'Données invalides - titre et message sont requis'
+        },
+        401: {
+          description: 'Non authentifié'
+        },
+        500: {
+          description: 'Erreur serveur'
+        }
+      }
+    },
+    get: {
+      tags: ['SOS'],
+      summary: 'Lister tous les templates SOS',
+      description: 'Récupérer la liste de tous les templates de messages SOS disponibles.',
+      security: [{ bearerAuth: [] }],
+      responses: {
+        200: {
+          description: 'Liste des templates SOS',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/SosTemplate' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  
+  '/api/v1/sos/templates/admin_message/{id}': {
+    get: {
+      tags: ['SOS'],
+      summary: 'Récupérer un template SOS par ID',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: { type: 'integer' },
+          description: 'ID du template SOS'
+        }
+      ],
+      responses: {
+        200: {
+          description: 'Template SOS trouvé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: { $ref: '#/components/schemas/SosTemplate' }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: 'Template non trouvé'
+        }
+      }
+    },
+    put: {
+      tags: ['SOS'],
+      summary: 'Mettre à jour un template SOS',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: { type: 'integer' },
+          description: 'ID du template SOS'
+        }
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['titre', 'message'],
+              properties: {
+                titre: {
+                  type: 'string',
+                  maxLength: 100,
+                  example: 'Urgence médicale modifiée'
+                },
+                message: {
+                  type: 'string',
+                  example: 'Besoin d\'une ambulance rapidement'
+                }
+              }
+            }
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'Template mis à jour',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  data: { $ref: '#/components/schemas/SosTemplate' }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: 'Template non trouvé'
+        },
+        400: {
+          description: 'Données invalides'
+        }
+      }
+    },
+    delete: {
+      tags: ['SOS'],
+      summary: 'Supprimer un template SOS',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: 'id',
+          in: 'path',
+          required: true,
+          schema: { type: 'integer' },
+          description: 'ID du template SOS'
+        }
+      ],
+      responses: {
+        200: {
+          description: 'Template supprimé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Template supprimé avec succès' }
+                }
+              }
+            }
+          }
+        },
+        404: {
+          description: 'Template non trouvé'
         }
       }
     }
@@ -2731,95 +3034,73 @@ const swaggerPathsFinal = {
     }
   },
 // ==================== NOTIFICATIONS ENDPOINTS ====================
+
 '/api/v1/notifications': {
   get: {
     tags: ['Notifications'],
-    summary: 'Récupérer les notifications de l\'utilisateur',
-    description: 'Récupère la liste des notifications de l\'utilisateur connecté avec filtres et pagination',
+    summary: 'Récupérer les notifications',
+    description: 'Récupère toutes les notifications (personnelles + globales)',
     security: [{ bearerAuth: [] }],
     parameters: [
       { 
-        name: 'unread', 
-        in: 'query', 
-        schema: { type: 'boolean' }, 
-        description: 'Filtrer uniquement les notifications non lues' 
-      },
-      { 
-        name: 'type', 
-        in: 'query', 
-        schema: { 
-          type: 'string', 
-          enum: ['SOS', 'INCIDENT', 'BLACKLIST', 'VISIT', 'RENDEZVOUS', 'SYSTEM', 'ALERT'] 
-        }, 
-        description: 'Filtrer par type de notification' 
-      },
-      { 
-        name: 'priority', 
-        in: 'query', 
-        schema: { 
-          type: 'string', 
-          enum: ['low', 'medium', 'high'] 
-        }, 
-        description: 'Filtrer par priorité' 
-      },
-      { 
-        name: 'siteId', 
-        in: 'query', 
-        schema: { type: 'string', format: 'uuid' }, 
-        description: 'Filtrer par site' 
-      },
-      { 
         name: 'limit', 
         in: 'query', 
-        schema: { type: 'integer', default: 50, minimum: 1, maximum: 100 }, 
-        description: 'Nombre maximum de notifications à retourner' 
+        schema: { type: 'integer', default: 50 }, 
+        description: 'Limite de résultats' 
       },
       { 
-        name: 'page', 
+        name: 'unreadOnly', 
         in: 'query', 
-        schema: { type: 'integer', default: 1, minimum: 1 }, 
-        description: 'Numéro de page pour la pagination' 
+        schema: { type: 'boolean', default: false }, 
+        description: 'Notifications non lues seulement' 
       }
     ],
     responses: {
       200: {
-        description: 'Liste des notifications récupérée avec succès',
+        description: 'Liste des notifications',
         content: {
           'application/json': {
             schema: {
               type: 'object',
               properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
+                success: { type: 'boolean', example: true },
+                data: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Notification' }
                 },
+                count: { type: 'integer', example: 15 }
+              }
+            }
+          }
+        }
+      },
+      401: { description: 'Non authentifié' },
+      500: { description: 'Erreur serveur' }
+    }
+  }
+},
+
+'/api/v1/notifications/stats': {
+  get: {
+    tags: ['Notifications'],
+    summary: 'Statistiques des notifications',
+    description: 'Récupère les statistiques des notifications',
+    security: [{ bearerAuth: [] }],
+    responses: {
+      200: {
+        description: 'Statistiques récupérées',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
                 data: {
                   type: 'object',
                   properties: {
-                    notifications: {
-                      type: 'array',
-                      items: { $ref: '#/components/schemas/Notification' }
-                    },
-                    unreadCount: { 
-                      type: 'integer', 
-                      example: 5,
-                      description: 'Nombre de notifications non lues' 
-                    },
-                    total: { 
-                      type: 'integer', 
-                      example: 45,
-                      description: 'Nombre total de notifications' 
-                    },
-                    pagination: {
-                      type: 'object',
-                      properties: {
-                        page: { type: 'integer', example: 1 },
-                        limit: { type: 'integer', example: 50 },
-                        totalPages: { type: 'integer', example: 3 },
-                        hasNext: { type: 'boolean', example: true },
-                        hasPrev: { type: 'boolean', example: false }
-                      }
-                    }
+                    total: { type: 'integer', example: 25 },
+                    unread: { type: 'integer', example: 5 },
+                    read: { type: 'integer', example: 20 }
                   }
                 }
               }
@@ -2827,122 +3108,17 @@ const swaggerPathsFinal = {
           }
         }
       },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  }
-},
-
-'/api/v1/notifications/{id}': {
-  get: {
-    tags: ['Notifications'],
-    summary: 'Récupérer une notification spécifique',
-    description: 'Récupère les détails complets d\'une notification spécifique',
-    security: [{ bearerAuth: [] }],
-    parameters: [
-      { 
-        name: 'id', 
-        in: 'path', 
-        required: true, 
-        schema: { type: 'string', format: 'uuid' },
-        description: 'ID de la notification' 
-      }
-    ],
-    responses: {
-      200: {
-        description: 'Notification récupérée avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                data: { $ref: '#/components/schemas/Notification' }
-              }
-            }
-          }
-        }
-      },
-      404: { 
-        description: 'Notification non trouvée' 
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  },
-  delete: {
-    tags: ['Notifications'],
-    summary: 'Supprimer une notification',
-    description: 'Supprime définitivement une notification',
-    security: [{ bearerAuth: [] }],
-    parameters: [
-      { 
-        name: 'id', 
-        in: 'path', 
-        required: true, 
-        schema: { type: 'string', format: 'uuid' },
-        description: 'ID de la notification' 
-      }
-    ],
-    responses: {
-      200: {
-        description: 'Notification supprimée avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                message: { 
-                  type: 'string', 
-                  example: 'Notification supprimée avec succès' 
-                }
-              }
-            }
-          }
-        }
-      },
-      404: { 
-        description: 'Notification non trouvée' 
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
+      401: { description: 'Non authentifié' },
+      500: { description: 'Erreur serveur' }
     }
   }
 },
 
 '/api/v1/notifications/{id}/read': {
-  patch: {
+  put: {
     tags: ['Notifications'],
     summary: 'Marquer une notification comme lue',
-    description: 'Marque une notification spécifique comme lue et met à jour la date de lecture',
+    description: 'Marque une notification spécifique comme lue',
     security: [{ bearerAuth: [] }],
     parameters: [
       { 
@@ -2961,48 +3137,25 @@ const swaggerPathsFinal = {
             schema: {
               type: 'object',
               properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                message: { 
-                  type: 'string', 
-                  example: 'Notification marquée comme lue' 
-                },
-                data: { 
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string', format: 'uuid' },
-                    isRead: { type: 'boolean', example: true },
-                    readAt: { type: 'string', format: 'date-time' }
-                  }
-                }
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Notification marquée comme lue' }
               }
             }
           }
         }
       },
-      404: { 
-        description: 'Notification non trouvée' 
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
+      404: { description: 'Notification non trouvée' },
+      401: { description: 'Non authentifié' },
+      500: { description: 'Erreur serveur' }
     }
   }
 },
 
 '/api/v1/notifications/read-all': {
-  post: {
+  put: {
     tags: ['Notifications'],
     summary: 'Marquer toutes les notifications comme lues',
-    description: 'Marque toutes les notifications non lues de l\'utilisateur comme lues',
+    description: 'Marque toutes les notifications de l\'utilisateur comme lues',
     security: [{ bearerAuth: [] }],
     responses: {
       200: {
@@ -3012,260 +3165,54 @@ const swaggerPathsFinal = {
             schema: {
               type: 'object',
               properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                message: { 
-                  type: 'string', 
-                  example: 'Toutes les notifications ont été marquées comme lues' 
-                },
-                data: {
-                  type: 'object',
-                  properties: {
-                    markedCount: { 
-                      type: 'integer', 
-                      example: 7,
-                      description: 'Nombre de notifications marquées comme lues' 
-                    },
-                    unreadCount: { 
-                      type: 'integer', 
-                      example: 0,
-                      description: 'Nouveau nombre de notifications non lues' 
-                    }
-                  }
-                }
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: '10 notification(s) marquée(s) comme lue(s)' },
+                count: { type: 'integer', example: 10 }
               }
             }
           }
         }
       },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
+      401: { description: 'Non authentifié' },
+      500: { description: 'Erreur serveur' }
     }
   }
 },
 
-'/api/v1/notifications/unread/count': {
+'/api/v1/notifications/user/all': {
   get: {
     tags: ['Notifications'],
-    summary: 'Récupérer le nombre de notifications non lues',
-    description: 'Récupère le nombre total de notifications non lues pour l\'utilisateur connecté',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: {
-        description: 'Nombre de notifications non lues récupéré avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                data: {
-                  type: 'object',
-                  properties: {
-                    unreadCount: { 
-                      type: 'integer', 
-                      example: 5,
-                      description: 'Nombre de notifications non lues' 
-                    },
-                    breakdown: {
-                      type: 'object',
-                      properties: {
-                        SOS: { type: 'integer', example: 2 },
-                        INCIDENT: { type: 'integer', example: 1 },
-                        BLACKLIST: { type: 'integer', example: 0 },
-                        VISIT: { type: 'integer', example: 2 },
-                        RENDEZVOUS: { type: 'integer', example: 0 },
-                        SYSTEM: { type: 'integer', example: 0 },
-                        ALERT: { type: 'integer', example: 0 }
-                      },
-                      description: 'Répartition des notifications non lues par type'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  }
-},
-
-'/api/v1/notifications/test': {
-  post: {
-    tags: ['Notifications'],
-    summary: 'Créer une notification de test (développement uniquement)',
-    description: 'Crée une notification de test pour l\'utilisateur connecté - Utilisé uniquement à des fins de développement',
-    security: [{ bearerAuth: [] }],
-    requestBody: {
-      required: false,
-      content: {
-        'application/json': {
-          schema: {
-            type: 'object',
-            properties: {
-              type: { 
-                type: 'string', 
-                enum: ['SOS', 'INCIDENT', 'BLACKLIST', 'VISIT', 'RENDEZVOUS', 'SYSTEM', 'ALERT'],
-                default: 'TEST',
-                description: 'Type de notification de test' 
-              },
-              priority: { 
-                type: 'string', 
-                enum: ['low', 'medium', 'high'],
-                default: 'medium',
-                description: 'Priorité de la notification' 
-              },
-              message: { 
-                type: 'string',
-                example: 'Ceci est une notification de test',
-                description: 'Message de la notification' 
-              }
-            }
-          }
-        }
-      }
-    },
-    responses: {
-      200: {
-        description: 'Notification de test créée avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                message: { 
-                  type: 'string', 
-                  example: 'Notification de test créée avec succès' 
-                },
-                data: { $ref: '#/components/schemas/Notification' }
-              }
-            }
-          }
-        }
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé - réservé au développement' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  }
-},
-
-// ==================== FILTRAGE ET OPTIONS AVANCÉES ====================
-'/api/v1/notifications/filter': {
-  get: {
-    tags: ['Notifications'],
-    summary: 'Récupérer les notifications avec filtres avancés et options automatiques',
-    description: 'Récupère les notifications filtrées avec options de filtre dynamiques pour une expérience utilisateur automatique',
+    summary: 'Récupérer toutes les notifications non lues d\'un utilisateur',
+    description: 'Récupère toutes les notifications non lues (SOS, incidents, indésirables) d\'un utilisateur avec statistiques',
     security: [{ bearerAuth: [] }],
     parameters: [
-      { 
-        name: 'search', 
-        in: 'query', 
-        schema: { type: 'string' }, 
-        description: 'Recherche textuelle dans les titres et messages' 
-      },
-      { 
-        name: 'type', 
-        in: 'query', 
+      {
+        name: 'userId',
+        in: 'query',
         schema: { 
-          type: 'string', 
-          enum: ['SOS', 'INCIDENT', 'BLACKLIST', 'VISIT', 'RENDEZVOUS', 'SYSTEM', 'ALERT'] 
-        }, 
-        description: 'Type de notification' 
+          type: 'string',
+          format: 'uuid'
+        },
+        required: true,
+        description: 'ID de l\'utilisateur',
+        example: '6985b877-c56b-11f0-aa39-0242ac140013'
       },
-      { 
-        name: 'priority', 
-        in: 'query', 
+      {
+        name: 'limit',
+        in: 'query',
         schema: { 
-          type: 'string', 
-          enum: ['low', 'medium', 'high'] 
-        }, 
-        description: 'Priorité de la notification' 
-      },
-      { 
-        name: 'siteId', 
-        in: 'query', 
-        schema: { type: 'string', format: 'uuid' }, 
-        description: 'Filtrer par site concerné' 
-      },
-      { 
-        name: 'isRead', 
-        in: 'query', 
-        schema: { type: 'boolean' }, 
-        description: 'Filtrer par statut de lecture' 
-      },
-      { 
-        name: 'dateFrom', 
-        in: 'query', 
-        schema: { type: 'string', format: 'date' }, 
-        description: 'Date de création début' 
-      },
-      { 
-        name: 'dateTo', 
-        in: 'query', 
-        schema: { type: 'string', format: 'date' }, 
-        description: 'Date de création fin' 
-      },
-      { 
-        name: 'readFrom', 
-        in: 'query', 
-        schema: { type: 'string', format: 'date' }, 
-        description: 'Date de lecture début' 
-      },
-      { 
-        name: 'readTo', 
-        in: 'query', 
-        schema: { type: 'string', format: 'date' }, 
-        description: 'Date de lecture fin' 
-      },
-      { 
-        name: 'page', 
-        in: 'query', 
-        schema: { type: 'integer', default: 1 }, 
-        description: 'Numéro de page' 
-      },
-      { 
-        name: 'limit', 
-        in: 'query', 
-        schema: { type: 'integer', default: 20 }, 
-        description: 'Nombre d\'éléments par page' 
+          type: 'integer', 
+          default: 50,
+          minimum: 1,
+          maximum: 100
+        },
+        description: 'Nombre maximum total de notifications à récupérer',
+        example: 50
       }
     ],
     responses: {
       200: {
-        description: 'Notifications filtrées récupérées avec succès',
+        description: 'Toutes les notifications non lues groupées avec statistiques',
         content: {
           'application/json': {
             schema: {
@@ -3275,338 +3222,94 @@ const swaggerPathsFinal = {
                   type: 'boolean', 
                   example: true 
                 },
-                message: { 
-                  type: 'string', 
-                  example: 'Notifications filtrées récupérées avec succès' 
+                count: { 
+                  type: 'integer', 
+                  example: 12,
+                  description: 'Nombre total de notifications non lues'
                 },
                 data: {
-                  type: 'array',
-                  items: { $ref: '#/components/schemas/Notification' }
-                },
-                pagination: {
                   type: 'object',
                   properties: {
-                    page: { type: 'integer', example: 1 },
-                    limit: { type: 'integer', example: 20 },
-                    total: { type: 'integer', example: 45 },
-                    totalPages: { type: 'integer', example: 3 },
-                    hasNext: { type: 'boolean', example: true },
-                    hasPrev: { type: 'boolean', example: false }
+                    sos: {
+                      type: 'array',
+                      description: 'Notifications SOS non lues',
+                      items: { 
+                        $ref: '#/components/schemas/Notification' 
+                      }
+                    },
+                    incidents: {
+                      type: 'array',
+                      description: 'Notifications d\'incidents non lues',
+                      items: { 
+                        $ref: '#/components/schemas/Notification' 
+                      }
+                    },
+                    undesirables: {
+                      type: 'array',
+                      description: 'Notifications d\'indésirables non lues',
+                      items: { 
+                        $ref: '#/components/schemas/Notification' 
+                      }
+                    },
+                    others: {
+                      type: 'array',
+                      description: 'Autres notifications non lues',
+                      items: { 
+                        $ref: '#/components/schemas/Notification' 
+                      }
+                    }
                   }
                 },
-                filterOptions: { $ref: '#/components/schemas/NotificationFilterOptionsSchema' },
-                filters: {
-                  type: 'object',
-                  description: 'Filtres appliqués'
-                }
-              }
-            }
-          }
-        }
-      },
-      400: { 
-        description: 'Requête invalide' 
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  }
-},
-
-'/api/v1/notifications/filter-options': {
-  get: {
-    tags: ['Notifications'],
-    summary: 'Récupérer les options de filtre dynamiques pour les notifications',
-    description: 'Récupère les options de filtre automatiques qui se mettent à jour selon les filtres sélectionnés',
-    security: [{ bearerAuth: [] }],
-    parameters: [
-      { 
-        name: 'type', 
-        in: 'query', 
-        schema: { type: 'string' }, 
-        description: 'Pré-filtrer les options par type' 
-      },
-      { 
-        name: 'priority', 
-        in: 'query', 
-        schema: { type: 'string' }, 
-        description: 'Pré-filtrer les options par priorité' 
-      },
-      { 
-        name: 'siteId', 
-        in: 'query', 
-        schema: { type: 'string', format: 'uuid' }, 
-        description: 'Pré-filtrer les options par site' 
-      },
-      { 
-        name: 'isRead', 
-        in: 'query', 
-        schema: { type: 'boolean' }, 
-        description: 'Pré-filtrer les options par statut de lecture' 
-      }
-    ],
-    responses: {
-      200: {
-        description: 'Options de filtre récupérées avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                message: { 
-                  type: 'string', 
-                  example: 'Options de filtre récupérées avec succès' 
-                },
-                data: { $ref: '#/components/schemas/NotificationFilterOptionsSchema' }
-              }
-            }
-          }
-        }
-      },
-      400: { 
-        description: 'Requête invalide' 
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  }
-},
-
-'/api/v1/notifications/stats': {
-  get: {
-    tags: ['Notifications'],
-    summary: 'Statistiques des notifications',
-    description: 'Récupère les statistiques générales des notifications pour l\'utilisateur connecté',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: {
-        description: 'Statistiques récupérées avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                data: {
+                statistics: {
                   type: 'object',
                   properties: {
                     total: { 
-                      type: 'number', 
-                      example: 150,
-                      description: 'Nombre total de notifications' 
+                      type: 'integer', 
+                      example: 45,
+                      description: 'Nombre total de notifications (tous statuts) accessibles'
                     },
                     unread: { 
-                      type: 'number', 
+                      type: 'integer', 
                       example: 12,
-                      description: 'Notifications non lues' 
+                      description: 'Nombre de notifications non lues'
                     },
                     read: { 
-                      type: 'number', 
-                      example: 138,
-                      description: 'Notifications lues' 
-                    },
-                    today: { 
-                      type: 'number', 
-                      example: 8,
-                      description: 'Notifications reçues aujourd\'hui' 
+                      type: 'integer', 
+                      example: 33,
+                      description: 'Nombre de notifications lues'
                     },
                     byType: {
                       type: 'object',
-                      description: 'Répartition des notifications par type',
-                      additionalProperties: { type: 'integer' }
-                    },
-                    byPriority: {
-                      type: 'object',
-                      description: 'Répartition des notifications par priorité',
-                      additionalProperties: { type: 'integer' }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  }
-},
-
-// ==================== WEBSOCKET NOTIFICATIONS ====================
-'/api/v1/notifications/socket-auth': {
-  post: {
-    tags: ['Notifications'],
-    summary: 'Générer un token d\'authentification WebSocket',
-    description: 'Génère un token JWT pour l\'authentification WebSocket des notifications en temps réel',
-    security: [{ bearerAuth: [] }],
-    responses: {
-      200: {
-        description: 'Token WebSocket généré avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                data: {
-                  type: 'object',
-                  properties: {
-                    wsToken: { 
-                      type: 'string',
-                      example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                      description: 'Token JWT pour l\'authentification WebSocket' 
-                    },
-                    expiresAt: { 
-                      type: 'string', 
-                      format: 'date-time',
-                      description: 'Date d\'expiration du token' 
-                    },
-                    wsUrl: { 
-                      type: 'string',
-                      example: 'ws://localhost:3000/notifications',
-                      description: 'URL du serveur WebSocket' 
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      401: { 
-        description: 'Non authentifié ou token invalide' 
-      },
-      403: { 
-        description: 'Accès refusé' 
-      },
-      500: { 
-        description: 'Erreur serveur' 
-      }
-    }
-  }
-},
-
-// ==================== NOTIFICATIONS PAR SITE ====================
-'/api/v1/notifications/site/{siteId}': {
-  get: {
-    tags: ['Notifications'],
-    summary: 'Récupérer les notifications d\'un site (Admin/Site Manager)',
-    description: 'Récupère les notifications d\'un site spécifique - Réservé aux administrateurs et gestionnaires de site',
-    security: [{ bearerAuth: [] }],
-    parameters: [
-      { 
-        name: 'siteId', 
-        in: 'path', 
-        required: true, 
-        schema: { type: 'string', format: 'uuid' },
-        description: 'ID du site' 
-      },
-      { 
-        name: 'type', 
-        in: 'query', 
-        schema: { type: 'string' },
-        description: 'Filtrer par type de notification' 
-      },
-      { 
-        name: 'priority', 
-        in: 'query', 
-        schema: { type: 'string' },
-        description: 'Filtrer par priorité' 
-      },
-      { 
-        name: 'userId', 
-        in: 'query', 
-        schema: { type: 'string', format: 'uuid' },
-        description: 'Filtrer par utilisateur' 
-      },
-      { 
-        name: 'unread', 
-        in: 'query', 
-        schema: { type: 'boolean' },
-        description: 'Filtrer uniquement les notifications non lues' 
-      },
-      { 
-        name: 'limit', 
-        in: 'query', 
-        schema: { type: 'integer', default: 50 },
-        description: 'Nombre maximum de notifications' 
-      },
-      { 
-        name: 'page', 
-        in: 'query', 
-        schema: { type: 'integer', default: 1 },
-        description: 'Numéro de page' 
-      }
-    ],
-    responses: {
-      200: {
-        description: 'Notifications du site récupérées avec succès',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { 
-                  type: 'boolean', 
-                  example: true 
-                },
-                data: {
-                  type: 'object',
-                  properties: {
-                    notifications: {
-                      type: 'array',
-                      items: { $ref: '#/components/schemas/Notification' }
-                    },
-                    pagination: {
-                      type: 'object',
                       properties: {
-                        page: { type: 'integer', example: 1 },
-                        limit: { type: 'integer', example: 50 },
-                        total: { type: 'integer', example: 120 },
-                        totalPages: { type: 'integer', example: 3 }
+                        sos: {
+                          type: 'object',
+                          properties: {
+                            total: { type: 'integer', example: 8 },
+                            unread: { type: 'integer', example: 3 }
+                          }
+                        },
+                        incidents: {
+                          type: 'object',
+                          properties: {
+                            total: { type: 'integer', example: 15 },
+                            unread: { type: 'integer', example: 5 }
+                          }
+                        },
+                        undesirables: {
+                          type: 'object',
+                          properties: {
+                            total: { type: 'integer', example: 10 },
+                            unread: { type: 'integer', example: 2 }
+                          }
+                        },
+                        others: {
+                          type: 'object',
+                          properties: {
+                            total: { type: 'integer', example: 12 },
+                            unread: { type: 'integer', example: 2 }
+                          }
+                        }
                       }
-                    },
-                    siteId: { 
-                      type: 'string', 
-                      format: 'uuid',
-                      description: 'ID du site' 
-                    },
-                    siteName: { 
-                      type: 'string',
-                      example: 'Site Principal',
-                      description: 'Nom du site' 
                     }
                   }
                 }
@@ -3615,18 +3318,71 @@ const swaggerPathsFinal = {
           }
         }
       },
-      403: { 
-        description: 'Accès refusé - Réservé aux administrateurs et gestionnaires de site' 
+      400: { 
+        description: 'Paramètres invalides',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { 
+                  type: 'boolean', 
+                  example: false 
+                },
+                message: { 
+                  type: 'string',
+                  example: 'userId est requis'
+                }
+              }
+            }
+          }
+        }
       },
-      404: { 
-        description: 'Site non trouvé' 
+      401: { 
+        description: 'Non authentifié',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { 
+                  type: 'boolean', 
+                  example: false 
+                },
+                message: { 
+                  type: 'string',
+                  example: 'Token d\'authentification invalide'
+                }
+              }
+            }
+          }
+        }
       },
       500: { 
-        description: 'Erreur serveur' 
+        description: 'Erreur serveur',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { 
+                  type: 'boolean', 
+                  example: false 
+                },
+                message: { 
+                  type: 'string',
+                  example: 'Erreur interne du serveur'
+                }
+              }
+            }
+          }
+        }
       }
     }
   }
 }
+// ==================== FIN NOTIFICATIONS ENDPOINTS ====================
+
 };
 
 module.exports = swaggerPathsFinal;

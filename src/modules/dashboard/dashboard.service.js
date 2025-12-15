@@ -171,6 +171,7 @@ class DashboardService {
           reason: visit.reason,
           service: visit.service?.name,
           checkpoint: visit.checkpoint?.name,
+          notes: visit.notes,
           site: visit.checkpoint?.site?.name,
           siteId: visit.checkpoint?.site?.id,
           status: visit.status,

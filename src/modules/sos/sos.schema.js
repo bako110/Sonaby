@@ -4,10 +4,11 @@ const { z } = require('zod');
 const createSOSSchema = z.object({
   checkpointId: z.string().uuid('ID de checkpoint invalide'),
   triggeredBy: z.string().uuid('ID de l\'utilisateur invalide').optional(),
+  // Template est prioritaire sur message
+  templateId: z.number().int().positive('ID de template invalide'),
   message: z.string().optional(),
   triggeredAt: z.string().datetime('Date de déclenchement invalide').optional()
 });
-
 // Schéma pour créer une alerte SOS générale (automatique)
 const createGeneralSOSSchema = z.object({
   checkpointId: z.string().uuid('ID du checkpoint invalide'),
@@ -37,8 +38,8 @@ const sosQuerySchema = z.object({
 
 
 const sosParamsSchema = z.object({
-  title: z.string().max(255, 'Titre trop long').optional(),
-  description: z.string().optional()
+  titre: z.string().max(255, 'Titre trop long').optional(),
+  message: z.string().optional()
 });
 
 module.exports = {

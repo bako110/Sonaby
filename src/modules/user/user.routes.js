@@ -77,7 +77,7 @@ router.use(authenticateToken);
  *       403:
  *         description: Forbidden
  */
-router.post('/', allowRoles('ADMIN'), userController.createUser);
+router.post('/', allowRoles('ADMIN', 'AGENT_GESTION'), userController.createUser);
 
 /**
  * @openapi
@@ -101,7 +101,7 @@ router.post('/', allowRoles('ADMIN'), userController.createUser);
  *       404:
  *         description: User not found
  */
-router.delete('/:id', allowRoles('ADMIN'), userController.deleteUser);
+router.delete('/:id', allowRoles('ADMIN', 'AGENT_GESTION'), userController.deleteUser);
 
 // --------------------
 // Routes accessibles par tous les utilisateurs authentifiés avec rôle

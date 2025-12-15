@@ -3,7 +3,7 @@ const { createSOSSchema, createGeneralSOSSchema, sosIdSchema, sosQuerySchema } =
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class SOSController {
-  createSOS = asyncHandler(async (req, res) => {
+ createSOS = asyncHandler(async (req, res) => {
     if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -15,31 +15,67 @@ class SOSController {
     
     console.log('🔍 DEBUG CONTROLLER - req.user:', req.user);
     console.log('🔍 DEBUG CONTROLLER - req.user.userId:', req.user?.userId);
+    console.log('🔍 DEBUG CONTROLLER - validated data:', validated);
+    console.log('🔍 DEBUG CONTROLLER - Using templateId:', validated.templateId);
     
     // Utiliser l'utilisateur authentifié comme triggeredBy
     const sentBy = req.user.userId;
     
     try {
       const sos = await sosService.createSOS(validated, sentBy);
+      
+      let responseMessage = 'SOS envoyé avec succès';
+      
+      // Personnaliser le message selon si template ou message personnalisé
+      if (validated.templateId) {
+        responseMessage = 'SOS envoyé avec template prédéfini';
+      } else if (validated.message) {
+        responseMessage = 'SOS personnalisé envoyé avec succès';
+      }
+      
       res.status(201).json({
         success: true,
-        message: 'SOS envoyé avec succès',
-        data: sos
+        message: responseMessage,
+        data: sos,
+        metadata: {
+          usedTemplate: !!validated.templateId,
+          templateId: validated.templateId || null
+        }
       });
     } catch (error) {
-      if (error.message.includes('non trouvé') || error.message.includes('déjà actif')) {
+      // Gestion des erreurs spécifiques
+      if (error.message.includes('non trouvé')) {
+        return res.status(404).json({
+          success: false,
+          message: error.message.includes('Template') 
+            ? 'Template SOS non trouvé' 
+            : 'Checkpoint non trouvé'
+        });
+      }
+      
+      if (error.message.includes('déjà actif')) {
         return res.status(400).json({
           success: false,
           message: error.message
         });
       }
+      
+      if (error.message.includes('Message requis')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Message requis ou template invalide'
+        });
+      }
+      
       res.status(500).json({
         success: false,
-        message: error.message
+        message: 'Erreur lors de l\'envoi du SOS',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   });
 
+  
   createGeneralSOS = asyncHandler(async (req, res) => {
     if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
       return res.status(403).json({
@@ -78,12 +114,12 @@ class SOSController {
   });
 
   getAllSOS = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès refusé. Permissions insuffisantes.'
-      });
-    }
+    // if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: 'Accès refusé. Permissions insuffisantes.'
+    //   });
+    // }
 
     const validated = sosQuerySchema.parse(req.query);
     
@@ -280,6 +316,89 @@ class SOSController {
       });
     }
   });
+
+
+ // Créer un template
+  async create(req, res) {
+    try {
+      const { titre, message } = req.body;
+      
+      if (!titre?.trim() || !message?.trim()) {
+        return res.status(400).json({
+          error: 'Titre et message sont requis'
+        });
+      }
+
+      const template = await sosService.createTemplate(titre, message);
+      
+      res.status(201).json(template);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Lister tous les templates
+  async getAll(req, res) {
+    try {
+      const templates = await sosService.getAllTemplates();
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // Récupérer un template par ID
+  async getById(req, res) {
+    try {
+      const { id } = req.params;
+      const template = await sosService.getTemplateById(id);
+      res.json(template);
+    } catch (error) {
+      if (error.message === 'Template non trouvé') {
+        res.status(404).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  }
+
+  // Mettre à jour un template
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const { titre, message } = req.body;
+      
+      if (!titre?.trim() || !message?.trim()) {
+        return res.status(400).json({
+          error: 'Titre et message sont requis'
+        });
+      }
+
+      const template = await sosService.updateTemplate(id, titre, message);
+      res.json(template);
+    } catch (error) {
+      if (error.message === 'Template non trouvé') {
+        res.status(404).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  }
+
+  // Supprimer un template
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      const template = await sosService.deleteTemplate(id);
+      res.json({ message: 'Template supprimé', template });
+    } catch (error) {
+      if (error.message === 'Template non trouvé') {
+        res.status(404).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  }
 }
 
 module.exports = new SOSController();
