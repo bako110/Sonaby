@@ -8,7 +8,7 @@ class UploadService {
     if (!file) return null;
 
     let relativePath = path.relative(BASE_UPLOAD_DIR, file.path);
-    return `/${relativePath.replace(/\\/g, '/')}`; // Normaliser pour URL
+    return `/${relativePath.replace(/\\/g, '/')}`; 
   }
 
   deleteFile(fileUrl) {
