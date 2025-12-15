@@ -207,7 +207,7 @@ class NonDesirableController {
     const result = await nonDesirableService.createUnknownNonDesirable({
       validatedData,
       reportedBy,
-      files: req.files // photo et idScanUrl
+      files: req.file // photo et idScanUrl
     });
 
     return res.status(201).json(result);

@@ -177,9 +177,9 @@ class NonDesirableService {
   }
 
   // 3️⃣ Création d'un "indésirable inconnu" avec notification globale
- async createUnknownNonDesirable({ validatedData, reportedBy, file = {} }) {
+ async createUnknownNonDesirable({ validatedData, reportedBy, files = {} }) {
     try {
-      console.log('Données reçues dans le service:', { validatedData, reportedBy, file });
+      console.log('Données reçues dans le service:', { validatedData, reportedBy, files });
 
       const {
         firstName, lastName, idType, idNumber, birthDate, birthPlace, sexe,
@@ -208,13 +208,13 @@ class NonDesirableService {
       let attachedFileType = '';
       let attachedFileSize = 0;
 
-      if (file.photo?.[0]) {
-        photoUrl = uploadService.getPublicUrl(file.photo[0]);
+      if (files.photo?.[0]) {
+        photoUrl = uploadService.getPublicUrl(files.photo[0]);
         console.log('Image uploadée comme photo:', photoUrl);
       }
 
-      if (file.idScanUrl?.[0]) {
-        attachedFileUrl = uploadService.getPublicUrl(file.idScanUrl[0]);
+      if (files.idScanUrl?.[0]) {
+        attachedFileUrl = uploadService.getPublicUrl(files.idScanUrl[0]);
         attachedFileName = files.idScanUrl[0].originalname;
         attachedFileType = files.idScanUrl[0].mimetype;
         attachedFileSize = files.idScanUrl[0].size;
