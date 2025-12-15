@@ -139,6 +139,7 @@ class NonDesirableController {
  createUnknownNonDesirable = asyncHandler(async (req, res) => {
   try {
     console.log("=== DEBUG req.user ===", req.user);
+    console.log("=== DEBUG req.files ===", req.files); // <-- nouveau
 
     if (!req.body || typeof req.body !== "object") {
       return res.status(400).json({
@@ -149,7 +150,6 @@ class NonDesirableController {
 
     const formData = req.body;
 
-    // Normalisation des nombres
     formData.severityLevel = parseInt(formData.severityLevel ?? 2, 10);
     if (isNaN(formData.severityLevel) || formData.severityLevel < 1 || formData.severityLevel > 4) {
       formData.severityLevel = 2;
@@ -157,57 +157,18 @@ class NonDesirableController {
 
     formData.attachedFileSize = parseInt(formData.attachedFileSize ?? 0, 10);
 
-    // Validation ZOD
     const validatedData = createUnknownNonDesirableSchema.parse(formData);
 
-    // =======================================================
-    // 🔥 RÉCUPÉRATION SÛRE DE reportedBy
-    // =======================================================
-    let reportedBy = null;
-
-    if (req.user?.userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: req.user.userId },
-        select: { id: true }
-      });
-      if (user) reportedBy = user.id;
-    }
-
-    if (!reportedBy) {
-      const admin = await prisma.user.findFirst({ where: { role: "ADMIN" }, select: { id: true } });
-      if (admin) reportedBy = admin.id;
-    }
-
-    if (!reportedBy) {
-      const anyUser = await prisma.user.findFirst({ select: { id: true } });
-      if (anyUser) reportedBy = anyUser.id;
-    }
-
-    if (!reportedBy) {
-      const systemUser = await prisma.user.upsert({
-        where: { email: "system@sonaby.com" },
-        update: {},
-        create: {
-          email: "system@sonaby.com",
-          firstName: "System",
-          lastName: "User",
-          password: "$2a$10$SYSTEMHASHPLACEHOLDER",
-          role: "ADMIN",
-          isActive: true
-        },
-        select: { id: true }
-      });
-      reportedBy = systemUser.id;
-    }
+    // 🔥 Récupération sûre de reportedBy
+    let reportedBy = req.user?.userId || (await getFallbackReportedBy());
 
     console.log("=== REPORTER FINAL ===", reportedBy);
-    // =======================================================
 
-    // Appel du service
+    // 🔥 PASSER req.files et non req.file
     const result = await nonDesirableService.createUnknownNonDesirable({
       validatedData,
       reportedBy,
-      files: req.file // photo et idScanUrl
+      files: req.files
     });
 
     return res.status(201).json(result);
