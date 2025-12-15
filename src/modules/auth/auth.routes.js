@@ -1,7 +1,7 @@
 // src/modules/auth/auth.routes.js
 const express = require('express');
 const authController = require('./auth.controller');
-const { authenticateToken } = require('../../middleware/authMiddleware');
+// const { authenticateToken } = require('../../middleware/authMiddleware');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 const router = express.Router();
@@ -182,7 +182,7 @@ router.post('/logout', authController.logout);
  *       401:
  *         description: Access denied
  */
-router.get('/profile', authenticateToken, authController.getProfile);
+router.get('/profile',  authController.getProfile);
 
 /**
  * @openapi
@@ -244,7 +244,7 @@ router.get('/profile', authenticateToken, authController.getProfile);
  *       401:
  *         description: Non authentifié
  */
-router.get('/agent-dashboard', authenticateToken, authController.getAgentDashboard);
+router.get('/agent-dashboard',  authController.getAgentDashboard);
 
 /**
  * @swagger

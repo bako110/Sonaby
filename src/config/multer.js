@@ -75,6 +75,9 @@ const upload = multer({
 });
 
 module.exports = { upload, createDirectoryPath };
+
+
+
 // const multer = require('multer');
 // const path = require('path');
 // const fs = require('fs');
