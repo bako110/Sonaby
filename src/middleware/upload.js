@@ -41,7 +41,7 @@ const fileFilter = (req, file, cb) => {
 
 const uploadNonDesirable = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } })
   .fields([
-    { name: 'photo', maxCount: 1 },
+    { name: 'file', maxCount: 1 },
     { name: 'idScanUrl', maxCount: 1 }
   ]);
 
