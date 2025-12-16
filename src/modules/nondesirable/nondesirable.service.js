@@ -209,12 +209,16 @@ class NonDesirableService {
       let attachedFileSize = 0;
 // 🔹 Log de tous les fichiers reçus
 console.log('=== DEBUG fichiers reçus ===', files);
-      if (files.photo?.[0]) {
-  console.log('📌 Photo reçue:', files.photo[0]);
-  console.log('📂 Chemin sur le serveur:', files.photo[0].path);
-  photoUrl = uploadService.getPublicUrl(files.photo[0]);
+
+// Photo (peut venir de "photo" ou "file")
+const imageFile = files.photo?.[0] || files.file?.[0];
+if (imageFile) {
+  console.log('📌 Photo reçue:', imageFile);
+  console.log('📂 Chemin sur le serveur:', imageFile.path);
+  photoUrl = uploadService.getPublicUrl(imageFile);
   console.log('Image uploadée comme photo (URL publique):', photoUrl);
 }
+
 
 if (files.idScanUrl?.[0]) {
   console.log('📌 Document reçu:', files.idScanUrl[0]);
