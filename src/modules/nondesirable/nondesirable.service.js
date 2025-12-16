@@ -207,19 +207,24 @@ class NonDesirableService {
       let attachedFileName = '';
       let attachedFileType = '';
       let attachedFileSize = 0;
-
+// 🔹 Log de tous les fichiers reçus
+console.log('=== DEBUG fichiers reçus ===', files);
       if (files.photo?.[0]) {
-        photoUrl = uploadService.getPublicUrl(files.photo[0]);
-        console.log('Image uploadée comme photo:', photoUrl);
-      }
+  console.log('📌 Photo reçue:', files.photo[0]);
+  console.log('📂 Chemin sur le serveur:', files.photo[0].path);
+  photoUrl = uploadService.getPublicUrl(files.photo[0]);
+  console.log('Image uploadée comme photo (URL publique):', photoUrl);
+}
 
-      if (files.idScanUrl?.[0]) {
-        attachedFileUrl = uploadService.getPublicUrl(files.idScanUrl[0]);
-        attachedFileName = files.idScanUrl[0].originalname;
-        attachedFileType = files.idScanUrl[0].mimetype;
-        attachedFileSize = files.idScanUrl[0].size;
-        console.log('Document uploadé:', attachedFileName);
-      }
+if (files.idScanUrl?.[0]) {
+  console.log('📌 Document reçu:', files.idScanUrl[0]);
+  console.log('📂 Chemin sur le serveur:', files.idScanUrl[0].path);
+  attachedFileUrl = uploadService.getPublicUrl(files.idScanUrl[0]);
+  attachedFileName = files.idScanUrl[0].originalname;
+  attachedFileType = files.idScanUrl[0].mimetype;
+  attachedFileSize = files.idScanUrl[0].size;
+  console.log('Document uploadé:', attachedFileName, attachedFileType, attachedFileSize);
+}
 
       const fullReason = {
         mainReason: reason,
