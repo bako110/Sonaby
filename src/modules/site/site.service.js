@@ -456,9 +456,11 @@ async createSite(siteData) {
     let updatePayload = { ...dataWithoutManager };
     let newManagerUserId = null;
     let newManagerName = null;
+    let shouldUpdateManager = false;
     
     // 1. DÉTERMINER le nouveau manager
     if (managerId !== undefined) {
+      shouldUpdateManager = true;
       // Si managerId est fourni (UUID)
       if (managerId) {
         const managerUser = await prisma.user.findUnique({
@@ -477,6 +479,7 @@ async createSite(siteData) {
         newManagerName = null;
       }
     } else if (manager !== undefined) {
+      shouldUpdateManager = true;
       // Si manager (nom) est fourni directement
       newManagerName = manager;
       
@@ -513,32 +516,7 @@ async createSite(siteData) {
       updatePayload.manager = newManagerName;
     }
     
-    // 3. GÉRER l'assignedUser dans UserSite - SEULEMENT si managerId change
-    if (managerId !== undefined || manager !== undefined) {
-      // Supprimer UNIQUEMENT l'ancien manager de UserSite
-      // (ne pas supprimer toutes les assignations)
-      const oldUserSite = await prisma.userSite.findFirst({
-        where: { siteId: id }
-      });
-      
-      if (oldUserSite) {
-        await prisma.userSite.delete({
-          where: { id: oldUserSite.id }
-        });
-      }
-      
-      // Ajouter le NOUVEAU manager SEULEMENT s'il existe
-      if (newManagerUserId) {
-        await prisma.userSite.create({
-          data: {
-            siteId: id,
-            userId: newManagerUserId
-          }
-        });
-      }
-    }
-    
-    // 4. METTRE À JOUR le site
+    // 3. METTRE À JOUR le site D'ABORD
     const updatedSite = await prisma.site.update({
       where: { id },
       data: updatePayload,
@@ -560,8 +538,53 @@ async createSite(siteData) {
       }
     });
 
+    // 4. GÉRER l'assignedUser dans UserSite - APRÈS la mise à jour du site
+    if (shouldUpdateManager) {
+      // Supprimer UNIQUEMENT l'ancien manager de UserSite
+      const oldUserSite = await prisma.userSite.findFirst({
+        where: { siteId: id }
+      });
+      
+      if (oldUserSite) {
+        await prisma.userSite.delete({
+          where: { id: oldUserSite.id }
+        });
+      }
+      
+      // Ajouter le NOUVEAU manager SEULEMENT s'il existe
+      if (newManagerUserId) {
+        await prisma.userSite.create({
+          data: {
+            siteId: id,
+            userId: newManagerUserId
+          }
+        });
+      }
+    }
+    
+    // 5. Récupérer le site à jour avec le nouveau manager
+    const finalUpdatedSite = await prisma.site.findUnique({
+      where: { id },
+      include: {
+        checkpoints: true,
+        assignedUsers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true
+              }
+            }
+          }
+        }
+      }
+    });
+
     console.log(`✅ Site ${id} updated. New manager ID: ${newManagerUserId}`);
-    return updatedSite;
+    return finalUpdatedSite;
   } catch (error) {
     throw new Error(`Erreur lors de la mise à jour du site: ${error.message}`);
   }
