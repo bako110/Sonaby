@@ -28,18 +28,18 @@ class VisitService {
       // Filtres de base
       if (search) {
         whereClause.OR = [
-          { entityVisited: { contains: search, mode: 'insensitive' } },
-          { contactPerson: { contains: search, mode: 'insensitive' } },
-          { origin: { contains: search, mode: 'insensitive' } },
-          { reason: { contains: search, mode: 'insensitive' } },
-          { notes: { contains: search, mode: 'insensitive' } },
+          { entityVisited: { contains: search } },
+          { contactPerson: { contains: search } },
+          { origin: { contains: search } },
+          { reason: { contains: search } },
+          { notes: { contains: search } },
           {
             visitor: {
               OR: [
-                { firstName: { contains: search, mode: 'insensitive' } },
-                { lastName: { contains: search, mode: 'insensitive' } },
-                { company: { contains: search, mode: 'insensitive' } },
-                { email: { contains: search, mode: 'insensitive' } }
+                { firstName: { contains: search } },
+                { lastName: { contains: search } },
+                { company: { contains: search } },
+                { email: { contains: search } }
               ]
             }
           }

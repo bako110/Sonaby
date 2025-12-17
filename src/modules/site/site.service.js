@@ -190,7 +190,7 @@ async getFilteredSites(filters = {}) {
     
     // Appliquer les pré-filtres s'ils sont fournis
     if (filters.city && filters.city.trim() !== '') {
-      whereClause.city = { contains: filters.city, mode: 'insensitive' };
+      whereClause.city = { contains: filters.city };
     }
     if (filters.status && filters.status.trim() !== '') {
       whereClause.status = filters.status;
@@ -199,10 +199,10 @@ async getFilteredSites(filters = {}) {
       whereClause.activityType = filters.activityType;
     }
     if (filters.country && filters.country.trim() !== '') {
-      whereClause.country = { contains: filters.country, mode: 'insensitive' };
+      whereClause.country = { contains: filters.country };
     }
     if (filters.region && filters.region.trim() !== '') {
-      whereClause.region = { contains: filters.region, mode: 'insensitive' };
+      whereClause.region = { contains: filters.region };
     }
     
     // Créer les conditions where pour chaque groupBy SÉPARÉMENT
@@ -370,9 +370,9 @@ async createSite(siteData) {
       
       const whereClause = search ? {
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { city: { contains: search, mode: 'insensitive' } },
-          { address: { contains: search, mode: 'insensitive' } }
+          { name: { contains: search } },
+          { city: { contains: search } },
+          { address: { contains: search } }
         ]
       } : {};
 
@@ -481,18 +481,24 @@ async createSite(siteData) {
       newManagerName = manager;
       
       // Essayer de trouver l'ID utilisateur correspondant
-      if (manager) {
+      if (manager && manager.trim()) {
+        const nameParts = manager.trim().split(/\s+/);
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
         const managerUser = await prisma.user.findFirst({
           where: {
             OR: [
-              { 
+              // Recherche par nom complet
+              lastName ? {
                 AND: [
-                  { firstName: { contains: manager.split(' ')[0], mode: 'insensitive' } },
-                  { lastName: { contains: manager.split(' ').slice(1).join(' '), mode: 'insensitive' } }
+                  { firstName: { contains: firstName } },
+                  { lastName: { contains: lastName } }
                 ]
-              },
-              { email: { contains: manager, mode: 'insensitive' } }
-            ]
+              } : { firstName: { contains: firstName } },
+              // Recherche par email
+              { email: { contains: manager } }
+            ].filter(Boolean)
           }
         });
         
