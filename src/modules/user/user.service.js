@@ -260,6 +260,9 @@ class UserService {
 
   async updateUser(id, data) {
   try {
+    console.log('🔵 updateUser called with id:', id);
+    console.log('📝 updateUser data:', JSON.stringify(data, null, 2));
+    
     const existingUser = await this.getUserById(id);
     if (!existingUser) {
       throw new Error('Utilisateur non trouvé');
@@ -276,14 +279,14 @@ class UserService {
     }
 
     // Vérifier l'unicité du matricule si modifié
-    if (data.matricule && data.matricule !== existingUser.matricule) {
-      const matriculeExists = await prisma.user.findUnique({
-        where: { matricule: data.matricule }
-      });
-      if (matriculeExists) {
-        throw new Error('Un utilisateur avec ce matricule existe déjà');
-      }
-    }
+    // if (data.matricule && data.matricule !== existingUser.matricule) {
+    //   const matriculeExists = await prisma.user.findUnique({
+    //     where: { matricule: data.matricule }
+    //   });
+    //   if (matriculeExists) {
+    //     throw new Error('Un utilisateur avec ce matricule existe déjà');
+    //   }
+    // }
 
     // Vérifier l'unicité du username si modifié
     if (data.username && data.username !== existingUser.username) {
@@ -297,6 +300,7 @@ class UserService {
 
     // Vérifier que les sites existent
     if (data.assignedSites && data.assignedSites.length > 0) {
+      console.log('🔵 Checking sites:', data.assignedSites);
       const sites = await prisma.site.findMany({
         where: { id: { in: data.assignedSites } }
       });
@@ -307,6 +311,7 @@ class UserService {
 
     // Vérifier que les checkpoints existent
     if (data.assignedCheckpoints && data.assignedCheckpoints.length > 0) {
+      console.log('🔵 Checking checkpoints:', data.assignedCheckpoints);
       const checkpoints = await prisma.checkpoint.findMany({
         where: { id: { in: data.assignedCheckpoints } }
       });
@@ -317,6 +322,7 @@ class UserService {
 
     // Vérifier que le rôle existe dans la table user_roles
     if (data.role && data.role !== existingUser.role) {
+      console.log('🔵 Checking role:', data.role);
       const roleExists = await prisma.user_roles.findUnique({
         where: { role_name: data.role }
       });
@@ -341,6 +347,7 @@ class UserService {
 
     // Mettre à jour les sites assignés
     if (assignedSites !== undefined) {
+      console.log('🔵 Updating assignedSites');
       await prisma.userSite.deleteMany({
         where: { userId: id }
       });
@@ -353,6 +360,7 @@ class UserService {
 
     // Mettre à jour les checkpoints assignés
     if (assignedCheckpoints !== undefined) {
+      console.log('🔵 Updating assignedCheckpoints');
       // Supprimer les anciennes assignations de checkpoints
       await prisma.agentCheckpointAssignment.deleteMany({
         where: { userId: id }
@@ -372,6 +380,7 @@ class UserService {
 
     // Mettre à jour les permissions (création automatique si nécessaire)
     if (permissions !== undefined) {
+      console.log('🔵 Updating permissions');
       await prisma.userPermission.deleteMany({
         where: { userId: id }
       });
@@ -433,16 +442,12 @@ class UserService {
         },
         assignedCheckpoints: {
           select: {
-            checkpoint: {
+            id: true,
+            name: true,
+            site: {
               select: {
                 id: true,
-                name: true,
-                site: {
-                  select: {
-                    id: true,
-                    name: true
-                  }
-                }
+                name: true
               }
             }
           }
@@ -465,16 +470,13 @@ class UserService {
     return {
       ...updatedUser,
       assignedSites: updatedUser.assignedSites.map(us => us.site),
-      assignedCheckpoints: updatedUser.assignedCheckpoints.map(ac => ({
-        id: ac.checkpoint.id,
-        name: ac.checkpoint.name,
-        site: ac.checkpoint.site
-      })),
+      assignedCheckpoints: updatedUser.assignedCheckpoints,
       permissions: updatedUser.permissions.map(up => up.permission)
     };
 
   } catch (error) {
-    console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
+    console.error('❌ Erreur lors de la mise à jour de l\'utilisateur:', error.message);
+    console.error('❌ Stack:', error.stack);
     throw error;
   }
 }

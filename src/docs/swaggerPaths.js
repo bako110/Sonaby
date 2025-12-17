@@ -280,7 +280,7 @@ const swaggerPaths = {
         404: { $ref: '#/components/responses/NotFound' }
       }
     },
-    put: {
+    patch: {
       tags: ['Users'],
       summary: 'Mettre à jour un utilisateur',
       security: [{ bearerAuth: [] }],
