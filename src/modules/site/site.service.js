@@ -189,55 +189,58 @@ async getFilteredSites(filters = {}) {
     const whereClause = {};
     
     // Appliquer les pré-filtres s'ils sont fournis
-    if (filters.city) whereClause.city = { contains: filters.city, mode: 'insensitive' };
-    if (filters.status) whereClause.status = filters.status;
-    if (filters.activityType) whereClause.activityType = filters.activityType;
-    if (filters.country) whereClause.country = { contains: filters.country, mode: 'insensitive' };
-    if (filters.region) whereClause.region = { contains: filters.region, mode: 'insensitive' };
+    if (filters.city && filters.city.trim() !== '') {
+      whereClause.city = { contains: filters.city, mode: 'insensitive' };
+    }
+    if (filters.status && filters.status.trim() !== '') {
+      whereClause.status = filters.status;
+    }
+    if (filters.activityType && filters.activityType.trim() !== '') {
+      whereClause.activityType = filters.activityType;
+    }
+    if (filters.country && filters.country.trim() !== '') {
+      whereClause.country = { contains: filters.country, mode: 'insensitive' };
+    }
+    if (filters.region && filters.region.trim() !== '') {
+      whereClause.region = { contains: filters.region, mode: 'insensitive' };
+    }
+    
+    // Créer les conditions where pour chaque groupBy SÉPARÉMENT
+    // Pour éviter les conflits de filtres 'not'
     
     const [cities, countries, regions, activityTypes, statuses] = await Promise.all([
+      // Cities - seulement exclure null si pas de filtre city
       prisma.site.groupBy({
         by: ['city'],
-        where: { 
-          ...whereClause, 
-          ...(filters.city ? {} : { city: { not: null } })
-        },
+        where: filters.city ? whereClause : { ...whereClause, city: { not: null } },
         _count: { city: true },
         orderBy: { city: 'asc' }
       }),
+      // Countries - seulement exclure null si pas de filtre country
       prisma.site.groupBy({
         by: ['country'],
-        where: { 
-          ...whereClause, 
-          ...(filters.country ? {} : { country: { not: null } })
-        },
+        where: filters.country ? whereClause : { ...whereClause, country: { not: null } },
         _count: { country: true },
         orderBy: { country: 'asc' }
       }),
+      // Regions - seulement exclure null si pas de filtre region
       prisma.site.groupBy({
         by: ['region'],
-        where: { 
-          ...whereClause, 
-          ...(filters.region ? {} : { region: { not: null } })
-        },
+        where: filters.region ? whereClause : { ...whereClause, region: { not: null } },
         _count: { region: true },
         orderBy: { region: 'asc' }
       }),
+      // ActivityTypes - seulement exclure null si pas de filtre activityType
       prisma.site.groupBy({
         by: ['activityType'],
-        where: { 
-          ...whereClause, 
-          ...(filters.activityType ? {} : { activityType: { not: null } })
-        },
+        where: filters.activityType ? whereClause : { ...whereClause, activityType: { not: null } },
         _count: { activityType: true },
         orderBy: { activityType: 'asc' }
       }),
+      // Statuses - seulement exclure null si pas de filtre status
       prisma.site.groupBy({
         by: ['status'],
-        where: { 
-          ...whereClause, 
-          ...(filters.status ? {} : { status: { not: null } })
-        },
+        where: filters.status ? whereClause : { ...whereClause, status: { not: null } },
         _count: { status: true },
         orderBy: { status: 'asc' }
       })
@@ -246,11 +249,31 @@ async getFilteredSites(filters = {}) {
     return {
       success: true,
       data: {
-        cities: cities.map(c => ({ value: c.city, label: c.city, count: c._count.city })),
-        countries: countries.map(c => ({ value: c.country, label: c.country, count: c._count.country })),
-        regions: regions.map(r => ({ value: r.region, label: r.region, count: r._count.region })),
-        activityTypes: activityTypes.map(at => ({ value: at.activityType, label: at.activityType, count: at._count.activityType })),
-        statuses: statuses.map(s => ({ value: s.status, label: s.status, count: s._count.status }))
+        cities: cities.map(c => ({ 
+          value: c.city, 
+          label: c.city, 
+          count: c._count.city 
+        })),
+        countries: countries.map(c => ({ 
+          value: c.country, 
+          label: c.country, 
+          count: c._count.country 
+        })),
+        regions: regions.map(r => ({ 
+          value: r.region, 
+          label: r.region, 
+          count: r._count.region 
+        })),
+        activityTypes: activityTypes.map(at => ({ 
+          value: at.activityType, 
+          label: at.activityType, 
+          count: at._count.activityType 
+        })),
+        statuses: statuses.map(s => ({ 
+          value: s.status, 
+          label: s.status, 
+          count: s._count.status 
+        }))
       }
     };
   } catch (error) {
