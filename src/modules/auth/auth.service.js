@@ -96,7 +96,6 @@ class AuthService {
             lastName: true,
             role: true,
             isActive: true,
-            matricule: true,
             createdAt: true,
             updatedAt: true
         }
@@ -138,7 +137,6 @@ class AuthService {
                     email: user.email,
                     phone: user.phone,
                     username: user.username,
-                    matricule: user.matricule,
                     role: user.role,
                     permissions: []
                 },
@@ -296,9 +294,9 @@ class AuthService {
     }
 
     // Récupérer le profil utilisateur
-    async getUserProfile({ userId, email, matricule } = {}) {
+    async getUserProfile({ userId, email } = {}) {
     // Vérifier qu'au moins un identifiant est fourni
-    if (!userId && !email && !matricule) {
+    if (!userId && !email) {
         throw new AppError(400, 'At least one identifier is required');
     }
 
@@ -306,7 +304,6 @@ class AuthService {
     const where = {};
     if (userId) where.id = userId;
     else if (email) where.email = email;
-    else if (matricule) where.matricule = matricule;
 
     // Requête Prisma
     const user = await prisma.user.findUnique({

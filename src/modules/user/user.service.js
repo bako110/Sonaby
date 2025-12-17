@@ -13,16 +13,6 @@ class UserService {
       throw new Error('Un utilisateur avec cet email existe déjà');
     }
 
-    // Vérifier matricule unique
-    if (data.matricule) {
-      const existingMatricule = await prisma.user.findUnique({
-        where: { matricule: data.matricule }
-      });
-      if (existingMatricule) {
-        throw new Error('Un utilisateur avec ce matricule existe déjà');
-      }
-    }
-
     // Vérifier que les sites existent (obligatoire seulement pour les agents, pas pour les chefs de service)
     if (data.role !== 'CHEF_SERVICE') {
       if (!data.assignedSites || data.assignedSites.length === 0) {
@@ -182,7 +172,6 @@ class UserService {
     return prisma.user.findMany({
       select: {
         id: true,
-        matricule: true,
         email: true,
         firstName: true,
         lastName: true,
@@ -223,7 +212,6 @@ class UserService {
       where: { id },
       select: {
         id: true,
-        matricule: true,
         email: true,
         firstName: true,
         lastName: true,
