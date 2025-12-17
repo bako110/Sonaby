@@ -246,6 +246,13 @@ router.get('/profile', authenticateToken, authController.getProfile);
  */
 router.get('/agent-dashboard', authenticateToken, authController.getAgentDashboard);
 
+// Route pour changer le mot de passe
+router.patch('/:userId/reset-password', 
+  authenticateToken, // Protection par token
+  authController.resetPasswordByAdmin
+);
+
+
 /**
  * @swagger
  * /api/v1/auth/test-login:
@@ -391,6 +398,15 @@ router.post('/create-test-user', asyncHandler(async (req, res) => {
     user: userWithoutPassword
   });
 }));
+
+
+// Route pour changer le mot de passe
+router.patch('/:userId/change-password', 
+  authenticateToken, // Protection par token
+  authController.resetPasswordByAdmin
+);
+
+
 
 /**
  * @swagger

@@ -111,7 +111,11 @@ class AuthService {
         throw new AppError(403, 'Votre compte est désactivé. Veuillez contacter un administrateur.');
     }
 
+    console.log('🔐 [LOGIN DEBUG] Vérification du mot de passe...');
+    console.log('🔐 [LOGIN DEBUG] Password hash stored:', user.passwordHash.substring(0, 20) + '...');
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    console.log('🔐 [LOGIN DEBUG] Password valid:', isPasswordValid);
+    
     if (!isPasswordValid) {
         throw new AppError(401, 'Identifiant ou mot de passe incorrect');
     }
@@ -222,6 +226,60 @@ class AuthService {
     };
   }
 
+   async resetPasswordByAdmin(userId, newPassword) {
+  try {
+    console.log('🔐 Réinitialisation admin pour userId:', userId);
+    
+    // Vérifier que l'utilisateur existe
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, lastName: true }
+    });
+    
+    if (!user) {
+      throw new Error('Utilisateur non trouvé');
+    }
+    
+    // Validation du nouveau mot de passe
+    const trimmedPassword = newPassword.trim();
+    
+    if (trimmedPassword.length < 6) {
+      throw new Error('Le nouveau mot de passe doit contenir au moins 6 caractères');
+    }
+    
+    // Hacher et mettre à jour
+    const newHash = await bcrypt.hash(trimmedPassword, 12);
+    
+    await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        passwordHash: newHash,
+        updatedAt: new Date()
+      }
+    });
+    
+    // Invalider tous les tokens
+    await prisma.refreshToken.deleteMany({
+      where: { userId: userId }
+    });
+    
+    console.log('✅ Mot de passe réinitialisé par admin pour:', user.email);
+    
+    return {
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: `${user.firstName} ${user.lastName}`
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur resetPasswordByAdmin:', error.message);
+    throw error;
+  }
+}
    
     // Rafraîchir le token
     async refreshToken(data) {

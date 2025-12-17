@@ -173,6 +173,55 @@ const swaggerPaths = {
     }
   },
 
+  '/api/v1/auth/{userId}/reset-password': {
+  patch: {
+    tags: ['Auth'],
+    summary: 'Réinitialiser le mot de passe d\'un utilisateur',
+    description: 'Admin seulement - Réinitialise le mot de passe d\'un utilisateur spécifique',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      {
+        name: 'userId',
+        in: 'path',
+        required: true,
+        schema: {
+          type: 'string',
+          format: 'uuid'
+        },
+        example: '523c058c-db5d-11f0-9a3d-0242ac140006'
+      }
+    ],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['newPassword'],
+            properties: {
+              newPassword: {
+                type: 'string',
+                minLength: 6,
+                example: 'NouveauMotDePasse123'
+              }
+            }
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        description: 'Succès',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ApiResponse' }
+          }
+        }
+      }
+    }
+  }
+}
+,
 // ==================== USER ENDPOINTS ====================
   // ==================== USER ENDPOINTS ====================
   '/api/v1/users': {

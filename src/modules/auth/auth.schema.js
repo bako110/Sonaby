@@ -18,6 +18,12 @@ const loginSchema = z.object({
         .describe('Mot de passe de l\'utilisateur')
 });
 
+const resetPasswordByAdminSchema = z.object({
+    newPassword: z.string()
+        .min(6, 'Le nouveau mot de passe doit contenir au moins 6 caractères')
+        .max(100, 'Le mot de passe est trop long')
+});
+
 const refreshTokenSchema = z.object({
     refreshToken: z.string().min(1, 'Refresh token is required')
 });
@@ -25,5 +31,6 @@ const refreshTokenSchema = z.object({
 module.exports = {
     registerSchema,
     loginSchema,
+    resetPasswordByAdminSchema,
     refreshTokenSchema
 };

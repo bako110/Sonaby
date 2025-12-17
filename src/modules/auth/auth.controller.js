@@ -1,9 +1,12 @@
 const { asyncHandler } = require('../../middleware/asyncHandler');
 const { authService } = require('./auth.service');
+const userService = require('../user/user.service'); // Import du service user
 const { 
     registerSchema, 
     loginSchema, 
-    refreshTokenSchema 
+    refreshTokenSchema,
+    changePasswordSchema,
+    resetPasswordByAdminSchema
 } = require('./auth.schema');
 
 const authController = {
@@ -19,7 +22,6 @@ const authController = {
         });
     }),
     
- 
     login: asyncHandler(async (req, res) => {
         const validatedData = loginSchema.parse(req.body);
         const result = await authService.login(validatedData);
@@ -31,7 +33,6 @@ const authController = {
         });
     }),
     
-
     refreshToken: asyncHandler(async (req, res) => {
         const validatedData = refreshTokenSchema.parse(req.body);
         const tokens = await authService.refreshToken(validatedData);
@@ -43,7 +44,6 @@ const authController = {
         });
     }),
     
-
     logout: asyncHandler(async (req, res) => {
         const { refreshToken } = req.body;
         
@@ -57,24 +57,41 @@ const authController = {
         });
     }),
     
-   
     getProfile: asyncHandler(async (req, res) => {
-    // req.user contient les données du token JWT (userId, role)
-    const userId = req.user.userId;
-
-    console.log("L'identifiant de l'utilisateur est:", userId)
+        const userId = req.user.userId;
+        console.log("L'identifiant de l'utilisateur est:", userId);
+        
+        const user = await authService.getUserProfile({ userId });
+        
+        res.json({
+            success: true,
+            data: { user }
+        });
+    }),
     
-    // Récupérer les données complètes de l'utilisateur depuis la base
-    const user = await authService.getUserProfile({ userId });
+    resetPasswordByAdmin: asyncHandler(async (req, res) => {
+        // Validation avec Zod
+        const { newPassword } = resetPasswordByAdminSchema.parse(req.body);
+        const { userId } = req.params;
+        
+        // Vérifier que l'utilisateur est ADMIN
+        if (req.user.role !== 'ADMIN') {
+            return res.status(403).json({
+                success: false,
+                message: 'Accès réservé aux administrateurs'
+            });
+        }
+        
+        // Appeler le service
+        const result = await authService.resetPasswordByAdmin(userId, newPassword);
+        
+        return res.status(200).json({
+            success: true,
+            message: 'Mot de passe réinitialisé avec succès',
+            data: result
+        });
+    }),
     
-    res.json({
-        success: true,
-        data: { user }
-    });
-}),
-
-
-    // Tableau de bord complet pour agent de contrôle
     getAgentDashboard: asyncHandler(async (req, res) => {
         const userId = req.user.userId;
         const userRole = req.user.role;
