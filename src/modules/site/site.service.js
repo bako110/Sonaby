@@ -508,25 +508,33 @@ async createSite(siteData) {
       }
     }
     
-    // 2. METTRE À JOUR le champ manager (texte)
+    // 2. METTRE À JOUR le champ manager (texte) SEULEMENT
     if (newManagerName !== undefined) {
       updatePayload.manager = newManagerName;
     }
     
-    // 3. GÉRER l'assignedUser dans UserSite
-    // 🔹 TOUJOURS supprimer l'ancienne assignation si managerId ou manager ont changé
+    // 3. GÉRER l'assignedUser dans UserSite - SEULEMENT si managerId change
     if (managerId !== undefined || manager !== undefined) {
-      await prisma.userSite.deleteMany({
+      // Supprimer UNIQUEMENT l'ancien manager de UserSite
+      // (ne pas supprimer toutes les assignations)
+      const oldUserSite = await prisma.userSite.findFirst({
         where: { siteId: id }
       });
       
-      // 🔹 Si un nouveau manager est assigné, créer la nouvelle assignation
+      if (oldUserSite) {
+        await prisma.userSite.delete({
+          where: { id: oldUserSite.id }
+        });
+      }
+      
+      // Ajouter le NOUVEAU manager SEULEMENT s'il existe
       if (newManagerUserId) {
-        updatePayload.assignedUsers = {
-          create: [{
+        await prisma.userSite.create({
+          data: {
+            siteId: id,
             userId: newManagerUserId
-          }]
-        };
+          }
+        });
       }
     }
     
