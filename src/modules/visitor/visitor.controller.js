@@ -163,14 +163,36 @@ class VisitorController {
     }
 
     try {
-        const validatedData = createVisitorWithTransform.parse(req.body);
+        // 🔹 Nettoyer les données: convertir les chaînes vides en null
+        const cleanedData = Object.keys(req.body).reduce((acc, key) => {
+            const value = req.body[key];
+            // Convertir les chaînes vides, 'false' littéral, etc. en null
+            if (value === '' || value === 'null' || value === 'undefined') {
+                acc[key] = null;
+            } else if (value === 'false') {
+                acc[key] = false;
+            } else if (value === 'true') {
+                acc[key] = true;
+            } else {
+                acc[key] = value;
+            }
+            return acc;
+        }, {});
 
-        // 🔹 Générer les URLs publiques pour les fichiers uploadés
-        const photoFile = req.files?.photoUrl?.[0];
-        const idScanFile = req.files?.idScanUrl?.[0];
+        console.log('📝 Creating visitor with cleaned data:', JSON.stringify(cleanedData, null, 2));
+        console.log('📂 Uploaded files:', req.files ? Object.keys(req.files) : 'none');
+        
+        const validatedData = createVisitorWithTransform.parse(cleanedData);
+
+        // 🔹 Mapper les fichiers uploadés avec flexibilité
+        const photoFile = req.files?.photoUrl?.[0] || req.files?.photo?.[0];
+        const idScanFile = req.files?.idScanUrl?.[0] || req.files?.file?.[0];
 
         const photoUrl = photoFile ? uploadService.getPublicUrl(photoFile) : null;
         const idScanUrl = idScanFile ? uploadService.getPublicUrl(idScanFile) : null;
+
+        console.log('📸 Photo URL:', photoUrl);
+        console.log('📄 ID Scan URL:', idScanUrl);
 
         const finalData = { ...validatedData, photoUrl, idScanUrl };
 
@@ -186,14 +208,16 @@ class VisitorController {
         });
 
     } catch (error) {
-        console.error(error);
+        console.error('❌ Error creating visitor:', error);
         if (error.name === 'ZodError') {
+            console.error('🔴 Zod validation errors:', JSON.stringify(error.errors, null, 2));
             return res.status(400).json({
                 success: false,
                 message: 'Données invalides',
                 errors: error.errors.map(err => ({
                     field: err.path.join('.'),
-                    message: err.message
+                    message: err.message,
+                    code: err.code
                 }))
             });
         }

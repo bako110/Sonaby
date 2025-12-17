@@ -53,14 +53,16 @@ const uploadNonDesirable = multer({
   { name: 'file', maxCount: 1 }
 ]);
 
-// 🔹 Upload pour visiteurs (photo + document)
+// 🔹 Upload pour visiteurs (photo + document + champs supplémentaires)
 const uploadVisitor = multer({
   storage,
   fileFilter,
   limits: { fileSize: 10 * 1024 * 1024 }
 }).fields([
   { name: 'photoUrl', maxCount: 1 },
-  { name: 'idScanUrl', maxCount: 1 }
+  { name: 'idScanUrl', maxCount: 1 },
+  { name: 'photo', maxCount: 1 },        // Alternative nom pour photo
+  { name: 'file', maxCount: 1 }         // Champ générique
 ]);
 
 module.exports = { uploadNonDesirable, uploadVisitor };

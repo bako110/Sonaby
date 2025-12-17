@@ -19,12 +19,15 @@ const createVisitorSchema = z.object({
   givingDate: z.string().nullable().optional(),
   expirationDate: z.string().nullable().optional(),
   phone: z.string().max(20).nullable().optional(),
-  email: z.string().email().nullable().optional(),
+  email: z.string().email().nullable().optional().or(z.literal('')),
   isBlacklisted: z.boolean().default(false).optional(),
   blacklistReason: z.string().nullable().optional(),
   company: z.string().max(255).nullable().optional(),
   emergencyContactPhone: z.string().max(20).nullable().optional(),
-  emergencyContactName: z.string().max(255).nullable().optional()
+  emergencyContactName: z.string().max(255).nullable().optional(),
+  photoUrl: z.string().nullable().optional(),
+  idScanUrl: z.string().nullable().optional(),
+  id: z.string().uuid().optional()
 });
 
 // Transformation TRÈS SIMPLE - ne fait rien d'autre que valider

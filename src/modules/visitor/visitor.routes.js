@@ -813,6 +813,17 @@ router.get('/week-planning/:siteId', visitorController.getWeekPlanning);
 router.post(
   '/',
   uploadVisitor,
+  (err, req, res, next) => {
+    // Gérer les erreurs Multer
+    if (err) {
+      console.error('❌ Multer Error:', err.message);
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Erreur upload fichier'
+      });
+    }
+    next();
+  },
   visitorController.createVisitor
 );
 
