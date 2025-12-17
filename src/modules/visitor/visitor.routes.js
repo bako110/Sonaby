@@ -1,21 +1,13 @@
 const express = require('express');
 const visitorController = require('./visitor.controller');
 const { authenticateToken } = require('../../middleware/authMiddleware');
-const { uploadVisitor } = require('../../middleware/upload');
+const {uploadVisitor}  = require('../../middleware/upload');
 
 const router = express.Router();
 
 // Middleware d'authentification pour toutes les routes
 router.use(authenticateToken);
 
-const handleUpload = (req, res, next) => {
-  uploadVisitor(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ success: false, message: err.message });
-    }
-    next();
-  });
-};
 
 /**
  * @swagger
@@ -820,7 +812,7 @@ router.get('/week-planning/:siteId', visitorController.getWeekPlanning);
  */
 router.post(
   '/',
-  handleUpload,
+  uploadVisitor,
   visitorController.createVisitor
 );
 

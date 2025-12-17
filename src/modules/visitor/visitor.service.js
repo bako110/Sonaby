@@ -1,6 +1,7 @@
 const { prisma } = require('../../config/prisma');
 const fs = require('fs');
 const path = require('path');
+const uploadService = require('../upload');
 
 class VisitorService {
   async getFilteredVisitors(filters = {}) {
@@ -520,7 +521,7 @@ class VisitorService {
 
 async createOrFindVisitor(visitorData) {
     try {
-        const { idType, idNumber, photoUrl, idScanUrl } = visitorData;
+        const { idType, idNumber, photoUrl, idScanUrl, ...rest } = visitorData;
 
         console.log('🔍 Recherche visiteur existant:', { idType, idNumber });
 
@@ -533,8 +534,8 @@ async createOrFindVisitor(visitorData) {
                 lastName: true,
                 idType: true,
                 idNumber: true,
-                photoUrl: true,  // 👈 CHANGÉ DE false À true
-                idScanUrl: true, // 👈 CHANGÉ DE false À true
+                photoUrl: true,
+                idScanUrl: true,
                 isBlacklisted: true,
                 blacklistReason: true,
                 createdAt: true,
@@ -557,8 +558,6 @@ async createOrFindVisitor(visitorData) {
 
         if (existingVisitor) {
             console.log('✅ Visiteur existant trouvé:', existingVisitor.id);
-            console.log('📸 Photo URL existante:', existingVisitor.photoUrl);
-            console.log('🆔 ID Scan URL existante:', existingVisitor.idScanUrl);
 
             undesirableRecord = await prisma.nonDesirable.findFirst({
                 where: { visitorId: existingVisitor.id },
@@ -569,8 +568,6 @@ async createOrFindVisitor(visitorData) {
                 }
             });
 
-            console.log('🔍 Statut indésirable:', undesirableRecord ? 'OUI' : 'NON');
-
             // 🔄 Mettre à jour les données si nécessaire
             const updateData = {};
             const fieldsToUpdate = [
@@ -579,33 +576,22 @@ async createOrFindVisitor(visitorData) {
                 'company', 'emergencyContactPhone', 'emergencyContactName'
             ];
 
-            // Comparer les nouvelles données avec l'existant
             fieldsToUpdate.forEach(field => {
-                if (visitorData[field] !== undefined && 
-                    visitorData[field] !== existingVisitor[field] &&
-                    visitorData[field] !== null) {
-                    updateData[field] = visitorData[field];
+                if (rest[field] !== undefined && rest[field] !== existingVisitor[field] && rest[field] !== null) {
+                    updateData[field] = rest[field];
                 }
             });
 
             // Mettre à jour les URLs de fichiers si fournies
-            if (photoUrl && photoUrl !== existingVisitor.photoUrl) {
-                console.log(`🔄 Mise à jour photo URL: ${existingVisitor.photoUrl} -> ${photoUrl}`);
-                updateData.photoUrl = photoUrl;
-            }
-            if (idScanUrl && idScanUrl !== existingVisitor.idScanUrl) {
-                console.log(`🔄 Mise à jour ID Scan URL: ${existingVisitor.idScanUrl} -> ${idScanUrl}`);
-                updateData.idScanUrl = idScanUrl;
-            }
+            if (photoUrl && photoUrl !== existingVisitor.photoUrl) updateData.photoUrl = photoUrl;
+            if (idScanUrl && idScanUrl !== existingVisitor.idScanUrl) updateData.idScanUrl = idScanUrl;
 
-            // Mettre à jour en base si des changements sont détectés
             if (Object.keys(updateData).length > 0) {
                 console.log('🔄 Mise à jour des données visiteur:', updateData);
                 await prisma.visitor.update({
                     where: { id: existingVisitor.id },
                     data: updateData
                 });
-                // Mettre à jour l'objet existant
                 Object.assign(existingVisitor, updateData);
             }
 
@@ -616,24 +602,22 @@ async createOrFindVisitor(visitorData) {
                 isBlacklisted: existingVisitor.isBlacklisted,
                 isUndesirable: !!undesirableRecord,
                 undesirableInfo: undesirableRecord,
-                message:
-                    existingVisitor.isBlacklisted
-                        ? "Visiteur existant et BLACKLISTÉ"
-                        : undesirableRecord
-                            ? "Visiteur existant et INDÉSIRABLE"
-                            : "Visiteur existant"
+                message: existingVisitor.isBlacklisted
+                    ? "Visiteur existant et BLACKLISTÉ"
+                    : undesirableRecord
+                        ? "Visiteur existant et INDÉSIRABLE"
+                        : "Visiteur existant"
             };
         }
 
         // 2️⃣ Si n'existe pas → création
         console.log('🆕 Création nouveau visiteur...');
-        console.log('📸 Nouvelle photo URL:', photoUrl);
-        console.log('🆔 Nouveau ID Scan URL:', idScanUrl);
 
         const newVisitor = await prisma.visitor.create({
             data: {
-                ...visitorData,
-                // Les URLs de fichiers sont déjà prêtes (gérées par le contrôleur)
+                ...rest,
+                idType,
+                idNumber,
                 photoUrl: photoUrl || null,
                 idScanUrl: idScanUrl || null,
                 isBlacklisted: visitorData.isBlacklisted || false,
@@ -654,24 +638,18 @@ async createOrFindVisitor(visitorData) {
 
     } catch (error) {
         console.error("❌ Erreur createOrFindVisitor:", error);
-        console.error("❌ Erreur détail:", error.message);
-        console.error("❌ Stack:", error.stack);
-        
-        // Gestion spécifique des erreurs de contrainte unique
+
         if (error.code === 'P2002') {
-            console.error('❌ Erreur de contrainte unique:', error.meta);
             throw new Error(`Un visiteur avec ce type et numéro d'identité existe déjà.`);
         }
-        
-        // Erreur de validation des données
         if (error.code === 'P2003' || error.code === 'P2025') {
-            console.error('❌ Erreur de validation:', error.meta);
             throw new Error(`Données invalides pour la création du visiteur: ${error.message}`);
         }
-        
+
         throw new Error(`Erreur lors de la création ou récupération du visiteur: ${error.message}`);
     }
 }
+
   /**
    * Supprime un ancien fichier
    * @param {string} fileUrl - URL du fichier à supprimer

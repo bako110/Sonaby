@@ -198,31 +198,46 @@ async getFilteredSites(filters = {}) {
     const [cities, countries, regions, activityTypes, statuses] = await Promise.all([
       prisma.site.groupBy({
         by: ['city'],
-        where: { ...whereClause, city: { not: null } },
+        where: { 
+          ...whereClause, 
+          ...(filters.city ? {} : { city: { not: null } })
+        },
         _count: { city: true },
         orderBy: { city: 'asc' }
       }),
       prisma.site.groupBy({
         by: ['country'],
-        where: { ...whereClause, country: { not: null } },
+        where: { 
+          ...whereClause, 
+          ...(filters.country ? {} : { country: { not: null } })
+        },
         _count: { country: true },
         orderBy: { country: 'asc' }
       }),
       prisma.site.groupBy({
         by: ['region'],
-        where: { ...whereClause, region: { not: null } },
+        where: { 
+          ...whereClause, 
+          ...(filters.region ? {} : { region: { not: null } })
+        },
         _count: { region: true },
         orderBy: { region: 'asc' }
       }),
       prisma.site.groupBy({
         by: ['activityType'],
-        where: { ...whereClause, activityType: { not: null } },
+        where: { 
+          ...whereClause, 
+          ...(filters.activityType ? {} : { activityType: { not: null } })
+        },
         _count: { activityType: true },
         orderBy: { activityType: 'asc' }
       }),
       prisma.site.groupBy({
         by: ['status'],
-        where: { ...whereClause, status: { not: null } },
+        where: { 
+          ...whereClause, 
+          ...(filters.status ? {} : { status: { not: null } })
+        },
         _count: { status: true },
         orderBy: { status: 'asc' }
       })
