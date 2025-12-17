@@ -3,44 +3,44 @@ const { createSiteSchema, updateSiteSchema, siteIdSchema, siteQuerySchema } = re
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class SiteController {
-//   getFilteredSites = asyncHandler(async (req, res) => {
-//     const filters = {
-//       ...req.query,
-//       page: parseInt(req.query.page) || 1,
-//       limit: parseInt(req.query.limit) || 10
-//     };
+  getFilteredSites = asyncHandler(async (req, res) => {
+    const filters = {
+      ...req.query,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10
+    };
 
-//     const result = await siteService.getFilteredSites(filters);
+    const result = await siteService.getFilteredSites(filters);
     
-//     res.status(200).json({
-//       success: true,
-//       message: 'Sites filtrés récupérés avec succès',
-//       data: result.sites,
-//       pagination: result.pagination,
-//       filterOptions: result.filterOptions,
-//       filters: filters
-//     });
-//   });
+    res.status(200).json({
+      success: true,
+      message: 'Sites filtrés récupérés avec succès',
+      data: result.sites,
+      pagination: result.pagination,
+      filterOptions: result.filterOptions,
+      filters: filters
+    });
+  });
 
-//   // controllers/site.controller.js
+  // controllers/site.controller.js
 
-// getFilterOptions = asyncHandler(async (req, res) => {
-//   try {
-//     const filterOptions = await siteService.getFilterOptionsSimple();
+getFilterOptions = asyncHandler(async (req, res) => {
+  try {
+    const filterOptions = await siteService.getFilterOptionsSimple();
 
-//     return res.status(200).json({
-//       success: true,
-//       message: "Options de filtre récupérées avec succès",
-//       data: filterOptions.data
-//     });
+    return res.status(200).json({
+      success: true,
+      message: "Options de filtre récupérées avec succès",
+      data: filterOptions.data
+    });
 
-//   } catch (error) {
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message
-//     });
-//   }
-// });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
 
 
   createSite = asyncHandler(async (req, res) => {

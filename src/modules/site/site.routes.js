@@ -134,7 +134,7 @@ router.use(authenticateToken);
  *       500:
  *         description: Erreur serveur
  */
-// router.get('/filter', siteController.getFilteredSites);
+router.get('/filter', siteController.getFilteredSites);
 
 /**
  * @swagger
@@ -245,7 +245,7 @@ router.use(authenticateToken);
  *       500:
  *         description: Erreur serveur
  */
-// router.get('/filter-options', siteController.getFilterOptions);
+router.get('/filter-options', siteController.getFilterOptions);
 
 /**
  * @swagger

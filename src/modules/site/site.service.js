@@ -3,287 +3,287 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class SiteService {
-// async getFilteredSites(filters = {}) {
-//   try {
-//     const {
-//       search,
-//       code,
-//       city,
-//       region,
-//       country,
-//       status,
-//       activityType,
-//       manager,
-//       creationDateStart,
-//       creationDateEnd,
-//       minArea,
-//       maxArea,
-//       minEmployeeCount,
-//       maxEmployeeCount,
-//       wheelchairAccessible,
-//       parkingAvailable,
-//       securitySystem,
-//       securityGuard,
-//       page = 1,
-//       limit = 10,
-//       sortBy = 'creationDate',
-//       sortOrder = 'desc'
-//     } = filters;
+async getFilteredSites(filters = {}) {
+  try {
+    const {
+      search,
+      code,
+      city,
+      region,
+      country,
+      status,
+      activityType,
+      manager,
+      creationDateStart,
+      creationDateEnd,
+      minArea,
+      maxArea,
+      minEmployeeCount,
+      maxEmployeeCount,
+      wheelchairAccessible,
+      parkingAvailable,
+      securitySystem,
+      securityGuard,
+      page = 1,
+      limit = 10,
+      sortBy = 'creationDate',
+      sortOrder = 'desc'
+    } = filters;
 
-//     const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
     
-//     // Construction de la clause WHERE
-//     const whereClause = {};
+    // Construction de la clause WHERE
+    const whereClause = {};
 
-//     // Recherche globale (search)
-//     if (search) {
-//       whereClause.OR = [
-//         { name: { contains: search } },
-//         { code: { contains: search } },
-//         { description: { contains: search } },
-//         { address: { contains: search } },
-//         { manager: { contains: search } },
-//         { city: { contains: search } }
-//       ];
-//     }
+    // Recherche globale (search)
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search } },
+        { code: { contains: search } },
+        { description: { contains: search } },
+        { address: { contains: search } },
+        { manager: { contains: search } },
+        { city: { contains: search } }
+      ];
+    }
 
-//     // Filtre par code exact
-//     if (code) {
-//       whereClause.code = { contains: code };
-//     }
+    // Filtre par code exact
+    if (code) {
+      whereClause.code = { contains: code };
+    }
 
-//     // Filtres géographiques
-//     if (city) whereClause.city = { contains: city };
-//     if (region) whereClause.region = { contains: region };
-//     if (country) whereClause.country = { contains: country };
+    // Filtres géographiques
+    if (city) whereClause.city = { contains: city };
+    if (region) whereClause.region = { contains: region };
+    if (country) whereClause.country = { contains: country };
 
-//     // Filtres catégoriels
-//     if (status) whereClause.status = status;
-//     if (activityType) whereClause.activityType = activityType;
-//     if (manager) whereClause.manager = { contains: manager };
+    // Filtres catégoriels
+    if (status) whereClause.status = status;
+    if (activityType) whereClause.activityType = activityType;
+    if (manager) whereClause.manager = { contains: manager };
 
-//     // Filtres par plage numérique
-//     if (minEmployeeCount !== undefined || maxEmployeeCount !== undefined) {
-//       whereClause.employeeCount = {};
-//       if (minEmployeeCount !== undefined) whereClause.employeeCount.gte = minEmployeeCount;
-//       if (maxEmployeeCount !== undefined) whereClause.employeeCount.lte = maxEmployeeCount;
-//     }
+    // Filtres par plage numérique
+    if (minEmployeeCount !== undefined || maxEmployeeCount !== undefined) {
+      whereClause.employeeCount = {};
+      if (minEmployeeCount !== undefined) whereClause.employeeCount.gte = minEmployeeCount;
+      if (maxEmployeeCount !== undefined) whereClause.employeeCount.lte = maxEmployeeCount;
+    }
 
-//     // Filtres par surface
-//     if (minArea !== undefined || maxArea !== undefined) {
-//       whereClause.area = {};
-//       if (minArea !== undefined) whereClause.area.gte = minArea;
-//       if (maxArea !== undefined) whereClause.area.lte = maxArea;
-//     }
+    // Filtres par surface
+    if (minArea !== undefined || maxArea !== undefined) {
+      whereClause.area = {};
+      if (minArea !== undefined) whereClause.area.gte = minArea;
+      if (maxArea !== undefined) whereClause.area.lte = maxArea;
+    }
 
-//     // Filtres par dates
-//     if (creationDateStart || creationDateEnd) {
-//       whereClause.creationDate = {};
-//       if (creationDateStart) whereClause.creationDate.gte = new Date(creationDateStart);
-//       if (creationDateEnd) whereClause.creationDate.lte = new Date(creationDateEnd);
-//     }
+    // Filtres par dates
+    if (creationDateStart || creationDateEnd) {
+      whereClause.creationDate = {};
+      if (creationDateStart) whereClause.creationDate.gte = new Date(creationDateStart);
+      if (creationDateEnd) whereClause.creationDate.lte = new Date(creationDateEnd);
+    }
 
-//     // Filtres booléens
-//     const booleanFilters = [
-//       'wheelchairAccessible',
-//       'parkingAvailable', 
-//       'securitySystem',
-//       'securityGuard'
-//     ];
+    // Filtres booléens
+    const booleanFilters = [
+      'wheelchairAccessible',
+      'parkingAvailable', 
+      'securitySystem',
+      'securityGuard'
+    ];
     
-//     booleanFilters.forEach(filter => {
-//       if (filters[filter] !== undefined) {
-//         whereClause[filter] = filters[filter];
-//       }
-//     });
+    booleanFilters.forEach(filter => {
+      if (filters[filter] !== undefined) {
+        whereClause[filter] = filters[filter];
+      }
+    });
 
-//     // Gestion du tri
-//     const orderBy = {};
-//     const validSortFields = ['name', 'city', 'creationDate', 'employeeCount', 'area', 'code'];
-//     const sortField = validSortFields.includes(sortBy) ? sortBy : 'creationDate';
+    // Gestion du tri
+    const orderBy = {};
+    const validSortFields = ['name', 'city', 'creationDate', 'employeeCount', 'area', 'code'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'creationDate';
     
-//     orderBy[sortField] = sortOrder;
+    orderBy[sortField] = sortOrder;
 
-//     // REQUÊTE PRISMA
-//     const [sites, total] = await Promise.all([
-//       prisma.site.findMany({
-//         where: whereClause,
-//         skip,
-//         take: limit,
-//         orderBy,
-//         include: {
-//           checkpoints: {
-//             select: {
-//               id: true,
-//               name: true,
-//               status: true,
-//               checkpointType: true,
-//               agent: {
-//                 select: {
-//                   id: true,
-//                   firstName: true,
-//                   lastName: true
-//                 }
-//               },
-//               sosAlerts: {
-//                 where: { isResolved: false },
-//                 select: { id: true }
-//               }
-//             }
-//           },
-//           assignedUsers: {
-//             select: {
-//               user: {
-//                 select: {
-//                   id: true,
-//                   firstName: true,
-//                   lastName: true,
-//                   email: true,
-//                   role: true
-//                 }
-//               }
-//             }
-//           },
-//           _count: {
-//             select: {
-//               checkpoints: true,
-//               assignedUsers: true,
-//               incidents: true
-//             }
-//           }
-//         }
-//       }),
-//       prisma.site.count({ where: whereClause })
-//     ]);
+    // REQUÊTE PRISMA
+    const [sites, total] = await Promise.all([
+      prisma.site.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          checkpoints: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              checkpointType: true,
+              agent: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true
+                }
+              },
+              sosAlerts: {
+                where: { isResolved: false },
+                select: { id: true }
+              }
+            }
+          },
+          assignedUsers: {
+            select: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  role: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              checkpoints: true,
+              assignedUsers: true,
+              incidents: true
+            }
+          }
+        }
+      }),
+      prisma.site.count({ where: whereClause })
+    ]);
 
-//     // Récupérer les options pour les filtres automatiques
-//     const filterOptions = await this.getFilterOptionsSimple();
+    // Récupérer les options pour les filtres automatiques
+    const filterOptions = await this.getFilterOptionsSimple();
 
-//     return {
-//       sites,
-//       pagination: {
-//         page,
-//         limit,
-//         total,
-//         totalPages: Math.ceil(total / limit),
-//         hasNext: page * limit < total,
-//         hasPrev: page > 1
-//       },
-//       filterOptions: filterOptions.data,
-//       appliedFilters: {
-//         ...filters,
-//         sortBy,
-//         sortOrder
-//       }
-//     };
-//   } catch (error) {
-//     throw new Error(`Erreur lors de la récupération des sites filtrés: ${error.message}`);
-//   }
-// }
+    return {
+      sites,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      },
+      filterOptions: filterOptions.data,
+      appliedFilters: {
+        ...filters,
+        sortBy,
+        sortOrder
+      }
+    };
+  } catch (error) {
+    throw new Error(`Erreur lors de la récupération des sites filtrés: ${error.message}`);
+  }
+}
 
-//   // services/site.service.js
+  // services/site.service.js
 
-//   async getFilterOptionsSimple(filters = {}) {
-//   try {
-//     // Construction du where pour les pré-filtres
-//     const whereClause = {};
+  async getFilterOptionsSimple(filters = {}) {
+  try {
+    // Construction du where pour les pré-filtres
+    const whereClause = {};
     
-//     // Appliquer les pré-filtres s'ils sont fournis
-//     if (filters.city && filters.city.trim() !== '') {
-//       whereClause.city = { contains: filters.city, mode: 'insensitive' };
-//     }
-//     if (filters.status && filters.status.trim() !== '') {
-//       whereClause.status = filters.status;
-//     }
-//     if (filters.activityType && filters.activityType.trim() !== '') {
-//       whereClause.activityType = filters.activityType;
-//     }
-//     if (filters.country && filters.country.trim() !== '') {
-//       whereClause.country = { contains: filters.country, mode: 'insensitive' };
-//     }
-//     if (filters.region && filters.region.trim() !== '') {
-//       whereClause.region = { contains: filters.region, mode: 'insensitive' };
-//     }
+    // Appliquer les pré-filtres s'ils sont fournis
+    if (filters.city && filters.city.trim() !== '') {
+      whereClause.city = { contains: filters.city, mode: 'insensitive' };
+    }
+    if (filters.status && filters.status.trim() !== '') {
+      whereClause.status = filters.status;
+    }
+    if (filters.activityType && filters.activityType.trim() !== '') {
+      whereClause.activityType = filters.activityType;
+    }
+    if (filters.country && filters.country.trim() !== '') {
+      whereClause.country = { contains: filters.country, mode: 'insensitive' };
+    }
+    if (filters.region && filters.region.trim() !== '') {
+      whereClause.region = { contains: filters.region, mode: 'insensitive' };
+    }
     
-//     // Créer les conditions where pour chaque groupBy SÉPARÉMENT
-//     // Pour éviter les conflits de filtres 'not'
+    // Créer les conditions where pour chaque groupBy SÉPARÉMENT
+    // Pour éviter les conflits de filtres 'not'
     
-//     const [cities, countries, regions, activityTypes, statuses] = await Promise.all([
-//       // Cities - seulement exclure null si pas de filtre city
-//       prisma.site.groupBy({
-//         by: ['city'],
-//         where: filters.city ? whereClause : { ...whereClause, city: { not: null } },
-//         _count: { city: true },
-//         orderBy: { city: 'asc' }
-//       }),
-//       // Countries - seulement exclure null si pas de filtre country
-//       prisma.site.groupBy({
-//         by: ['country'],
-//         where: filters.country ? whereClause : { ...whereClause, country: { not: null } },
-//         _count: { country: true },
-//         orderBy: { country: 'asc' }
-//       }),
-//       // Regions - seulement exclure null si pas de filtre region
-//       prisma.site.groupBy({
-//         by: ['region'],
-//         where: filters.region ? whereClause : { ...whereClause, region: { not: null } },
-//         _count: { region: true },
-//         orderBy: { region: 'asc' }
-//       }),
-//       // ActivityTypes - seulement exclure null si pas de filtre activityType
-//       prisma.site.groupBy({
-//         by: ['activityType'],
-//         where: filters.activityType ? whereClause : { ...whereClause, activityType: { not: null } },
-//         _count: { activityType: true },
-//         orderBy: { activityType: 'asc' }
-//       }),
-//       // Statuses - seulement exclure null si pas de filtre status
-//       prisma.site.groupBy({
-//         by: ['status'],
-//         where: filters.status ? whereClause : { ...whereClause, status: { not: null } },
-//         _count: { status: true },
-//         orderBy: { status: 'asc' }
-//       })
-//     ]);
+    const [cities, countries, regions, activityTypes, statuses] = await Promise.all([
+      // Cities - seulement exclure null si pas de filtre city
+      prisma.site.groupBy({
+        by: ['city'],
+        where: filters.city ? whereClause : { ...whereClause, city: { not: null } },
+        _count: { city: true },
+        orderBy: { city: 'asc' }
+      }),
+      // Countries - seulement exclure null si pas de filtre country
+      prisma.site.groupBy({
+        by: ['country'],
+        where: filters.country ? whereClause : { ...whereClause, country: { not: null } },
+        _count: { country: true },
+        orderBy: { country: 'asc' }
+      }),
+      // Regions - seulement exclure null si pas de filtre region
+      prisma.site.groupBy({
+        by: ['region'],
+        where: filters.region ? whereClause : { ...whereClause, region: { not: null } },
+        _count: { region: true },
+        orderBy: { region: 'asc' }
+      }),
+      // ActivityTypes - seulement exclure null si pas de filtre activityType
+      prisma.site.groupBy({
+        by: ['activityType'],
+        where: filters.activityType ? whereClause : { ...whereClause, activityType: { not: null } },
+        _count: { activityType: true },
+        orderBy: { activityType: 'asc' }
+      }),
+      // Statuses - seulement exclure null si pas de filtre status
+      prisma.site.groupBy({
+        by: ['status'],
+        where: filters.status ? whereClause : { ...whereClause, status: { not: null } },
+        _count: { status: true },
+        orderBy: { status: 'asc' }
+      })
+    ]);
 
-//     return {
-//       success: true,
-//       data: {
-//         cities: cities.map(c => ({ 
-//           value: c.city, 
-//           label: c.city, 
-//           count: c._count.city 
-//         })),
-//         countries: countries.map(c => ({ 
-//           value: c.country, 
-//           label: c.country, 
-//           count: c._count.country 
-//         })),
-//         regions: regions.map(r => ({ 
-//           value: r.region, 
-//           label: r.region, 
-//           count: r._count.region 
-//         })),
-//         activityTypes: activityTypes.map(at => ({ 
-//           value: at.activityType, 
-//           label: at.activityType, 
-//           count: at._count.activityType 
-//         })),
-//         statuses: statuses.map(s => ({ 
-//           value: s.status, 
-//           label: s.status, 
-//           count: s._count.status 
-//         }))
-//       }
-//     };
-//   } catch (error) {
-//     console.error('Erreur dans getFilterOptionsSimple:', error);
-//     return {
-//       success: false,
-//       message: `Erreur: ${error.message}`
-//     };
-//   }
-// }
+    return {
+      success: true,
+      data: {
+        cities: cities.map(c => ({ 
+          value: c.city, 
+          label: c.city, 
+          count: c._count.city 
+        })),
+        countries: countries.map(c => ({ 
+          value: c.country, 
+          label: c.country, 
+          count: c._count.country 
+        })),
+        regions: regions.map(r => ({ 
+          value: r.region, 
+          label: r.region, 
+          count: r._count.region 
+        })),
+        activityTypes: activityTypes.map(at => ({ 
+          value: at.activityType, 
+          label: at.activityType, 
+          count: at._count.activityType 
+        })),
+        statuses: statuses.map(s => ({ 
+          value: s.status, 
+          label: s.status, 
+          count: s._count.status 
+        }))
+      }
+    };
+  } catch (error) {
+    console.error('Erreur dans getFilterOptionsSimple:', error);
+    return {
+      success: false,
+      message: `Erreur: ${error.message}`
+    };
+  }
+}
 
 async createSite(siteData) {
   try {
