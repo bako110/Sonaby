@@ -9,7 +9,6 @@ datasource db {
 
 model User {
   id                    String                      @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  matricule             String?                     @unique @db.VarChar(50)
   email                 String                      @unique(map: "email") @db.VarChar(255)
   passwordHash          String                      @map("password_hash") @db.Text
   firstName             String                      @map("first_name") @db.VarChar(100)
@@ -42,7 +41,6 @@ model User {
 
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
-  @@index([matricule], map: "idx_users_matricule")
   @@map("users")
 }
 

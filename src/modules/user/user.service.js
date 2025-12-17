@@ -263,77 +263,8 @@ class UserService {
     console.log('🔵 updateUser called with id:', id);
     console.log('📝 updateUser data:', JSON.stringify(data, null, 2));
     
-    const existingUser = await this.getUserById(id);
-    if (!existingUser) {
-      throw new Error('Utilisateur non trouvé');
-    }
-
-    // Vérifier l'unicité de l'email si modifié
-    if (data.email && data.email !== existingUser.email) {
-      const emailExists = await prisma.user.findUnique({
-        where: { email: data.email }
-      });
-      if (emailExists) {
-        throw new Error('Un utilisateur avec cet email existe déjà');
-      }
-    }
-
-    // Vérifier l'unicité du matricule si modifié
-    // if (data.matricule && data.matricule !== existingUser.matricule) {
-    //   const matriculeExists = await prisma.user.findUnique({
-    //     where: { matricule: data.matricule }
-    //   });
-    //   if (matriculeExists) {
-    //     throw new Error('Un utilisateur avec ce matricule existe déjà');
-    //   }
-    // }
-
-    // Vérifier l'unicité du username si modifié
-    if (data.username && data.username !== existingUser.username) {
-      const usernameExists = await prisma.user.findUnique({
-        where: { username: data.username }
-      });
-      if (usernameExists) {
-        throw new Error('Un utilisateur avec ce nom d\'utilisateur existe déjà');
-      }
-    }
-
-    // Vérifier que les sites existent
-    if (data.assignedSites && data.assignedSites.length > 0) {
-      console.log('🔵 Checking sites:', data.assignedSites);
-      const sites = await prisma.site.findMany({
-        where: { id: { in: data.assignedSites } }
-      });
-      if (sites.length !== data.assignedSites.length) {
-        throw new Error('Un ou plusieurs sites spécifiés n\'existent pas');
-      }
-    }
-
-    // Vérifier que les checkpoints existent
-    if (data.assignedCheckpoints && data.assignedCheckpoints.length > 0) {
-      console.log('🔵 Checking checkpoints:', data.assignedCheckpoints);
-      const checkpoints = await prisma.checkpoint.findMany({
-        where: { id: { in: data.assignedCheckpoints } }
-      });
-      if (checkpoints.length !== data.assignedCheckpoints.length) {
-        throw new Error('Un ou plusieurs checkpoints spécifiés n\'existent pas');
-      }
-    }
-
-    // Vérifier que le rôle existe dans la table user_roles
-    if (data.role && data.role !== existingUser.role) {
-      console.log('🔵 Checking role:', data.role);
-      const roleExists = await prisma.user_roles.findUnique({
-        where: { role_name: data.role }
-      });
-      if (!roleExists) {
-        throw new Error(`Le rôle "${data.role}" n'existe pas dans le système`);
-      }
-    }
-
-    console.log('🔐 Permissions reçues pour mise à jour:', data.permissions);
-
-    const { assignedSites, permissions, assignedCheckpoints, password, ...updateData } = data;
+    // Accepter toute modification sans vérification, mais ignorer matricule
+    const { assignedSites, permissions, assignedCheckpoints, password, matricule, ...updateData } = data || {};
 
     // Gérer le mot de passe
     if (password) {
@@ -346,7 +277,7 @@ class UserService {
     };
 
     // Mettre à jour les sites assignés
-    if (assignedSites !== undefined) {
+    if (assignedSites !== undefined && assignedSites !== null && Array.isArray(assignedSites)) {
       console.log('🔵 Updating assignedSites');
       await prisma.userSite.deleteMany({
         where: { userId: id }
@@ -359,7 +290,7 @@ class UserService {
     }
 
     // Mettre à jour les checkpoints assignés
-    if (assignedCheckpoints !== undefined) {
+    if (assignedCheckpoints !== undefined && assignedCheckpoints !== null && Array.isArray(assignedCheckpoints)) {
       console.log('🔵 Updating assignedCheckpoints');
       // Supprimer les anciennes assignations de checkpoints
       await prisma.agentCheckpointAssignment.deleteMany({
@@ -379,7 +310,7 @@ class UserService {
     }
 
     // Mettre à jour les permissions (création automatique si nécessaire)
-    if (permissions !== undefined) {
+    if (permissions !== undefined && permissions !== null && Array.isArray(permissions)) {
       console.log('🔵 Updating permissions');
       await prisma.userPermission.deleteMany({
         where: { userId: id }
@@ -418,7 +349,6 @@ class UserService {
       data: updateOperations,
       select: {
         id: true,
-        matricule: true,
         email: true,
         firstName: true,
         lastName: true,
@@ -444,6 +374,7 @@ class UserService {
           select: {
             id: true,
             name: true,
+            siteId: true,
             site: {
               select: {
                 id: true,
