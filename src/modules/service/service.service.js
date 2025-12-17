@@ -26,13 +26,37 @@ class SiteService {
       throw new Error("Agent déjà affecté à ce site");
     }
 
-    // Créer l'affectation
-    return prisma.userSite.create({
+    // 🔹 Si c'est un AGENT_GESTION, le faire devenir manager du site
+    if (user.role === "AGENT_GESTION") {
+      // 1️⃣ Supprimer l'ancien manager de UserSite
+      const oldUserSite = await prisma.userSite.findFirst({
+        where: { siteId }
+      });
+      
+      if (oldUserSite) {
+        await prisma.userSite.delete({
+          where: { id: oldUserSite.id }
+        });
+      }
+      
+      // 2️⃣ Mettre à jour le champ manager du site avec le nouveau nom
+      const newManagerName = `${user.firstName} ${user.lastName}`;
+      await prisma.site.update({
+        where: { id: siteId },
+        data: { manager: newManagerName }
+      });
+    }
+
+    // 3️⃣ Créer l'affectation dans UserSite
+    const assignment = await prisma.userSite.create({
       data: {
         userId,
         siteId
       }
     });
+
+    // 4️⃣ Retourner l'assignation avec les détails
+    return assignment;
   }
 
   // 🔍 Lister les agents affectés à un site

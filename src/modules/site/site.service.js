@@ -190,7 +190,7 @@ async getFilteredSites(filters = {}) {
     
     // Appliquer les pré-filtres s'ils sont fournis
     if (filters.city && filters.city.trim() !== '') {
-      whereClause.city = { contains: filters.city };
+      whereClause.city = { contains: filters.city, mode: 'insensitive' };
     }
     if (filters.status && filters.status.trim() !== '') {
       whereClause.status = filters.status;
@@ -199,10 +199,10 @@ async getFilteredSites(filters = {}) {
       whereClause.activityType = filters.activityType;
     }
     if (filters.country && filters.country.trim() !== '') {
-      whereClause.country = { contains: filters.country };
+      whereClause.country = { contains: filters.country, mode: 'insensitive' };
     }
     if (filters.region && filters.region.trim() !== '') {
-      whereClause.region = { contains: filters.region };
+      whereClause.region = { contains: filters.region, mode: 'insensitive' };
     }
     
     // Créer les conditions where pour chaque groupBy SÉPARÉMENT
@@ -370,9 +370,9 @@ async createSite(siteData) {
       
       const whereClause = search ? {
         OR: [
-          { name: { contains: search } },
-          { city: { contains: search } },
-          { address: { contains: search } }
+          { name: { contains: search, mode: 'insensitive' } },
+          { city: { contains: search, mode: 'insensitive' } },
+          { address: { contains: search, mode: 'insensitive' } }
         ]
       } : {};
 
@@ -447,148 +447,22 @@ async createSite(siteData) {
   }
 
   async updateSite(id, updateData) {
-  try {
-    const existingSite = await this.getSiteById(id);
-    
-    // Extraire le manager et managerId des données
-    const { manager, managerId, ...dataWithoutManager } = updateData;
-    
-    let updatePayload = { ...dataWithoutManager };
-    let newManagerUserId = null;
-    let newManagerName = null;
-    let shouldUpdateManager = false;
-    
-    // 1. DÉTERMINER le nouveau manager
-    if (managerId !== undefined) {
-      shouldUpdateManager = true;
-      // Si managerId est fourni (UUID)
-      if (managerId) {
-        const managerUser = await prisma.user.findUnique({
-          where: { id: managerId }
-        });
-        
-        if (!managerUser) {
-          throw new Error(`L'utilisateur avec l'ID "${managerId}" n'existe pas`);
-        }
-        
-        newManagerUserId = managerUser.id;
-        newManagerName = `${managerUser.firstName} ${managerUser.lastName}`;
-      } else {
-        // managerId = null ou vide → supprimer le manager
-        newManagerUserId = null;
-        newManagerName = null;
-      }
-    } else if (manager !== undefined) {
-      shouldUpdateManager = true;
-      // Si manager (nom) est fourni directement
-      newManagerName = manager;
+    try {
+      const existingSite = await this.getSiteById(id);
       
-      // Essayer de trouver l'ID utilisateur correspondant
-      if (manager && manager.trim()) {
-        const nameParts = manager.trim().split(/\s+/);
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ') || '';
-        
-        const managerUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              // Recherche par nom complet
-              lastName ? {
-                AND: [
-                  { firstName: { contains: firstName } },
-                  { lastName: { contains: lastName } }
-                ]
-              } : { firstName: { contains: firstName } },
-              // Recherche par email
-              { email: { contains: manager } }
-            ].filter(Boolean)
-          }
-        });
-        
-        if (managerUser) {
-          newManagerUserId = managerUser.id;
+      const updatedSite = await prisma.site.update({
+        where: { id },
+        data: updateData,
+        include: {
+          checkpoints: true
         }
-      }
-    }
-    
-    // 2. METTRE À JOUR le champ manager (texte) SEULEMENT
-    if (newManagerName !== undefined) {
-      updatePayload.manager = newManagerName;
-    }
-    
-    // 3. METTRE À JOUR le site D'ABORD
-    const updatedSite = await prisma.site.update({
-      where: { id },
-      data: updatePayload,
-      include: {
-        checkpoints: true,
-        assignedUsers: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                role: true
-              }
-            }
-          }
-        }
-      }
-    });
-
-    // 4. GÉRER l'assignedUser dans UserSite - APRÈS la mise à jour du site
-    if (shouldUpdateManager) {
-      // Supprimer UNIQUEMENT l'ancien manager de UserSite
-      const oldUserSite = await prisma.userSite.findFirst({
-        where: { siteId: id }
       });
-      
-      if (oldUserSite) {
-        await prisma.userSite.delete({
-          where: { id: oldUserSite.id }
-        });
-      }
-      
-      // Ajouter le NOUVEAU manager SEULEMENT s'il existe
-      if (newManagerUserId) {
-        await prisma.userSite.create({
-          data: {
-            siteId: id,
-            userId: newManagerUserId
-          }
-        });
-      }
-    }
-    
-    // 5. Récupérer le site à jour avec le nouveau manager
-    const finalUpdatedSite = await prisma.site.findUnique({
-      where: { id },
-      include: {
-        checkpoints: true,
-        assignedUsers: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                role: true
-              }
-            }
-          }
-        }
-      }
-    });
 
-    console.log(`✅ Site ${id} updated. New manager ID: ${newManagerUserId}`);
-    return finalUpdatedSite;
-  } catch (error) {
-    throw new Error(`Erreur lors de la mise à jour du site: ${error.message}`);
+      return updatedSite;
+    } catch (error) {
+      throw new Error(`Erreur lors de la mise à jour du site: ${error.message}`);
+    }
   }
-}
 
   async deleteSite(id) {
     try {
