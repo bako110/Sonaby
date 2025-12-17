@@ -472,7 +472,7 @@ async createSite(siteData) {
         newManagerUserId = managerUser.id;
         newManagerName = `${managerUser.firstName} ${managerUser.lastName}`;
       } else {
-        // managerId = null ou vide
+        // managerId = null ou vide → supprimer le manager
         newManagerUserId = null;
         newManagerName = null;
       }
@@ -514,23 +514,20 @@ async createSite(siteData) {
     }
     
     // 3. GÉRER l'assignedUser dans UserSite
-    if (newManagerUserId !== null) {
-      // Supprimer l'ancienne assignation
+    // 🔹 TOUJOURS supprimer l'ancienne assignation si managerId ou manager ont changé
+    if (managerId !== undefined || manager !== undefined) {
       await prisma.userSite.deleteMany({
         where: { siteId: id }
       });
       
-      // Créer la nouvelle assignation
-      updatePayload.assignedUsers = {
-        create: [{
-          userId: newManagerUserId
-        }]
-      };
-    } else if (newManagerName === null || newManagerName === '') {
-      // Si le manager est supprimé, supprimer aussi l'assignation
-      await prisma.userSite.deleteMany({
-        where: { siteId: id }
-      });
+      // 🔹 Si un nouveau manager est assigné, créer la nouvelle assignation
+      if (newManagerUserId) {
+        updatePayload.assignedUsers = {
+          create: [{
+            userId: newManagerUserId
+          }]
+        };
+      }
     }
     
     // 4. METTRE À JOUR le site
@@ -555,6 +552,7 @@ async createSite(siteData) {
       }
     });
 
+    console.log(`✅ Site ${id} updated. New manager ID: ${newManagerUserId}`);
     return updatedSite;
   } catch (error) {
     throw new Error(`Erreur lors de la mise à jour du site: ${error.message}`);
