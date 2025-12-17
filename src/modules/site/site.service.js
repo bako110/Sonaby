@@ -447,22 +447,113 @@ async createSite(siteData) {
   }
 
   async updateSite(id, updateData) {
-    try {
-      const existingSite = await this.getSiteById(id);
-      
-      const updatedSite = await prisma.site.update({
-        where: { id },
-        data: updateData,
-        include: {
-          checkpoints: true
+  try {
+    const existingSite = await this.getSiteById(id);
+    
+    // Extraire le manager et managerId des données
+    const { manager, managerId, ...dataWithoutManager } = updateData;
+    
+    let updatePayload = { ...dataWithoutManager };
+    let newManagerUserId = null;
+    let newManagerName = null;
+    
+    // 1. DÉTERMINER le nouveau manager
+    if (managerId !== undefined) {
+      // Si managerId est fourni (UUID)
+      if (managerId) {
+        const managerUser = await prisma.user.findUnique({
+          where: { id: managerId }
+        });
+        
+        if (!managerUser) {
+          throw new Error(`L'utilisateur avec l'ID "${managerId}" n'existe pas`);
         }
-      });
-
-      return updatedSite;
-    } catch (error) {
-      throw new Error(`Erreur lors de la mise à jour du site: ${error.message}`);
+        
+        newManagerUserId = managerUser.id;
+        newManagerName = `${managerUser.firstName} ${managerUser.lastName}`;
+      } else {
+        // managerId = null ou vide
+        newManagerUserId = null;
+        newManagerName = null;
+      }
+    } else if (manager !== undefined) {
+      // Si manager (nom) est fourni directement
+      newManagerName = manager;
+      
+      // Essayer de trouver l'ID utilisateur correspondant
+      if (manager) {
+        const managerUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { 
+                AND: [
+                  { firstName: { contains: manager.split(' ')[0], mode: 'insensitive' } },
+                  { lastName: { contains: manager.split(' ').slice(1).join(' '), mode: 'insensitive' } }
+                ]
+              },
+              { email: { contains: manager, mode: 'insensitive' } }
+            ]
+          }
+        });
+        
+        if (managerUser) {
+          newManagerUserId = managerUser.id;
+        }
+      }
     }
+    
+    // 2. METTRE À JOUR le champ manager (texte)
+    if (newManagerName !== undefined) {
+      updatePayload.manager = newManagerName;
+    }
+    
+    // 3. GÉRER l'assignedUser dans UserSite
+    if (newManagerUserId !== null) {
+      // Supprimer l'ancienne assignation
+      await prisma.userSite.deleteMany({
+        where: { siteId: id }
+      });
+      
+      // Créer la nouvelle assignation
+      updatePayload.assignedUsers = {
+        create: [{
+          userId: newManagerUserId
+        }]
+      };
+    } else if (newManagerName === null || newManagerName === '') {
+      // Si le manager est supprimé, supprimer aussi l'assignation
+      await prisma.userSite.deleteMany({
+        where: { siteId: id }
+      });
+    }
+    
+    // 4. METTRE À JOUR le site
+    const updatedSite = await prisma.site.update({
+      where: { id },
+      data: updatePayload,
+      include: {
+        checkpoints: true,
+        assignedUsers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return updatedSite;
+  } catch (error) {
+    throw new Error(`Erreur lors de la mise à jour du site: ${error.message}`);
   }
+}
 
   async deleteSite(id) {
     try {

@@ -163,6 +163,11 @@ class VisitorController {
     }
 
     try {
+        console.log('=============== CREATE VISITOR DEBUG ===============');
+        console.log('📋 req.body keys:', Object.keys(req.body || {}));
+        console.log('📂 req.files keys:', Object.keys(req.files || {}));
+        console.log('📂 req.files full:', JSON.stringify(req.files, null, 2));
+        
         // 🔹 Nettoyer les données: convertir les chaînes vides en null
         const cleanedData = Object.keys(req.body).reduce((acc, key) => {
             const value = req.body[key];
@@ -179,24 +184,28 @@ class VisitorController {
             return acc;
         }, {});
 
-        console.log('📝 Creating visitor with cleaned data:', JSON.stringify(cleanedData, null, 2));
-        console.log('📂 Uploaded files:', req.files ? Object.keys(req.files) : 'none');
-        
+        console.log('📝 Cleaned data:', JSON.stringify(cleanedData, null, 2));
         const validatedData = createVisitorWithTransform.parse(cleanedData);
+        console.log('✅ Validated data:', JSON.stringify(validatedData, null, 2));
 
         // 🔹 Mapper les fichiers uploadés avec flexibilité
         const photoFile = req.files?.photoUrl?.[0] || req.files?.photo?.[0];
         const idScanFile = req.files?.idScanUrl?.[0] || req.files?.file?.[0];
 
+        console.log('📸 Photo file object:', photoFile ? { path: photoFile.path, size: photoFile.size } : null);
+        console.log('📄 ID Scan file object:', idScanFile ? { path: idScanFile.path, size: idScanFile.size } : null);
+
         const photoUrl = photoFile ? uploadService.getPublicUrl(photoFile) : null;
         const idScanUrl = idScanFile ? uploadService.getPublicUrl(idScanFile) : null;
 
-        console.log('📸 Photo URL:', photoUrl);
-        console.log('📄 ID Scan URL:', idScanUrl);
+        console.log('🔗 Photo URL:', photoUrl);
+        console.log('🔗 ID Scan URL:', idScanUrl);
 
         const finalData = { ...validatedData, photoUrl, idScanUrl };
+        console.log('📦 Final data to service:', JSON.stringify(finalData, null, 2));
 
         const result = await visitorService.createOrFindVisitor(finalData);
+        console.log('✅ Service result:', result);
 
         res.status(result.status === "NEW_VISITOR_CREATED" ? 201 : 200).json({
             success: true,
@@ -208,7 +217,8 @@ class VisitorController {
         });
 
     } catch (error) {
-        console.error('❌ Error creating visitor:', error);
+        console.error('❌ Error creating visitor:', error.message);
+        console.error('❌ Stack:', error.stack);
         if (error.name === 'ZodError') {
             console.error('🔴 Zod validation errors:', JSON.stringify(error.errors, null, 2));
             return res.status(400).json({
