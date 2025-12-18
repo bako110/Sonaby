@@ -406,38 +406,28 @@ if (inAlert !== undefined) {
         throw new Error("Site non trouvé");
       }
 
-      // Vérifier l'unicité de l'identifiant SOS
-      if (checkpointData.sosId) {
-        const existingSOS = await prisma.checkpoint.findFirst({
-          where: { sosId: checkpointData.sosId },
-        });
-
-        if (existingSOS) {
-          throw new Error("Cet identifiant SOS est déjà utilisé");
-        }
-      }
-
       // Préparer les données pour la création (sans agentId)
       const createData = {
-        name: checkpointData.name,
-        description: checkpointData.description || null,
-        siteId: checkpointData.siteId,
-        zone: checkpointData.zone || null,
-        building: checkpointData.building || null,
-        floor: checkpointData.floor || null,
-        coordinatesLatitude: checkpointData.coordinatesLatitude || null,
-        coordinatesLongitude: checkpointData.coordinatesLongitude || null,
-        sosId: checkpointData.sosId || null, // Rendre sosId nullable
-        // Ne pas inclure agentId - utiliser agentAssignments à la place
-        checkpointType: checkpointData.checkpointType,
-        status: checkpointData.status,
-        priority: checkpointData.priority,
-        controlFrequency: checkpointData.controlFrequency,
-        equipment: checkpointData.equipment || [],
-        devicesId: checkpointData.devicesId || [],
-        specialInstructions: checkpointData.specialInstructions || null,
-        active: checkpointData.active,
-      };
+    name: checkpointData.name,
+    description: checkpointData.description || null,
+    siteId: checkpointData.siteId,
+    zone: checkpointData.zone || null,
+    building: checkpointData.building || null,
+    floor: checkpointData.floor || null,
+    coordinatesLatitude: checkpointData.coordinatesLatitude || null,
+    coordinatesLongitude: checkpointData.coordinatesLongitude || null,
+    sosId: checkpointData.sosId || null, // nullable
+    agentId: checkpointData.agentId || null, // Ajout de agentId nullable
+    checkpointType: checkpointData.checkpointType,
+    status: checkpointData.status,
+    priority: checkpointData.priority,
+    controlFrequency: checkpointData.controlFrequency,
+    equipment: checkpointData.equipment || [],
+    devicesId: checkpointData.devicesId || [],
+    specialInstructions: checkpointData.specialInstructions || null,
+    active: checkpointData.active,
+};
+
 
       const checkpoint = await prisma.checkpoint.create({
         data: createData,
