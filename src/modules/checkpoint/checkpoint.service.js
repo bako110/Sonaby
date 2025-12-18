@@ -427,7 +427,7 @@ if (inAlert !== undefined) {
         floor: checkpointData.floor || null,
         coordinatesLatitude: checkpointData.coordinatesLatitude || null,
         coordinatesLongitude: checkpointData.coordinatesLongitude || null,
-        sosId: checkpointData.sosId,
+        sosId: checkpointData.sosId || null, // Rendre sosId nullable
         // Ne pas inclure agentId - utiliser agentAssignments à la place
         checkpointType: checkpointData.checkpointType,
         status: checkpointData.status,
@@ -636,7 +636,7 @@ if (inAlert !== undefined) {
       const finalUpdateData = {
         ...otherUpdateData,
         ...(sosConfiguration && {
-          sosId: sosConfiguration.sosId,
+          sosId: sosConfiguration.sosId || null, // Rendre sosId nullable
           sosConfiguration: JSON.stringify(sosConfiguration),
         }),
       };

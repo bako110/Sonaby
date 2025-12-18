@@ -145,7 +145,10 @@ model Checkpoint {
   floor                String?                     @db.VarChar(50)
   coordinatesLatitude  String?                     @map("coordinates_latitude") @db.VarChar(50)
   coordinatesLongitude String?                     @map("coordinates_longitude") @db.VarChar(50)
-  sosId                String                      @unique(map: "sos_id") @map("sos_id") @db.VarChar(100)
+ 
+ 
+  sosId                String?                     @unique(map: "sos_id") @map("sos_id") @db.VarChar(100)
+
   agentId              String?                     @map("agent_id") @db.Char(36)
   checkpointType       String                      @default("internal") @map("checkpoint_type") @db.VarChar(30)
   status               String                      @default("active") @db.VarChar(20)

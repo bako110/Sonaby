@@ -1,88 +1,152 @@
 const { z } = require('zod');
 
-// Énumérations pour les checkpoints (basées sur le payload)
+/**
+ * ===============================
+ * Helpers
+ * ===============================
+ */
+
+// Transforme "" ou "   " en null
+const nullableString = () =>
+  z
+    .string()
+    .optional()
+    .nullable()
+    .transform(v => (typeof v === 'string' && v.trim() === '' ? null : v));
+
+/**
+ * ===============================
+ * Énumérations
+ * ===============================
+ */
+
 const checkpointStatusEnum = z.enum(['active', 'inactive', 'maintenance', 'error']);
 const checkpointTypeEnum = z.enum(['entry', 'exit', 'internal', 'external', 'emergency', 'patrol']);
 const checkpointPriorityEnum = z.enum(['low', 'medium', 'high', 'critical']);
 const controlFrequencyEnum = z.enum(['hourly', 'daily', 'weekly', 'monthly', 'on_demand']);
 
-// Schéma de création d'un checkpoint correspondant exactement au payload
+/**
+ * ===============================
+ * Création Checkpoint
+ * ===============================
+ */
+
 const createCheckpointSchema = z.object({
-  // Informations de base
+  // Infos de base
   name: z.string().min(1, 'Le nom du checkpoint est requis'),
-  description: z.string().optional(),
-  siteId: z.string().min(1, 'L\'ID du site est requis'),
-  
+  description: nullableString(),
+  siteId: z.string().min(1, "L'ID du site est requis"),
+
   // Localisation
-  zone: z.string().optional(),
-  building: z.string().optional(),
-  floor: z.string().optional(),
-  coordinatesLatitude: z.string().optional(),
-  coordinatesLongitude: z.string().optional(),
-  
-  // SOS
-  sosId: z.string().min(1, 'L\'ID SOS est requis'),
-  agentId: z.string().optional(),
-  
-  // Statut et configuration
-  checkpointType: z.string(),
-  status: z.string(),
-  priority: z.string(),
-  controlFrequency: z.string(),
-  
-  // Équipements et instructions
+  zone: nullableString(),
+  building: nullableString(),
+  floor: nullableString(),
+  coordinatesLatitude: nullableString(),
+  coordinatesLongitude: nullableString(),
+
+  // Agent
+  agentId: nullableString(),
+
+  // Statut / configuration
+  checkpointType: checkpointTypeEnum.optional().nullable(),
+  status: checkpointStatusEnum.optional().nullable(),
+  priority: checkpointPriorityEnum.optional().nullable(),
+  controlFrequency: controlFrequencyEnum.optional().nullable(),
+
+  // Équipements
   equipment: z.array(z.string()).default([]),
   devicesId: z.array(z.string()).default([]),
-  specialInstructions: z.string().optional(),
-  
+
+  // Instructions
+  specialInstructions: nullableString(),
+
   // État
   active: z.boolean()
 });
 
-// Schéma de mise à jour (tous les champs optionnels)
+/**
+ * ===============================
+ * Mise à jour (tout optionnel)
+ * ===============================
+ */
+
 const updateCheckpointSchema = createCheckpointSchema.partial();
 
-// Schéma pour l'ID du checkpoint
+/**
+ * ===============================
+ * ID Checkpoint
+ * ===============================
+ */
+
 const checkpointIdSchema = z.object({
   id: z.string().min(1, 'ID de checkpoint requis')
 });
 
-// Schéma de requête avec filtres
-const checkpointQuerySchema = z.object({
-  search: z.string().optional(),
-  siteId: z.string().uuid().optional(),
-  zone: z.string().optional(),
-  checkpointType: z.enum(['internal', 'external', 'virtual']).optional(),
-  status: z.enum(['active', 'inactive', 'maintenance']).optional(),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
-  agentId: z.string().uuid().optional(),
-  dateCreationDebut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  dateCreationFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  avecAgent: z.enum(['true', 'false']).optional(),
-  enAlerte: z.enum(['true', 'false']).optional(),
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(10)
-}).refine((data) => {
-  // Validation croisée des dates
-  if (data.dateCreationDebut && data.dateCreationFin) {
-    const debut = new Date(data.dateCreationDebut);
-    const fin = new Date(data.dateCreationFin);
-    return debut <= fin;
-  }
-  return true;
-}, {
-  message: "La date de début ne peut pas être après la date de fin",
-  path: ["dateCreationDebut"]
-});
+/**
+ * ===============================
+ * Filtres / Query
+ * ===============================
+ */
 
-// Schéma pour l'assignation d'agent(s) à checkpoint
+const checkpointQuerySchema = z
+  .object({
+    search: nullableString(),
+    siteId: z.string().uuid().optional().nullable(),
+    zone: nullableString(),
+
+    checkpointType: checkpointTypeEnum.optional().nullable(),
+    status: checkpointStatusEnum.optional().nullable(),
+    priority: checkpointPriorityEnum.optional().nullable(),
+
+    agentId: z.string().uuid().optional().nullable(),
+
+    dateCreationDebut: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .nullable(),
+
+    dateCreationFin: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .nullable(),
+
+    avecAgent: z.enum(['true', 'false']).optional().nullable(),
+    enAlerte: z.enum(['true', 'false']).optional().nullable(),
+
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(10)
+  })
+  .refine(data => {
+    if (data.dateCreationDebut && data.dateCreationFin) {
+      return new Date(data.dateCreationDebut) <= new Date(data.dateCreationFin);
+    }
+    return true;
+  }, {
+    message: 'La date de début ne peut pas être après la date de fin',
+    path: ['dateCreationDebut']
+  });
+
+/**
+ * ===============================
+ * Assignation Agent
+ * ===============================
+ */
+
 const assignAgentSchema = z.object({
-  agentId: z.string().min(1, 'L\'ID de l\'agent est requis')
+  agentId: z.string().min(1, "L'ID de l'agent est requis")
 });
 
 const unassignAgentSchema = z.object({
   agentId: z.string().uuid({ message: "L'ID de l'agent doit être un UUID valide" })
 });
+
+/**
+ * ===============================
+ * Exports
+ * ===============================
+ */
 
 module.exports = {
   createCheckpointSchema,
@@ -90,10 +154,11 @@ module.exports = {
   checkpointIdSchema,
   checkpointQuerySchema,
   assignAgentSchema,
-  // Export des énumérations pour réutilisation
+  unassignAgentSchema,
+
+  // Enums réutilisables
   checkpointStatusEnum,
   checkpointTypeEnum,
   checkpointPriorityEnum,
-  controlFrequencyEnum,
-  unassignAgentSchema 
+  controlFrequencyEnum
 };

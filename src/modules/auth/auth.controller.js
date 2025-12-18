@@ -5,8 +5,7 @@ const {
     registerSchema, 
     loginSchema, 
     refreshTokenSchema,
-    changePasswordSchema,
-    resetPasswordByAdminSchema
+    changePasswordSchema 
 } = require('./auth.schema');
 
 const authController = {
@@ -69,29 +68,31 @@ const authController = {
         });
     }),
     
-    resetPasswordByAdmin: asyncHandler(async (req, res) => {
-        // Validation avec Zod
-        const { newPassword } = resetPasswordByAdminSchema.parse(req.body);
-        const { userId } = req.params;
-        
-        // Vérifier que l'utilisateur est ADMIN
-        if (req.user.role !== 'ADMIN') {
-            return res.status(403).json({
-                success: false,
-                message: 'Accès réservé aux administrateurs'
-            });
-        }
-        
-        // Appeler le service
-        const result = await authService.resetPasswordByAdmin(userId, newPassword);
-        
-        return res.status(200).json({
-            success: true,
-            message: 'Mot de passe réinitialisé avec succès',
-            data: result
-        });
-    }),
+    // Nouvelle méthode : Changement de mot de passe
+   resetPasswordByAdmin: asyncHandler(async (req, res) => {
+    // Validation avec Zod
+    const { newPassword } = resetPasswordByAdminSchema.parse(req.body);
+    const { userId } = req.params;
     
+    // Vérifier que l'utilisateur est ADMIN
+    if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({
+            success: false,
+            message: 'Accès réservé aux administrateurs'
+        });
+    }
+    
+    // Appeler le service
+    const result = await userService.resetPasswordByAdmin(userId, newPassword);
+    
+    return res.status(200).json({
+        success: true,
+        message: 'Mot de passe réinitialisé avec succès',
+        data: result
+    });
+}),
+    
+    // Tableau de bord complet pour agent de contrôle
     getAgentDashboard: asyncHandler(async (req, res) => {
         const userId = req.user.userId;
         const userRole = req.user.role;
