@@ -5,7 +5,8 @@ const {
     registerSchema, 
     loginSchema, 
     refreshTokenSchema,
-    changePasswordSchema 
+    changePasswordSchema,
+    resetPasswordByAdminSchema
 } = require('./auth.schema');
 
 const authController = {
@@ -83,7 +84,7 @@ const authController = {
     }
     
     // Appeler le service
-    const result = await userService.resetPasswordByAdmin(userId, newPassword);
+    const result = await authService.resetPasswordByAdmin(userId, newPassword);
     
     return res.status(200).json({
         success: true,
