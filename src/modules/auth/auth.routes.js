@@ -247,7 +247,7 @@ router.get('/profile', authenticateToken, authController.getProfile);
 router.get('/agent-dashboard', authenticateToken, authController.getAgentDashboard);
 
 // Route pour changer le mot de passe
-router.patch('/:userId/change-password', 
+router.patch('/:userId/reset-password', 
   authenticateToken, // Protection par token
   authController.resetPasswordByAdmin
 );
