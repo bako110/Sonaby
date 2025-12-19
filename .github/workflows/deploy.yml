@@ -1,0 +1,13 @@
+name: Remote Deploy
+on:
+  push:
+    branches: [ main ]
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Run deploy-sonabhy-back batch
+        #run: /home/sertia/deploy/batchs/deploy-sonabhy-back.sh
+        run: |
+          cd /home/sertia/deploy/batchs
+          GIT_SSH_COMMAND="ssh -i /home/sertia/.ssh/id_ed25519 -o StrictHostKeyChecking=no" ./deploy-sonabhy-back.sh
