@@ -512,3 +512,4 @@ Les contributions sont les bienvenues ! Consultez `CONTRIBUTING.md` pour les gui
 ---
 
 **Développé avec ❤️ pour simplifier la gestion des visites d'entreprise**
+
