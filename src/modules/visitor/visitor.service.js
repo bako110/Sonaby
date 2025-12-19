@@ -640,7 +640,7 @@ async createOrFindVisitor(visitorData) {
         console.error("❌ Erreur createOrFindVisitor:", error);
 
         if (error.code === 'P2002') {
-            throw new Error(`Un visiteur avec ce type et numéro d'identité existe déjà.`);
+            throw new Error(`Un visiteu avec ce type et numéro d'identité existe déjà.`);
         }
         if (error.code === 'P2003' || error.code === 'P2025') {
             throw new Error(`Données invalides pour la création du visiteur: ${error.message}`);
