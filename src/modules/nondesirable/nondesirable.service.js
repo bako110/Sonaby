@@ -6,6 +6,46 @@ const globalNotificationService = require('../notification/notification.service'
 class NonDesirableService {
   
   // 1️⃣ Création d'un "indésirable" connu avec notification globale
+
+  // =======================
+// Créer un indésirable
+// =======================
+// async  createNonDesirable(nonDesirableData, reportedBy) {
+//     try {
+//         const { visitorId, firstName, lastName, idType, idNumber, photoUrl, reason } = nonDesirableData;
+//         if (!reportedBy) throw new Error('Utilisateur non authentifié');
+
+//         // Vérifier s'il existe déjà par visitorId ou infos d'identité
+//         let existing = null;
+//         if (visitorId) {
+//             existing = await prisma.nonDesirable.findFirst({ where: { visitorId } });
+//         } else if (idType && idNumber) {
+//             existing = await prisma.nonDesirable.findFirst({ where: { idType, idNumber } });
+//         }
+
+//         if (existing) throw new Error('Ce visiteur est déjà marqué comme indésirable');
+
+//         // Création de l’indésirable
+//         const nonDesirable = await prisma.nonDesirable.create({
+//             data: {
+//                 visitorId: visitorId || null,
+//                 firstName,
+//                 lastName,
+//                 idType: idType || null,
+//                 idNumber: idNumber || null,
+//                 photoUrl: photoUrl || null,
+//                 reason,
+//                 reportedBy
+//             }
+//         });
+
+//         return { success: true, data: nonDesirable };
+
+//     } catch (error) {
+//         console.error('❌ Erreur createNonDesirable:', error);
+//         throw new Error(`Erreur lors de la création de l'entrée indésirable: ${error.message}`);
+//     }
+// }
   async createNonDesirable(nonDesirableData, reportedBy) {
     try {
       const { visitorId, reason } = nonDesirableData;

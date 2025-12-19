@@ -248,8 +248,8 @@ router.get('/agent-dashboard', authenticateToken, authController.getAgentDashboa
 
 // Route pour changer le mot de passe
 router.patch('/:userId/change-password', 
-  authMiddleware, // Protection par token
-  authController.changePassword
+  authenticateToken, // Protection par token
+  authController.resetPasswordByAdmin
 );
 
 
@@ -402,8 +402,8 @@ router.post('/create-test-user', asyncHandler(async (req, res) => {
 
 // Route pour changer le mot de passe
 router.patch('/:userId/change-password', 
-  authMiddleware, // Protection par token
-  userController.changePassword
+  authenticateToken, // Protection par token
+  authController.resetPasswordByAdmin
 );
 
 
