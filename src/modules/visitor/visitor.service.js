@@ -518,10 +518,8 @@ class VisitorService {
   }
 }
   
-// =======================
-// Créer ou retrouver un visiteur
-// =======================
- async createOrFindVisitor(visitorData) {
+
+async createOrFindVisitor(visitorData) {
     try {
         const { idType, idNumber, photoUrl, idScanUrl, ...rest } = visitorData;
 
@@ -555,22 +553,22 @@ class VisitorService {
             }
         });
 
-        // Vérifier si visiteur existant est indésirable
+        // Vérifier s'il est indésirable
         let undesirableRecord = null;
+
         if (existingVisitor) {
             console.log('✅ Visiteur existant trouvé:', existingVisitor.id);
 
             undesirableRecord = await prisma.nonDesirable.findFirst({
-                where: {
-                    OR: [
-                        { visitorId: existingVisitor.id },
-                        { idType: existingVisitor.idType, idNumber: existingVisitor.idNumber }
-                    ]
-                },
-                select: { id: true, reason: true, createdAt: true }
+                where: { visitorId: existingVisitor.id },
+                select: {
+                    id: true,
+                    reason: true,
+                    createdAt: true
+                }
             });
 
-            // Mettre à jour les données si nécessaire
+            // 🔄 Mettre à jour les données si nécessaire
             const updateData = {};
             const fieldsToUpdate = [
                 'firstName', 'lastName', 'birthDate', 'birthPlace', 'residence',
@@ -584,6 +582,7 @@ class VisitorService {
                 }
             });
 
+            // Mettre à jour les URLs de fichiers si fournies
             if (photoUrl && photoUrl !== existingVisitor.photoUrl) updateData.photoUrl = photoUrl;
             if (idScanUrl && idScanUrl !== existingVisitor.idScanUrl) updateData.idScanUrl = idScanUrl;
 
@@ -650,137 +649,6 @@ class VisitorService {
         throw new Error(`Erreur lors de la création ou récupération du visiteur: ${error.message}`);
     }
 }
-
-// async createOrFindVisitor(visitorData) {
-//     try {
-//         const { idType, idNumber, photoUrl, idScanUrl, ...rest } = visitorData;
-
-//         console.log('🔍 Recherche visiteur existant:', { idType, idNumber });
-
-//         // 1️⃣ Vérifier si un visiteur existe déjà
-//         const existingVisitor = await prisma.visitor.findFirst({
-//             where: { idType, idNumber },
-//             select: {
-//                 id: true,
-//                 firstName: true,
-//                 lastName: true,
-//                 idType: true,
-//                 idNumber: true,
-//                 photoUrl: true,
-//                 idScanUrl: true,
-//                 isBlacklisted: true,
-//                 blacklistReason: true,
-//                 createdAt: true,
-//                 birthDate: true,
-//                 birthPlace: true,
-//                 residence: true,
-//                 sexe: true,
-//                 givingDate: true,
-//                 expirationDate: true,
-//                 phone: true,
-//                 email: true,
-//                 company: true,
-//                 emergencyContactPhone: true,
-//                 emergencyContactName: true
-//             }
-//         });
-
-//         // Vérifier s'il est indésirable
-//         let undesirableRecord = null;
-
-//         if (existingVisitor) {
-//             console.log('✅ Visiteur existant trouvé:', existingVisitor.id);
-
-//             undesirableRecord = await prisma.nonDesirable.findFirst({
-//                 where: { visitorId: existingVisitor.id },
-//                 select: {
-//                     id: true,
-//                     reason: true,
-//                     createdAt: true
-//                 }
-//             });
-
-//             // 🔄 Mettre à jour les données si nécessaire
-//             const updateData = {};
-//             const fieldsToUpdate = [
-//                 'firstName', 'lastName', 'birthDate', 'birthPlace', 'residence',
-//                 'sexe', 'givingDate', 'expirationDate', 'phone', 'email',
-//                 'company', 'emergencyContactPhone', 'emergencyContactName'
-//             ];
-
-//             fieldsToUpdate.forEach(field => {
-//                 if (rest[field] !== undefined && rest[field] !== existingVisitor[field] && rest[field] !== null) {
-//                     updateData[field] = rest[field];
-//                 }
-//             });
-
-//             // Mettre à jour les URLs de fichiers si fournies
-//             if (photoUrl && photoUrl !== existingVisitor.photoUrl) updateData.photoUrl = photoUrl;
-//             if (idScanUrl && idScanUrl !== existingVisitor.idScanUrl) updateData.idScanUrl = idScanUrl;
-
-//             if (Object.keys(updateData).length > 0) {
-//                 console.log('🔄 Mise à jour des données visiteur:', updateData);
-//                 await prisma.visitor.update({
-//                     where: { id: existingVisitor.id },
-//                     data: updateData
-//                 });
-//                 Object.assign(existingVisitor, updateData);
-//             }
-
-//             return {
-//                 success: true,
-//                 status: "EXISTING_VISITOR",
-//                 visitor: existingVisitor,
-//                 isBlacklisted: existingVisitor.isBlacklisted,
-//                 isUndesirable: !!undesirableRecord,
-//                 undesirableInfo: undesirableRecord,
-//                 message: existingVisitor.isBlacklisted
-//                     ? "Visiteur existant et BLACKLISTÉ"
-//                     : undesirableRecord
-//                         ? "Visiteur existant et INDÉSIRABLE"
-//                         : "Visiteur existant"
-//             };
-//         }
-
-//         // 2️⃣ Si n'existe pas → création
-//         console.log('🆕 Création nouveau visiteur...');
-
-//         const newVisitor = await prisma.visitor.create({
-//             data: {
-//                 ...rest,
-//                 idType,
-//                 idNumber,
-//                 photoUrl: photoUrl || null,
-//                 idScanUrl: idScanUrl || null,
-//                 isBlacklisted: visitorData.isBlacklisted || false,
-//                 blacklistReason: visitorData.blacklistReason || null
-//             }
-//         });
-
-//         console.log('✅ Nouveau visiteur créé:', newVisitor.id);
-
-//         return {
-//             success: true,
-//             status: "NEW_VISITOR_CREATED",
-//             visitor: newVisitor,
-//             isBlacklisted: false,
-//             isUndesirable: false,
-//             message: "Nouveau visiteur créé avec succès"
-//         };
-
-//     } catch (error) {
-//         console.error("❌ Erreur createOrFindVisitor:", error);
-
-//         if (error.code === 'P2002') {
-//             throw new Error(`Un visiteur avec ce type et numéro d'identité existe déjà.`);
-//         }
-//         if (error.code === 'P2003' || error.code === 'P2025') {
-//             throw new Error(`Données invalides pour la création du visiteur: ${error.message}`);
-//         }
-
-//         throw new Error(`Erreur lors de la création ou récupération du visiteur: ${error.message}`);
-//     }
-// }
 
   /**
    * Supprime un ancien fichier
