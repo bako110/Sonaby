@@ -510,5 +510,4 @@ Les contributions sont les bienvenues ! Consultez `CONTRIBUTING.md` pour les gui
 5. Ouvrir une Pull Request
 
 ---
-
 **Développé avec ❤️ pour simplifier la gestion des visites d'entreprise**
