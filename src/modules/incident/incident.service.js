@@ -822,174 +822,170 @@ class IncidentService {
   }
 
   async getWeeklyIncidentsByCheckpoint(checkpointId) {
-    try {
-      // Vérifier si le checkpoint existe et récupérer son site
-      const checkpoint = await prisma.checkpoint.findUnique({
-        where: { id: checkpointId },
-        include: {
-          site: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          agent: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              matricule: true
-            }
+  try {
+    // Vérifier si le checkpoint existe et récupérer son site
+    const checkpoint = await prisma.checkpoint.findUnique({
+      where: { id: checkpointId },
+      include: {
+        site: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        agent: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true
           }
         }
-      });
-
-      if (!checkpoint) {
-        throw new Error('Checkpoint non trouvé');
       }
+    });
 
-      // Calculer le début (lundi) et la fin (dimanche) de la semaine actuelle
-      const today = new Date();
-
-      // Début de semaine (lundi)
-      const startOfWeek = new Date(today);
-      const day = startOfWeek.getDay();
-      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-      startOfWeek.setDate(diff);
-      startOfWeek.setHours(0, 0, 0, 0);
-
-      // Fin de semaine (dimanche)
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23, 59, 59, 999);
-
-      // Récupérer les incidents du site du checkpoint pour cette semaine
-      const incidents = await prisma.incident.findMany({
-        where: {
-          siteId: checkpoint.siteId,
-          dateIncident: {
-            gte: startOfWeek,
-            lte: endOfWeek
-          }
-        },
-        include: {
-          reporter: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              matricule: true,
-              email: true
-            }
-          },
-          site: {
-            select: {
-              id: true,
-              name: true,
-              code: true
-            }
-          },
-          visiteur: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              idNumber: true,
-              idType: true,
-              company: true,
-              phone: true,
-              email: true,
-              phone: true
-            }
-          }
-        },
-        orderBy: {
-          dateIncident: 'desc'
-        }
-      });
-
-      // Transformer les incidents pour inclure les noms complets
-      const incidentsWithDetails = incidents.map(incident => ({
-        id: incident.id,
-        titre: incident.titre,
-        description: incident.description,
-        typeIncident: incident.typeIncident,
-        severite: incident.severite,
-        priorite: incident.priorite,
-        source: incident.source,
-        dateIncident: incident.dateIncident,
-        actionsImmediates: incident.actionsImmediates,
-        temoinPresent: incident.temoinPresent,
-        notifierAgents: incident.notifierAgents,
-        isResolved: incident.isResolved,
-        resolvedAt: incident.resolvedAt,
-        resolutionNotes: incident.resolutionNotes,
-        createdAt: incident.createdAt,
-        updatedAt: incident.updatedAt,
-
-        // Informations complètes du reporter
-        reporter: incident.reporter ? {
-          id: incident.reporter.id,
-          fullName: `${incident.reporter.firstName} ${incident.reporter.lastName}`,
-          firstName: incident.reporter.firstName,
-          lastName: incident.reporter.lastName,
-          matricule: incident.reporter.matricule,
-          email: incident.reporter.email
-        } : null,
-
-        // Informations complètes du site
-        site: incident.site ? {
-          id: incident.site.id,
-          name: incident.site.name,
-          code: incident.site.code
-        } : null,
-
-        // Informations complètes du visiteur (si applicable)
-        visiteur: incident.visiteur ? {
-          id: incident.visiteur.id,
-          fullName: `${incident.visiteur.firstName} ${incident.visiteur.lastName}`,
-          firstName: incident.visiteur.firstName,
-          lastName: incident.visiteur.lastName,
-          idNumber: incident.visiteur.idNumber,
-          idType: incident.visiteur.idType,
-          company: incident.visiteur.company,
-          phone: incident.visiteur.phone,
-          email: incident.visiteur.email
-        } : null
-      }));
-
-      return {
-        success: true,
-        message: `${incidents.length} incident(s) trouvé(s) pour la semaine`,
-        checkpointInfo: {
-          id: checkpoint.id,
-          name: checkpoint.name,
-          site: {
-            id: checkpoint.site.id,
-            name: checkpoint.site.name
-          },
-          agent: checkpoint.agent ? {
-            id: checkpoint.agent.id,
-            fullName: `${checkpoint.agent.firstName} ${checkpoint.agent.lastName}`,
-            matricule: checkpoint.agent.matricule
-          } : null
-        },
-        periode: {
-          debut: startOfWeek,
-          fin: endOfWeek
-        },
-        data: incidentsWithDetails
-      };
-
-    } catch (error) {
-      console.error('Erreur dans getWeeklyIncidentsByCheckpoint:', error);
-      return {
-        success: false,
-        message: `Erreur: ${error.message}`,
-        data: []
-      };
+    if (!checkpoint) {
+      throw new Error('Checkpoint non trouvé');
     }
+
+    // Calculer le début (lundi) et la fin (dimanche) de la semaine actuelle
+    const today = new Date();
+
+    // Début de semaine (lundi)
+    const startOfWeek = new Date(today);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Fin de semaine (dimanche)
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Récupérer les incidents du site du checkpoint pour cette semaine
+    const incidents = await prisma.incident.findMany({
+      where: {
+        siteId: checkpoint.siteId,
+        dateIncident: {
+          gte: startOfWeek,
+          lte: endOfWeek
+        }
+      },
+      include: {
+        reporter: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
+        site: {
+          select: {
+            id: true,
+            name: true,
+            code: true
+          }
+        },
+        visiteur: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            idNumber: true,
+            idType: true,
+            company: true,
+            phone: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        dateIncident: 'desc'
+      }
+    });
+
+    // Transformer les incidents pour inclure les noms complets
+    const incidentsWithDetails = incidents.map(incident => ({
+      id: incident.id,
+      titre: incident.titre,
+      description: incident.description,
+      typeIncident: incident.typeIncident,
+      severite: incident.severite,
+      priorite: incident.priorite,
+      source: incident.source,
+      dateIncident: incident.dateIncident,
+      actionsImmediates: incident.actionsImmediates,
+      temoinPresent: incident.temoinPresent,
+      notifierAgents: incident.notifierAgents,
+      isResolved: incident.isResolved,
+      resolvedAt: incident.resolvedAt,
+      resolutionNotes: incident.resolutionNotes,
+      createdAt: incident.createdAt,
+      updatedAt: incident.updatedAt,
+
+      // Informations du reporter
+      reporter: incident.reporter ? {
+        id: incident.reporter.id,
+        fullName: `${incident.reporter.firstName} ${incident.reporter.lastName}`,
+        firstName: incident.reporter.firstName,
+        lastName: incident.reporter.lastName,
+        email: incident.reporter.email
+      } : null,
+
+      // Informations du site
+      site: incident.site ? {
+        id: incident.site.id,
+        name: incident.site.name,
+        code: incident.site.code
+      } : null,
+
+      // Informations du visiteur (si applicable)
+      visiteur: incident.visiteur ? {
+        id: incident.visiteur.id,
+        fullName: `${incident.visiteur.firstName} ${incident.visiteur.lastName}`,
+        firstName: incident.visiteur.firstName,
+        lastName: incident.visiteur.lastName,
+        idNumber: incident.visiteur.idNumber,
+        idType: incident.visiteur.idType,
+        company: incident.visiteur.company,
+        phone: incident.visiteur.phone,
+        email: incident.visiteur.email
+      } : null
+    }));
+
+    return {
+      success: true,
+      message: `${incidents.length} incident(s) trouvé(s) pour la semaine`,
+      checkpointInfo: {
+        id: checkpoint.id,
+        name: checkpoint.name,
+        site: {
+          id: checkpoint.site.id,
+          name: checkpoint.site.name
+        },
+        agent: checkpoint.agent ? {
+          id: checkpoint.agent.id,
+          fullName: `${checkpoint.agent.firstName} ${checkpoint.agent.lastName}`
+        } : null
+      },
+      periode: {
+        debut: startOfWeek,
+        fin: endOfWeek
+      },
+      data: incidentsWithDetails
+    };
+
+  } catch (error) {
+    console.error('Erreur dans getWeeklyIncidentsByCheckpoint:', error);
+    return {
+      success: false,
+      message: `Erreur: ${error.message}`,
+      data: []
+    };
   }
+}
+
 }
 
 module.exports = new IncidentService();
