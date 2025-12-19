@@ -1,0 +1,10 @@
+name: Remote Deploy
+on:
+  push:
+    branches: [ main ] # Se déclenche sur le push
+jobs:
+  deploy:
+    runs-on: self-hosted # Indique d'utiliser VOTRE serveur
+    steps:
+      - name: Run deploy-sonabhy-back batch
+        run: /home/sertia/deploy/batchs/deploy-sonabhy-back.sh
