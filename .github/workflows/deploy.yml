@@ -10,5 +10,4 @@ jobs:
         #run: /home/sertia/deploy/batchs/deploy-sonabhy-back.sh
         run: |
           cd /home/sertia/deploy/batchs
-          chmod +x deploy-sonabhy-back.sh
-          ./deploy-sonabhy-back.sh
+          GIT_SSH_COMMAND="ssh -i /home/sertia/.ssh/id_ed25519 -o StrictHostKeyChecking=no" ./deploy-sonabhy-back.sh
