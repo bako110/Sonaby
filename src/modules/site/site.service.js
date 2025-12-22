@@ -209,38 +209,38 @@ async getFilteredSites(filters = {}) {
     // Pour éviter les conflits de filtres 'not'
     
     const [cities, countries, regions, activityTypes, statuses] = await Promise.all([
-      // Cities - seulement exclure null si pas de filtre city
+      // Cities - utiliser whereClause si filtre city, sinon pas de filtre
       prisma.site.groupBy({
         by: ['city'],
-        where: filters.city ? whereClause : { city: { not: null } },
+        where: filters.city ? whereClause : {},
         _count: { city: true },
         orderBy: { city: 'asc' }
       }),
-      // Countries - seulement exclure null si pas de filtre country
+      // Countries - utiliser whereClause si filtre country, sinon pas de filtre
       prisma.site.groupBy({
         by: ['country'],
-        where: filters.country ? whereClause : { country: { not: null } },
+        where: filters.country ? whereClause : {},
         _count: { country: true },
         orderBy: { country: 'asc' }
       }),
-      // Regions - seulement exclure null si pas de filtre region
+      // Regions - utiliser whereClause si filtre region, sinon pas de filtre
       prisma.site.groupBy({
         by: ['region'],
-        where: filters.region ? whereClause : { region: { not: null } },
+        where: filters.region ? whereClause : {},
         _count: { region: true },
         orderBy: { region: 'asc' }
       }),
-      // ActivityTypes - seulement exclure null si pas de filtre activityType
+      // ActivityTypes - utiliser whereClause si filtre activityType, sinon pas de filtre
       prisma.site.groupBy({
         by: ['activityType'],
-        where: filters.activityType ? whereClause : { activityType: { not: null } },
+        where: filters.activityType ? whereClause : {},
         _count: { activityType: true },
         orderBy: { activityType: 'asc' }
       }),
-      // Statuses - seulement exclure null si pas de filtre status
+      // Statuses - utiliser whereClause si filtre status, sinon pas de filtre
       prisma.site.groupBy({
         by: ['status'],
-        where: filters.status ? whereClause : { status: { not: null } },
+        where: filters.status ? whereClause : {},
         _count: { status: true },
         orderBy: { status: 'asc' }
       })
