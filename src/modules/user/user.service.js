@@ -126,7 +126,6 @@ class UserService {
       // ---------------------------
       select: {
         id: true,
-        matricule: true,
         email: true,
         firstName: true,
         lastName: true,
