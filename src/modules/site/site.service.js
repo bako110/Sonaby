@@ -212,35 +212,35 @@ async getFilteredSites(filters = {}) {
       // Cities - seulement exclure null si pas de filtre city
       prisma.site.groupBy({
         by: ['city'],
-        where: filters.city ? whereClause : { ...whereClause, city: { not: null } },
+        where: filters.city ? whereClause : { city: { not: null } },
         _count: { city: true },
         orderBy: { city: 'asc' }
       }),
       // Countries - seulement exclure null si pas de filtre country
       prisma.site.groupBy({
         by: ['country'],
-        where: filters.country ? whereClause : { ...whereClause, country: { not: null } },
+        where: filters.country ? whereClause : { country: { not: null } },
         _count: { country: true },
         orderBy: { country: 'asc' }
       }),
       // Regions - seulement exclure null si pas de filtre region
       prisma.site.groupBy({
         by: ['region'],
-        where: filters.region ? whereClause : { ...whereClause, region: { not: null } },
+        where: filters.region ? whereClause : { region: { not: null } },
         _count: { region: true },
         orderBy: { region: 'asc' }
       }),
       // ActivityTypes - seulement exclure null si pas de filtre activityType
       prisma.site.groupBy({
         by: ['activityType'],
-        where: filters.activityType ? whereClause : { ...whereClause, activityType: { not: null } },
+        where: filters.activityType ? whereClause : { activityType: { not: null } },
         _count: { activityType: true },
         orderBy: { activityType: 'asc' }
       }),
       // Statuses - seulement exclure null si pas de filtre status
       prisma.site.groupBy({
         by: ['status'],
-        where: filters.status ? whereClause : { ...whereClause, status: { not: null } },
+        where: filters.status ? whereClause : { status: { not: null } },
         _count: { status: true },
         orderBy: { status: 'asc' }
       })
