@@ -48,7 +48,7 @@ const createCheckpointSchema = z.object({
   agentId: nullableString(),
 
   // Statut / configuration
-  checkpointType: checkpointTypeEnum.optional().nullable(),
+  checkpointType: nullableString(),
   status: checkpointStatusEnum.optional().nullable(),
   priority: checkpointPriorityEnum.optional().nullable(),
   controlFrequency: controlFrequencyEnum.optional().nullable(),
@@ -94,7 +94,7 @@ const checkpointQuerySchema = z
     siteId: z.string().uuid().optional().nullable(),
     zone: nullableString(),
 
-    checkpointType: checkpointTypeEnum.optional().nullable(),
+    checkpointType: nullableString(),
     status: checkpointStatusEnum.optional().nullable(),
     priority: checkpointPriorityEnum.optional().nullable(),
 
