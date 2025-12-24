@@ -116,7 +116,7 @@ const checkpointQuerySchema = z
     enAlerte: z.enum(['true', 'false']).optional().nullable(),
 
     page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().positive().max(100).default(10)
+    limit: z.coerce.number().int().positive().max(1000).default(10)
   })
   .refine(data => {
     if (data.dateCreationDebut && data.dateCreationFin) {
