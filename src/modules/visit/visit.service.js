@@ -351,27 +351,73 @@ class VisitService {
   }
   async createVisit(visitData) {
     try {
-      // Si c'est un groupe, créer une visite pour le responsable du groupe
-      if (visitData.visitorGroupId) {
-        const visitorGroup = await prisma.visitorGroup.findUnique({
+      // ✅ Vérifier le checkpoint existe
+      const checkpoint = await prisma.checkpoint.findUnique({
+        where: { id: visitData.checkpointId },
+        select: { id: true }
+      });
+
+      if (!checkpoint) {
+        throw new Error(`Checkpoint avec l'ID ${visitData.checkpointId} n'existe pas`);
+      }
+
+      // Vérifier si visitorId est en réalité un visitorGroupId
+      let visitorGroup = null;
+      if (visitData.visitorId && !visitData.visitorGroupId) {
+        // Essayer d'abord de trouver un groupe avec cet ID
+        visitorGroup = await prisma.visitorGroup.findUnique({
+          where: { id: visitData.visitorId },
+          include: { responsibleVisitor: true }
+        });
+
+        if (visitorGroup) {
+          // C'était un groupe ! Utiliser le visiteur responsable
+          visitData.visitorGroupId = visitData.visitorId;
+          visitData.visitorId = visitorGroup.responsibleVisitorId;
+        }
+      }
+
+      // Si c'est explicitement un groupe, récupérer ses infos
+      if (visitData.visitorGroupId && !visitorGroup) {
+        visitorGroup = await prisma.visitorGroup.findUnique({
           where: { id: visitData.visitorGroupId },
           include: { responsibleVisitor: true }
         });
 
         if (!visitorGroup) {
-          throw new Error('Groupe de visiteurs non trouvé');
+          throw new Error(`Groupe de visiteurs avec l'ID ${visitData.visitorGroupId} n'existe pas`);
         }
 
-        visitData.visitorId = visitorGroup.responsibleVisitorId;
+        if (visitorGroup.responsibleVisitorId) {
+          visitData.visitorId = visitorGroup.responsibleVisitorId;
+        }
+      }
+
+      // Auto-remplir les champs du groupe si disponible
+      if (visitorGroup) {
         if (!visitData.entityVisited) {
-          visitData.entityVisited = visitorGroup.reason;
+          visitData.entityVisited = visitorGroup.reason || 'Visite groupe';
         }
         if (!visitData.origin) {
-          visitData.origin = `Groupe: ${visitorGroup.groupCode}`;
+          visitData.origin = 'Groupe';
         }
-        if (!visitData.contactPerson) {
+        if (!visitData.contactPerson && visitorGroup.responsibleVisitor) {
           visitData.contactPerson = `${visitorGroup.responsibleVisitor.firstName} ${visitorGroup.responsibleVisitor.lastName}`;
         }
+      }
+
+      // ✅ Vérifier que le visiteur existe (obligatoire)
+      if (!visitData.visitorId) {
+        throw new Error('Un visitorId ou visitorGroupId valide est requis');
+      }
+
+      const visitor = await prisma.visitor.findUnique({
+        where: { id: visitData.visitorId },
+        select: { id: true }
+      });
+
+      if (!visitor) {
+        throw new Error(`Visiteur avec l'ID ${visitData.visitorId} n'existe pas. Assurez-vous que le visiteur responsable du groupe a été créé.`);
       }
 
       const visit = await prisma.visit.create({
@@ -397,42 +443,22 @@ class VisitService {
               email: true,
               company: true,
               emergencyContactPhone: true,
-              emergencyContactName: true
-            }
-          },
-          visitorGroup: {
-            select: {
-              id: true,
-              groupCode: true,
-              responsibleVisitor: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true
-                }
-              },
-              visitors: {
-                select: {
-                  visitorId: true,
-                  visitor: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true
-                    }
-                  }
-                }
-              }
+              emergencyContactName: true,
+              isBlacklisted: true
             }
           },
           checkpoint: {
             select: {
               id: true,
               name: true,
+              zone: true,
+              checkpointType: true,
               site: {
                 select: {
                   id: true,
-                  name: true
+                  name: true,
+                  code: true,
+                  city: true
                 }
               }
             }
@@ -445,6 +471,20 @@ class VisitService {
               severityLevel: true,
               isResolved: true,
               createdAt: true
+            }
+          },
+          creator: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true
+            }
+          },
+          rendezvous: {
+            select: {
+              id: true,
+              groupCode: true
             }
           }
         }
