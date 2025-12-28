@@ -37,7 +37,7 @@ app.use(cors({
       process.env.CLIENT_URL || 'http://localhost:3000',
       'http://localhost:3000',
       'http://localhost:3001',
-      'https://backend-sonaby.fly.dev',
+      'https://sonaby.onrender.com',
       'https://editor.swagger.io',
       'https://petstore.swagger.io'
     ];
@@ -181,7 +181,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📍 Host: 0.0.0.0:${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-  console.log(`🌐 Production Docs: https://backend-sonaby.fly.dev/api/docs`);
+  console.log(`🌐 Production Docs: https://sonaby.onrender.com/api/docs`);
   console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
   console.log(`🚀 Ready to accept requests!`);
   console.log("DATABASE_URL:", process.env.DATABASE_URL);

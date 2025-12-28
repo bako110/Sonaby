@@ -18,8 +18,8 @@ const options = {
         description: "Serveur de développement local"
       },
       { 
-        url: "https://backend-sonaby.fly.dev/",
-        description: "Serveur de production Fly.io"
+        url: "https://sonaby.onrender.com/",
+        description: "Serveur de production Render"
       }
     ],
 
