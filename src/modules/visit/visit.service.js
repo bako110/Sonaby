@@ -351,9 +351,33 @@ class VisitService {
   }
   async createVisit(visitData) {
     try {
+      // Si c'est un groupe, créer une visite pour le responsable du groupe
+      if (visitData.visitorGroupId) {
+        const visitorGroup = await prisma.visitorGroup.findUnique({
+          where: { id: visitData.visitorGroupId },
+          include: { responsibleVisitor: true }
+        });
+
+        if (!visitorGroup) {
+          throw new Error('Groupe de visiteurs non trouvé');
+        }
+
+        visitData.visitorId = visitorGroup.responsibleVisitorId;
+        if (!visitData.entityVisited) {
+          visitData.entityVisited = visitorGroup.reason;
+        }
+        if (!visitData.origin) {
+          visitData.origin = `Groupe: ${visitorGroup.groupCode}`;
+        }
+        if (!visitData.contactPerson) {
+          visitData.contactPerson = `${visitorGroup.responsibleVisitor.firstName} ${visitorGroup.responsibleVisitor.lastName}`;
+        }
+      }
+
       const visit = await prisma.visit.create({
         data: {
           visitorId: visitData.visitorId,
+          visitorGroupId: visitData.visitorGroupId,
           checkpointId: visitData.checkpointId,
           entityVisited: visitData.entityVisited,
           contactPerson: visitData.contactPerson,
@@ -374,6 +398,31 @@ class VisitService {
               company: true,
               emergencyContactPhone: true,
               emergencyContactName: true
+            }
+          },
+          visitorGroup: {
+            select: {
+              id: true,
+              groupCode: true,
+              responsibleVisitor: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true
+                }
+              },
+              visitors: {
+                select: {
+                  visitorId: true,
+                  visitor: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true
+                    }
+                  }
+                }
+              }
             }
           },
           checkpoint: {

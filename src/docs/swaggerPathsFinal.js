@@ -456,6 +456,215 @@ const swaggerPathsFinal = {
       }
     }
   },
+
+  // ==================== VISITOR GROUP ENDPOINTS ====================
+'/api/v1/visitor-groups/filter': {
+  get: {
+    tags: ['VisitorGroups'],
+    summary: 'Récupérer les groupes de visiteurs avec filtres et pagination',
+    description: 'Récupère les groupes filtrés avec options de filtre dynamiques',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle sur le nom/prénom du responsable' },
+      { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+      { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' }
+    ],
+    responses: {
+      200: {
+        description: 'Groupes récupérés avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Groupes récupérés avec succès' },
+                data: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string', format: 'uuid' },
+                      responsibleVisitor: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string', format: 'uuid' },
+                          firstName: { type: 'string' },
+                          lastName: { type: 'string' }
+                        }
+                      },
+                      otherVisitors: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Liste des autres visiteurs (nom complet)'
+                      },
+                      expectedCount: { type: 'integer' },
+                      createdAt: { type: 'string', format: 'date-time' },
+                      updatedAt: { type: 'string', format: 'date-time' }
+                    }
+                  }
+                },
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    page: { type: 'integer', example: 1 },
+                    limit: { type: 'integer', example: 10 },
+                    total: { type: 'integer', example: 56 },
+                    pages: { type: 'integer', example: 6 }
+                  }
+                },
+                filters: {
+                  type: 'object',
+                  description: 'Filtres appliqués'
+                }
+              }
+            }
+          }
+        }
+      },
+      400: { description: 'Requête invalide' },
+      403: { description: 'Accès refusé' },
+      500: { description: 'Erreur serveur' }
+    }
+  }
+},
+'/api/v1/visitor-groups/visitors/available': {
+  get: {
+    tags: ['VisitorGroups'],
+    summary: 'Récupérer les visiteurs disponibles pour créer un groupe',
+    description: 'Récupère les visiteurs existants pour sélectionner un responsable',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle sur le nom/prénom' },
+      { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
+      { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 }, description: 'Nombre d\'éléments par page' }
+    ],
+    responses: {
+      200: {
+        description: 'Visiteurs récupérés avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Visiteurs récupérés avec succès' },
+                data: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string', format: 'uuid' },
+                      firstName: { type: 'string' },
+                      lastName: { type: 'string' }
+                    }
+                  }
+                },
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    page: { type: 'integer', example: 1 },
+                    limit: { type: 'integer', example: 50 },
+                    total: { type: 'integer', example: 150 },
+                    pages: { type: 'integer', example: 15 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      400: { description: 'Requête invalide' },
+      403: { description: 'Accès refusé' },
+      500: { description: 'Erreur serveur' }
+    }
+  }
+},
+'/api/v1/visitor-groups': {
+  post: {
+    tags: ['VisitorGroups'],
+    summary: 'Créer un groupe de visiteurs',
+    description: 'Crée un groupe avec un responsable existant et une liste d\'autres visiteurs (nom complet)',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['visitorId'],
+            properties: {
+              visitorId: { type: 'string', format: 'uuid', description: 'ID du visiteur responsable' },
+              otherVisitors: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Liste des autres visiteurs (nom complet)',
+                example: ['Bako Robert', 'Amidoi Sanour']
+              }
+            }
+          }
+        }
+      }
+    },
+    responses: {
+      201: { description: 'Groupe créé avec succès' },
+      400: { description: 'Validation échouée' },
+      404: { description: 'Visiteur responsable non trouvé' },
+      500: { description: 'Erreur serveur' }
+    }
+  }
+},
+'/api/v1/visitor-groups/{id}': {
+  get: {
+    tags: ['VisitorGroups'],
+    summary: 'Récupérer un groupe par ID',
+    description: 'Récupère un groupe avec responsable et liste des autres visiteurs',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+    ],
+    responses: {
+      200: {
+        description: 'Groupe récupéré avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Groupe récupéré avec succès' },
+                data: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    responsibleVisitor: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        firstName: { type: 'string' },
+                        lastName: { type: 'string' }
+                      }
+                    },
+                    otherVisitors: {
+                      type: 'array',
+                      items: { type: 'string' }
+                    },
+                    expectedCount: { type: 'integer' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      404: { description: 'Groupe non trouvé' },
+      500: { description: 'Erreur serveur' }
+    }
+  }
+},
+
   // ==================== VISIT ENDPOINTS ====================
   '/api/v1/visits': {
     get: {
