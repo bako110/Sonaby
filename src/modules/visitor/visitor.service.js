@@ -1018,88 +1018,95 @@ async getWeekPlanning(siteId) {
 
 
   async getVisitorById(id) {
-    try {
-      const visitor = await prisma.visitor.findUnique({
-        where: { id },
-        include: {
-          visits: {
-            take: 10,
-            orderBy: {
-              createdAt: 'desc'
-            },
-            include: {
-              checkpoint: {
-                select: {
-                  id: true,
-                  name: true,
-                  site: {
-                    select: {
-                      id: true,
-                      name: true
-                    }
+  try {
+    const visitor = await prisma.visitor.findUnique({
+      where: { id },
+      include: {
+        visits: {
+          take: 10,
+          orderBy: {
+            createdAt: 'desc'
+          },
+          include: {
+            checkpoint: {
+              select: {
+                id: true,
+                name: true,
+                site: {
+                  select: {
+                    id: true,
+                    name: true
                   }
                 }
-              },
-              service: {
-                select: {
-                  id: true,
-                  name: true
-                }
               }
-            }
-          },
-          blacklistHistory: {
-            take: 5,
-            orderBy: {
-              createdAt: 'desc'
-            }
-          },
-          nonDesirables: {
-            take: 5,
-            orderBy: {
-              createdAt: 'desc'
             },
-            include: {
-              reporter: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
+            service: {
+              select: {
+                id: true,
+                name: true
               }
             }
+          }
+        },
+        blacklistHistory: {
+          take: 5,
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        nonDesirables: {
+          take: 5,
+          orderBy: {
+            createdAt: 'desc'
           },
-          groupMemberships: {
-            take: 5,
-            orderBy: {
-              createdAt: 'desc'
-            },
-            include: {
-              group: {
-                select: {
-                  id: true,
-                  groupCode: true,
-                  reason: true,
-                  visitDate: true
-                }
+          include: {
+            reporter: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
               }
             }
+          }
+        },
+        // REMPLACÉ: groupMemberships par responsibleGroups (qui existe dans votre schéma)
+        responsibleGroups: {
+          take: 5,
+          orderBy: {
+            createdAt: 'desc'
           },
-          // id_types n'est pas une relation, c'est juste un champ string
-          // Pas besoin d'include ici
-        }
-      });
-      
-      if (!visitor) {
-        throw new Error('Visiteur non trouvé');
+          select: {
+            id: true,
+            expectedCount: true,
+            createdAt: true,
+            otherVisitors: true,
+            // Vous pouvez ajouter d'autres champs si besoin
+          }
+        },
+        // AJOUTÉ: incidents (si vous voulez inclure les incidents)
+        incidents: {
+          take: 5,
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        // AJOUTÉ: id_types (c'est bien une relation dans votre schéma)
+        id_types: true,
+        // AJOUTÉ: visitorGroup (si vous avez ajouté visitorGroupId dans votre schéma)
+        // visitorGroup: true, // Décommentez si vous avez ce champ
       }
-
-      return visitor;
-    } catch (error) {
-      throw new Error(`Erreur lors de la récupération du visiteur: ${error.message}`);
+    });
+    
+    if (!visitor) {
+      throw new Error('Visiteur non trouvé');
     }
+
+    return visitor;
+  } catch (error) {
+    throw new Error(`Erreur lors de la récupération du visiteur: ${error.message}`);
   }
+}
 
 
 
