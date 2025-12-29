@@ -1016,8 +1016,7 @@ async getWeekPlanning(siteId) {
 }
 
 
-
-  async getVisitorById(id) {
+async getVisitorById(id) {
   try {
     const visitor = await prisma.visitor.findUnique({
       where: { id },
@@ -1070,31 +1069,15 @@ async getWeekPlanning(siteId) {
             }
           }
         },
-        // REMPLACÉ: groupMemberships par responsibleGroups (qui existe dans votre schéma)
-        responsibleGroups: {
-          take: 5,
-          orderBy: {
-            createdAt: 'desc'
-          },
-          select: {
-            id: true,
-            expectedCount: true,
-            createdAt: true,
-            otherVisitors: true,
-            // Vous pouvez ajouter d'autres champs si besoin
-          }
-        },
-        // AJOUTÉ: incidents (si vous voulez inclure les incidents)
+        // ⚠️ SUPPRIMÉ: responsibleGroups (cause de l'erreur)
         incidents: {
           take: 5,
           orderBy: {
             createdAt: 'desc'
           }
         },
-        // AJOUTÉ: id_types (c'est bien une relation dans votre schéma)
-        id_types: true,
-        // AJOUTÉ: visitorGroup (si vous avez ajouté visitorGroupId dans votre schéma)
-        // visitorGroup: true, // Décommentez si vous avez ce champ
+        id_types: true
+        // PAS de visitorGroup (car la colonne n'existe pas dans MySQL)
       }
     });
     
