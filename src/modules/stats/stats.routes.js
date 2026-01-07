@@ -33,8 +33,8 @@ router.use(authenticateToken);
  *           description: Nom du site
  *         status:
  *           type: string
- *           enum: ["OK", "WARNING", "ERROR"]
- *           example: "OK"
+ *           enum: ["OPERATIONNEL", "CAPACITE_LIMITEE", "HORS_SERVICE"]
+ *           example: "OPERATIONNEL"
  *           description: Statut du site
  *         load:
  *           type: integer
@@ -281,7 +281,7 @@ router.use(authenticateToken);
  *                   systemHealth: 92
  *                   sitesStatus:
  *                     - name: "Siège Principal"
- *                       status: "OK"
+ *                       status: "OPERATIONNEL"
  *                       load: 75
  *                   recentBlacklistHits: 3
  *                   totalSosAlerts: 7

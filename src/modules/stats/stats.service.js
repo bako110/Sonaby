@@ -514,17 +514,18 @@ class StatsService {
     return sites.map(site => {
       const checkpointCount = site._count.checkpoints;
       
-      // Simple status calculation based on checkpoint count
-      let status = 'OK'; // Possible values: 'OK', 'WARNING', 'ERROR'
+      // Calcul du statut basé sur le nombre de checkpoints
+      let status = 'OPERATIONNEL'; // Valeurs possibles: 'OPERATIONNEL', 'CAPACITE_LIMITEE', 'HORS_SERVICE'
       let load = 0;
 
       if (checkpointCount === 0) {
-        status = 'ERROR';
+        status = 'HORS_SERVICE'; // Aucun checkpoint = site non fonctionnel
         load = 0;
       } else if (checkpointCount < 3) {
-        status = 'WARNING';
+        status = 'CAPACITE_LIMITEE'; // Moins de 3 checkpoints = capacité de traitement réduite
         load = checkpointCount * 25;
       } else {
+        // 3 checkpoints ou plus = fonctionnement normal
         load = Math.min(100, checkpointCount * 20);
       }
 
