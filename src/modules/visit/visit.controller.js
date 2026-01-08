@@ -168,7 +168,7 @@ class VisitController {
 
   checkoutVisit = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour terminer une visite.'
@@ -207,7 +207,7 @@ class VisitController {
 
   deleteVisit = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour supprimer une visite.'
@@ -261,7 +261,7 @@ class VisitController {
 
   getActiveVisits = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN, AGENT_GESTION, AGENT_CONTROLE
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE', 'CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes pour consulter les visites actives.'
