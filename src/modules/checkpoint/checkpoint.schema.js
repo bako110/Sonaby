@@ -16,14 +16,15 @@ const nullableString = () =>
 
 /**
  * ===============================
- * Énumérations
+ * Validations simples
  * ===============================
  */
 
-const checkpointStatusEnum = z.enum(['active', 'inactive', 'maintenance', 'error']);
-const checkpointTypeEnum = z.enum(['entry', 'exit', 'internal', 'external', 'emergency', 'patrol']);
-const checkpointPriorityEnum = z.enum(['low', 'medium', 'high', 'critical']);
-const controlFrequencyEnum = z.enum(['hourly', 'daily', 'weekly', 'monthly', 'on_demand']);
+// Accepter n'importe quelle chaîne pour les valeurs du frontend
+const checkpointStatusValidation = nullableString();
+const checkpointTypeValidation = nullableString();
+const checkpointPriorityValidation = nullableString();
+const controlFrequencyValidation = nullableString();
 
 /**
  * ===============================
@@ -48,10 +49,10 @@ const createCheckpointSchema = z.object({
   agentId: nullableString(),
 
   // Statut / configuration
-  checkpointType: nullableString(),
-  status: checkpointStatusEnum.optional().nullable(),
-  priority: checkpointPriorityEnum.optional().nullable(),
-  controlFrequency: controlFrequencyEnum.optional().nullable(),
+  checkpointType: checkpointTypeValidation,
+  status: checkpointStatusValidation,
+  priority: checkpointPriorityValidation,
+  controlFrequency: controlFrequencyValidation,
 
   // Équipements
   equipment: z.array(z.string()).default([]),
@@ -94,9 +95,9 @@ const checkpointQuerySchema = z
     siteId: z.string().uuid().optional().nullable(),
     zone: nullableString(),
 
-    checkpointType: nullableString(),
-    status: checkpointStatusEnum.optional().nullable(),
-    priority: checkpointPriorityEnum.optional().nullable(),
+    checkpointType: checkpointTypeValidation,
+    status: checkpointStatusValidation,
+    priority: checkpointPriorityValidation,
 
     agentId: z.string().uuid().optional().nullable(),
 
@@ -154,11 +155,5 @@ module.exports = {
   checkpointIdSchema,
   checkpointQuerySchema,
   assignAgentSchema,
-  unassignAgentSchema,
-
-  // Enums réutilisables
-  checkpointStatusEnum,
-  checkpointTypeEnum,
-  checkpointPriorityEnum,
-  controlFrequencyEnum
+  unassignAgentSchema
 };
