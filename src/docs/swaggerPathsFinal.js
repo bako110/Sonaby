@@ -1444,6 +1444,234 @@ const swaggerPathsFinal = {
     }
   }
 },
+'/api/v1/incidents/visit/{visitId}/visitor-incidents': {
+  get: {
+    tags: ['Incidents'],
+    summary: '👤 Récupérer les incidents du visiteur d\'une visite',
+    description: 'Récupère tous les incidents liés au visiteur d\'une visite spécifique (y compris les incidents précédents du même visiteur)',
+    security: [{ bearerAuth: [] }],
+    parameters: [
+      { 
+        name: 'visitId', 
+        in: 'path', 
+        required: true, 
+        schema: { 
+          type: 'string', 
+          format: 'uuid' 
+        }, 
+        description: 'ID de la visite' 
+      },
+      { 
+        name: 'includeCurrent', 
+        in: 'query', 
+        schema: { 
+          type: 'boolean',
+          default: true 
+        }, 
+        description: 'Inclure les incidents de la visite actuelle' 
+      },
+      { 
+        name: 'siteId', 
+        in: 'query', 
+        schema: { 
+          type: 'string', 
+          format: 'uuid' 
+        }, 
+        description: 'Filtrer par site spécifique' 
+      },
+      { 
+        name: 'isResolved', 
+        in: 'query', 
+        schema: { 
+          type: 'boolean' 
+        }, 
+        description: 'Filtrer incidents résolus/non résolus' 
+      },
+      { 
+        name: 'severite', 
+        in: 'query', 
+        schema: { 
+          type: 'string', 
+          enum: ['FAIBLE', 'MOYENNE', 'ELEVEE', 'CRITIQUE'] 
+        }, 
+        description: 'Filtrer par sévérité' 
+      },
+      { 
+        name: 'dateDebut', 
+        in: 'query', 
+        schema: { 
+          type: 'string', 
+          format: 'date' 
+        }, 
+        description: 'Date de début (YYYY-MM-DD)' 
+      },
+      { 
+        name: 'dateFin', 
+        in: 'query', 
+        schema: { 
+          type: 'string', 
+          format: 'date' 
+        }, 
+        description: 'Date de fin (YYYY-MM-DD)' 
+      },
+      { 
+        name: 'sortBy', 
+        in: 'query', 
+        schema: { 
+          type: 'string',
+          enum: ['dateIncident', 'severite', 'createdAt'],
+          default: 'dateIncident'
+        }, 
+        description: 'Critère de tri' 
+      },
+      { 
+        name: 'sortOrder', 
+        in: 'query', 
+        schema: { 
+          type: 'string',
+          enum: ['ASC', 'DESC'],
+          default: 'DESC'
+        }, 
+        description: 'Ordre de tri' 
+      }
+    ],
+    responses: {
+      200: {
+        description: '✅ Incidents du visiteur récupérés avec succès',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { 
+                  type: 'boolean', 
+                  example: true 
+                },
+                message: { 
+                  type: 'string', 
+                  example: '5 incident(s) trouvé(s) pour le visiteur de cette visite' 
+                },
+                data: {
+                  type: 'object',
+                  properties: {
+                    currentVisit: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string', format: 'uuid' },
+                        visitorId: { type: 'string', format: 'uuid' },
+                        visitorName: { type: 'string', example: 'John Doe' }
+                      }
+                    },
+                    incidents: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Incident' }
+                    },
+                    statistics: {
+                      type: 'object',
+                      properties: {
+                        total: { type: 'integer', example: 5 },
+                        resolved: { type: 'integer', example: 3 },
+                        unresolved: { type: 'integer', example: 2 },
+                        bySeverity: {
+                          type: 'object',
+                          properties: {
+                            CRITIQUE: { type: 'integer', example: 1 },
+                            ELEVEE: { type: 'integer', example: 1 },
+                            MOYENNE: { type: 'integer', example: 2 },
+                            FAIBLE: { type: 'integer', example: 1 }
+                          }
+                        },
+                        byType: {
+                          type: 'object',
+                          additionalProperties: { type: 'integer' }
+                        }
+                      }
+                    }
+                  }
+                },
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    page: { type: 'integer', example: 1 },
+                    limit: { type: 'integer', example: 20 },
+                    total: { type: 'integer', example: 5 },
+                    totalPages: { type: 'integer', example: 1 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      400: {
+        description: '❌ Paramètres invalides',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Paramètres de requête invalides' },
+                errors: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      path: { type: 'string' },
+                      message: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      403: {
+        description: '❌ Accès refusé',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Accès refusé. Permissions insuffisantes.' }
+              }
+            }
+          }
+        }
+      },
+      404: {
+        description: '❌ Visite ou visiteur non trouvé',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Visite non trouvée ou visiteur introuvable' }
+              }
+            }
+          }
+        }
+      },
+      500: {
+        description: '❌ Erreur serveur',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: false },
+                message: { type: 'string', example: 'Erreur interne du serveur' }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+},
 
 
 

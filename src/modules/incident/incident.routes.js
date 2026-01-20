@@ -9,6 +9,8 @@ router.use(authenticateToken);
 router.get('/', incidentController.getIncidents);
 router.get('/statistics', incidentController.getIncidentStatistics);
 router.get('/visitor/:visitorId', incidentController.getIncidentsByVisitor);
+// Nouvelle route : incidents d'un visiteur à partir d'un visitId
+router.get('/visit/:visitId/visitor-incidents', incidentController.getIncidentsByVisitIdVisitor);
 router.post('/', incidentController.createIncident);
 router.get('/:id', incidentController.getIncidentById);
 router.put('/:id', incidentController.updateIncident);
