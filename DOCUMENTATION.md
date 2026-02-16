@@ -1,5 +1,6 @@
 # 📚 Documentation Sonabhy ES Back
 
+
 ## 🎯 Vue d'ensemble
 
 **Sonabhy ES Back** est une API REST complète pour la gestion des visites multi-sites d'entreprise. Elle permet de gérer les visiteurs, les rendez-vous, les contrôles d'accès, les incidents et les alertes SOS.

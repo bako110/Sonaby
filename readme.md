@@ -297,18 +297,24 @@ Créer un fichier `.env` avec vos paramètres :
 
 ```env
 # Base de données
-DATABASE_URL="mysql://username:password@localhost:3306/sonaby"
 
-# JWT Secrets (générer des clés fortes)
-JWT_SECRET="your-super-strong-jwt-secret"
-JWT_REFRESH_SECRET="your-super-strong-refresh-secret"
+NODE_ENV=production
+PORT=5000
+API_VERSION=v1
+DATABASE_URL="mysql://root:Sertoi1029@213.32.120.11:3306/sonabhy-es-db"
 
-# Application
-PORT=3000
-NODE_ENV=development
+JWT_SECRET=secret_for_sonabhy_burkina
+REFRESH_TOKEN_SECRET=sonabhy_burkina
+JWT_EXPIRES_IN=7d
+REFRESH_TOKEN_EXPIRES_IN=30d
 
-# CORS
-CORS_ORIGIN="http://localhost:3000"
+FLY_APP_NAME=Sonaby          
+FLY_REGION=Amsterdam         
+
+
+UPLOAD_DIR=uploads           
+MAX_FILE_SIZE=10485760       
+MAX_FILES=5      
 ```
 
 ## 🗄️ Base de Données
