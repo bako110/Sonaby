@@ -410,41 +410,68 @@ async createSite(siteData) {
     }
   }
 
-  async getSiteById(id) {
-    try {
-      const site = await prisma.site.findUnique({
-        where: { id },
-        include: {
-          checkpoints: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              sosId: true,
-              status: true,
-              checkpointType: true,
-              agent: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true
-                }
+ async getSiteById(id) {
+  try {
+    const site = await prisma.site.findUnique({
+      where: { id },
+      include: {
+
+        // ✅ Utilisateurs assignés au site (via table pivot UserSite)
+        assignedUsers: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true,
+                phone: true,
+                isActive: true
+              }
+            }
+          }
+        },
+
+        // ✅ Checkpoints (ta section originale intacte)
+        checkpoints: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            sosId: true,
+            status: true,
+            checkpointType: true,
+            agent: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
               }
             }
           }
         }
-      });
-      
-      if (!site) {
-        throw new Error('Site non trouvé');
       }
-
-      return site;
-    } catch (error) {
-      throw new Error(`Erreur lors de la récupération du site: ${error.message}`);
+    });
+    
+    if (!site) {
+      throw new Error('Site non trouvé');
     }
+
+    // 🔥 Transformer pour retourner uniquement les users
+    const formattedSite = {
+      ...site,
+      assignedUsers: site.assignedUsers.map(a => a.user)
+    };
+
+    return formattedSite;
+
+  } catch (error) {
+    throw new Error(`Erreur lors de la récupération du site: ${error.message}`);
   }
+}
+
 
   async updateSite(id, updateData) {
     try {
