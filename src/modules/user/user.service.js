@@ -247,74 +247,98 @@ class UserService {
 
   async updateUser(id, data) {
   try {
-    console.log('🔵 updateUser called with id:', id);
-    console.log('📝 updateUser data:', JSON.stringify(data, null, 2));
-    
+    console.log('==============================');
+    console.log('🔵 updateUser CALLED');
+    console.log('🆔 ID reçu du frontend:', id);
+    console.log('📦 Type de data:', typeof data);
+    console.log('📦 Data brute reçue:', data);
+    console.log('📦 Data stringify:', JSON.stringify(data, null, 2));
+    console.log('==============================');
+
     // Accepter toute modification sans vérification, mais ignorer matricule
     const { assignedSites, permissions, assignedCheckpoints, password, matricule, ...updateData } = data || {};
 
+    console.log('🟢 Champs extraits:');
+    console.log('   - assignedSites:', assignedSites);
+    console.log('   - assignedCheckpoints:', assignedCheckpoints);
+    console.log('   - permissions:', permissions);
+    console.log('   - password fourni ?: ', !!password);
+    console.log('   - matricule ignoré:', matricule);
+    console.log('   - autres champs updateData:', JSON.stringify(updateData, null, 2));
+
     // Gérer le mot de passe
     if (password) {
+      console.log('🔐 Hashing password...');
       updateData.passwordHash = await bcrypt.hash(password, 12);
+      console.log('🔐 Password hash généré');
     }
 
-    // Gérer les mises à jour des relations
     const updateOperations = {
       ...updateData
     };
 
     // Mettre à jour les sites assignés
     if (assignedSites !== undefined && assignedSites !== null && Array.isArray(assignedSites)) {
-      console.log('🔵 Updating assignedSites');
+      console.log('🔵 Updating assignedSites - Valeur reçue:', assignedSites);
+      console.log('🗑 Suppression anciens userSite...');
+      
       await prisma.userSite.deleteMany({
         where: { userId: id }
       });
+
       if (assignedSites.length > 0) {
+        console.log('➕ Création nouveaux sites:', assignedSites);
         updateOperations.assignedSites = {
           create: assignedSites.map(siteId => ({ siteId }))
         };
+      } else {
+        console.log('⚠️ assignedSites est un tableau vide');
       }
     }
 
     // Mettre à jour les checkpoints assignés
     if (assignedCheckpoints !== undefined && assignedCheckpoints !== null && Array.isArray(assignedCheckpoints)) {
-      console.log('🔵 Updating assignedCheckpoints');
-      // Supprimer les anciennes assignations de checkpoints
+      console.log('🔵 Updating assignedCheckpoints - Valeur reçue:', assignedCheckpoints);
+
       await prisma.agentCheckpointAssignment.deleteMany({
         where: { userId: id }
       });
-      
+
       if (assignedCheckpoints.length > 0) {
-        // Créer de nouvelles assignations
         const now = new Date();
+        console.log('➕ Création nouvelles assignations checkpoints à:', now);
+
         updateOperations.agentAssignments = {
           create: assignedCheckpoints.map(checkpointId => ({
             checkpointId,
             startDate: now
           }))
         };
+      } else {
+        console.log('⚠️ assignedCheckpoints est vide');
       }
     }
 
-    // Mettre à jour les permissions (création automatique si nécessaire)
+    // Mettre à jour les permissions
     if (permissions !== undefined && permissions !== null && Array.isArray(permissions)) {
-      console.log('🔵 Updating permissions');
+      console.log('🔵 Updating permissions - Valeur reçue:', permissions);
+
       await prisma.userPermission.deleteMany({
         where: { userId: id }
       });
-      
+
       if (permissions.length > 0) {
         updateOperations.permissions = {
           create: await Promise.all(
             permissions.map(async (permName) => {
-              // Vérifier si la permission existe, sinon la créer
+              console.log('🔍 Vérification permission:', permName);
+
               let perm = await prisma.permission.findUnique({
                 where: { name: permName }
               });
-              
+
               if (!perm) {
-                // Créer la permission automatiquement si elle n'existe pas
-                console.log(`➕ Création automatique de la permission: ${permName}`);
+                console.log(`➕ Création automatique permission: ${permName}`);
                 perm = await prisma.permission.create({
                   data: {
                     name: permName,
@@ -322,13 +346,18 @@ class UserService {
                   }
                 });
               }
-              
+
+              console.log('✅ Permission ID utilisé:', perm.id);
               return { permissionId: perm.id };
             })
           )
         };
+      } else {
+        console.log('⚠️ permissions est vide');
       }
     }
+
+    console.log('📤 updateOperations final:', JSON.stringify(updateOperations, null, 2));
 
     // Mettre à jour l'utilisateur
     const updatedUser = await prisma.user.update({
@@ -384,7 +413,8 @@ class UserService {
       }
     });
 
-    // Formater la réponse
+    console.log('✅ Utilisateur mis à jour:', JSON.stringify(updatedUser, null, 2));
+
     return {
       ...updatedUser,
       assignedSites: updatedUser.assignedSites.map(us => us.site),
@@ -395,6 +425,7 @@ class UserService {
   } catch (error) {
     console.error('❌ Erreur lors de la mise à jour de l\'utilisateur:', error.message);
     console.error('❌ Stack:', error.stack);
+    console.error('❌ Data reçue au moment de l’erreur:', JSON.stringify(data, null, 2));
     throw error;
   }
 }
