@@ -25,7 +25,21 @@ const createUserSchema = z.object({
     .optional()
     .default(true),
   assignedSites: z.array(
-    z.string().uuid('ID de site invalide (doit être un UUID)')
+    z.union([
+      z.string().uuid('ID de site invalide (doit être un UUID)'),
+      z.object({
+        site: z.object({
+          id: z.string().uuid('ID de site invalide (doit être un UUID)'),
+          name: z.string().optional(),
+          city: z.string().optional()
+        })
+      }),
+      z.object({
+        id: z.string().uuid('ID de site invalide (doit être un UUID)'),
+        name: z.string().optional()
+      }),
+      z.record(z.string(), z.unknown()) // Accepter n'importe quel objet
+    ])
   ).optional().default([]),
   permissions: z.array(
     z.string().min(1, 'Nom de permission invalide')
@@ -51,7 +65,21 @@ const updateUserSchema = z.object({
   isActive: z.boolean()
     .optional(),
   assignedSites: z.array(
-    z.string().uuid('ID de site invalide (doit être un UUID)')
+    z.union([
+      z.string().uuid('ID de site invalide (doit être un UUID)'),
+      z.object({
+        site: z.object({
+          id: z.string().uuid('ID de site invalide (doit être un UUID)'),
+          name: z.string().optional(),
+          city: z.string().optional()
+        })
+      }),
+      z.object({
+        id: z.string().uuid('ID de site invalide (doit être un UUID)'),
+        name: z.string().optional()
+      }),
+      z.record(z.string(), z.unknown()) // Accepter n'importe quel objet
+    ])
   ).optional(),
   permissions: z.array(
     z.string().min(1, 'Nom de permission invalide')
