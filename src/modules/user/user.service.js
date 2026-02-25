@@ -167,8 +167,52 @@ class UserService {
     });
   }
 
-  async getAllUsers() {
-    return prisma.user.findMany({
+  async getAllUsers(filters = {}) {
+    const { page = 1, limit = 10, search, role, isActive, siteId } = filters;
+    
+    // Calculer l'offset pour la pagination
+    const skip = (page - 1) * limit;
+    
+    // Construire les conditions WHERE
+    const where = {};
+    
+    // Filtre par recherche globale
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { username: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    // Filtre par rôle
+    if (role) {
+      where.role = role;
+    }
+    
+    // Filtre par statut actif
+    if (isActive !== undefined) {
+      where.isActive = isActive === 'true';
+    }
+    
+    // Filtre par site assigné
+    if (siteId) {
+      where.assignedSites = {
+        some: {
+          siteId: siteId
+        }
+      };
+    }
+    
+    // Compter le nombre total d'utilisateurs (pour la pagination)
+    const total = await prisma.user.count({ where });
+    
+    // Récupérer les utilisateurs avec pagination
+    const users = await prisma.user.findMany({
+      where,
+      skip,
+      take: limit,
       select: {
         id: true,
         email: true,
@@ -202,8 +246,24 @@ class UserService {
             }
           }
         }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
+    
+    return {
+      success: true,
+      data: users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1
+      }
+    };
   }
 
   async getUserById(id) {

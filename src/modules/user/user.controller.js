@@ -1,5 +1,5 @@
 const userService = require('./user.service');
-const { createUserSchema, updateUserSchema } = require('./user.schema');
+const { createUserSchema, updateUserSchema, userFilterSchema } = require('./user.schema');
 const { asyncHandler } = require('../../middleware/asyncHandler');
 
 // Fonction utilitaire pour transformer les assignedSites
@@ -67,8 +67,11 @@ class UserController {
   });
 
   getAllUsers = asyncHandler(async (req, res) => {
-    const users = await userService.getAllUsers();
-    res.json(users);
+    // Valider et extraire les paramètres de filtrage/pagination
+    const filters = userFilterSchema.parse(req.query);
+    
+    const result = await userService.getAllUsers(filters);
+    res.json(result);
   });
 
   getUserById = asyncHandler(async (req, res) => {
