@@ -11,7 +11,8 @@ router.use(authenticateToken);
  * @swagger
  * /api/v1/checkpoints/filter:
  *   get:
- *     summary: Récupérer les checkpoints avec filtres avancés
+ *     summary: Récupérer les checkpoints avec filtres avancés et pagination
+ *     description: Route principale pour récupérer les checkpoints avec tous les filtres disponibles (nom, zone, statut, etc.)
  *     tags: [Checkpoints]
  *     security:
  *       - bearerAuth: []
@@ -21,6 +22,11 @@ router.use(authenticateToken);
  *         schema:
  *           type: string
  *         description: Recherche textuelle (nom, description, SOS ID)
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Filtrer par nom de checkpoint (insensible à la casse)
  *       - in: query
  *         name: siteId
  *         schema:
@@ -55,41 +61,49 @@ router.use(authenticateToken);
  *         schema:
  *           type: string
  *           format: uuid
- *         description: Filtrer par agent assigné
+ *         description: Filtrer par ID d'agent assigné
+ *       - in: query
+ *         name: agentName
+ *         schema:
+ *           type: string
+ *         description: Filtrer par nom d'agent assigné
  *       - in: query
  *         name: dateCreationDebut
  *         schema:
  *           type: string
  *           format: date
- *         description: Date de création début
+ *         description: Date de création début (YYYY-MM-DD)
  *       - in: query
  *         name: dateCreationFin
  *         schema:
  *           type: string
  *           format: date
- *         description: Date de création fin
+ *         description: Date de création fin (YYYY-MM-DD)
  *       - in: query
  *         name: avecAgent
  *         schema:
  *           type: string
  *           enum: [true, false]
- *         description: Filtrer checkpoints avec/sans agent
+ *         description: Checkpoints avec/sans agent assigné
  *       - in: query
  *         name: enAlerte
  *         schema:
  *           type: string
  *           enum: [true, false]
- *         description: Filtrer checkpoints en alerte SOS
+ *         description: Checkpoints en alerte
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
+ *           minimum: 1
  *           default: 1
  *         description: Numéro de page
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           minimum: 1
+ *           maximum: 100
  *           default: 10
  *         description: Nombre d'éléments par page
  *     responses:
@@ -115,21 +129,27 @@ router.use(authenticateToken);
  *                   properties:
  *                     page:
  *                       type: integer
+ *                       example: 1
  *                     limit:
  *                       type: integer
+ *                       example: 10
  *                     total:
  *                       type: integer
+ *                       example: 25
  *                     totalPages:
  *                       type: integer
- *                     hasNext:
+ *                       example: 3
+ *                     hasNextPage:
  *                       type: boolean
- *                     hasPrev:
+ *                       example: true
+ *                     hasPrevPage:
  *                       type: boolean
+ *                       example: false
  *                 filters:
  *                   type: object
- *                   description: Filtres appliqués
+ *                   description: Filtres appliqués dans cette requête
  *       400:
- *         description: Requête invalide
+ *         description: Requête invalide (paramètres incorrects)
  *       403:
  *         description: Accès refusé
  *       500:
@@ -137,164 +157,164 @@ router.use(authenticateToken);
  */
 router.get('/filter', checkpointController.getFilteredCheckpoints);
 
-/**
- * @swagger
- * /api/v1/checkpoints/filter-options:
- *   get:
- *     summary: Récupérer les options de filtre dynamiques pour les checkpoints
- *     tags: [Checkpoints]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: siteId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Pré-filtrer les options par site
- *       - in: query
- *         name: zone
- *         schema:
- *           type: string
- *         description: Pré-filtrer les options par zone
- *       - in: query
- *         name: checkpointType
- *         schema:
- *           type: string
- *         description: Pré-filtrer les options par type de checkpoint
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *         description: Pré-filtrer les options par statut
- *       - in: query
- *         name: priority
- *         schema:
- *           type: string
- *         description: Pré-filtrer les options par priorité
- *       - in: query
- *         name: agentId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Pré-filtrer les options par agent
- *     responses:
- *       200:
- *         description: Options de filtre récupérées avec succès
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Options de filtre récupérées avec succès"
- *                 data:
- *                   type: object
- *                   properties:
- *                     zones:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           value:
- *                             type: string
- *                             example: "Zone A"
- *                           label:
- *                             type: string
- *                             example: "Zone A"
- *                           count:
- *                             type: integer
- *                             example: 8
- *                     checkpointTypes:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           value:
- *                             type: string
- *                             example: "internal"
- *                           label:
- *                             type: string
- *                             example: "internal"
- *                           count:
- *                             type: integer
- *                             example: 15
- *                     statuses:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           value:
- *                             type: string
- *                             example: "active"
- *                           label:
- *                             type: string
- *                             example: "active"
- *                           count:
- *                             type: integer
- *                             example: 20
- *                     priorities:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           value:
- *                             type: string
- *                             example: "medium"
- *                           label:
- *                             type: string
- *                             example: "medium"
- *                           count:
- *                             type: integer
- *                             example: 12
- *                     sites:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           value:
- *                             type: string
- *                             format: uuid
- *                             example: "550e8400-e29b-41d4-a716-446655440001"
- *                           label:
- *                             type: string
- *                             example: "Siège Social (PAR001)"
- *                           count:
- *                             type: integer
- *                             example: 5
- *                           city:
- *                             type: string
- *                             example: "Paris"
- *                     agents:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           value:
- *                             type: string
- *                             format: uuid
- *                             example: "660e8400-e29b-41d4-a716-446655440002"
- *                           label:
- *                             type: string
- *                             example: "Jean Dupont"
- *                           count:
- *                             type: integer
- *                             example: 3
- *                           email:
- *                             type: string
- *                             example: "jean.dupont@example.com"
- *       400:
- *         description: Requête invalide
- *       403:
- *         description: Accès refusé
- *       500:
- *         description: Erreur serveur
- */
-router.get('/filter-options', checkpointController.getFilterOptions);
+// /**
+//  * @swagger
+//  * /api/v1/checkpoints/filter-options:
+//  *   get:
+//  *     summary: Récupérer les options de filtre dynamiques pour les checkpoints
+//  *     tags: [Checkpoints]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     parameters:
+//  *       - in: query
+//  *         name: siteId
+//  *         schema:
+//  *           type: string
+//  *           format: uuid
+//  *         description: Pré-filtrer les options par site
+//  *       - in: query
+//  *         name: zone
+//  *         schema:
+//  *           type: string
+//  *         description: Pré-filtrer les options par zone
+//  *       - in: query
+//  *         name: checkpointType
+//  *         schema:
+//  *           type: string
+//  *         description: Pré-filtrer les options par type de checkpoint
+//  *       - in: query
+//  *         name: status
+//  *         schema:
+//  *           type: string
+//  *         description: Pré-filtrer les options par statut
+//  *       - in: query
+//  *         name: priority
+//  *         schema:
+//  *           type: string
+//  *         description: Pré-filtrer les options par priorité
+//  *       - in: query
+//  *         name: agentId
+//  *         schema:
+//  *           type: string
+//  *           format: uuid
+//  *         description: Pré-filtrer les options par agent
+//  *     responses:
+//  *       200:
+//  *         description: Options de filtre récupérées avec succès
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 success:
+//  *                   type: boolean
+//  *                   example: true
+//  *                 message:
+//  *                   type: string
+//  *                   example: "Options de filtre récupérées avec succès"
+//  *                 data:
+//  *                   type: object
+//  *                   properties:
+//  *                     zones:
+//  *                       type: array
+//  *                       items:
+//  *                         type: object
+//  *                         properties:
+//  *                           value:
+//  *                             type: string
+//  *                             example: "Zone A"
+//  *                           label:
+//  *                             type: string
+//  *                             example: "Zone A"
+//  *                           count:
+//  *                             type: integer
+//  *                             example: 8
+//  *                     checkpointTypes:
+//  *                       type: array
+//  *                       items:
+//  *                         type: object
+//  *                         properties:
+//  *                           value:
+//  *                             type: string
+//  *                             example: "internal"
+//  *                           label:
+//  *                             type: string
+//  *                             example: "internal"
+//  *                           count:
+//  *                             type: integer
+//  *                             example: 15
+//  *                     statuses:
+//  *                       type: array
+//  *                       items:
+//  *                         type: object
+//  *                         properties:
+//  *                           value:
+//  *                             type: string
+//  *                             example: "active"
+//  *                           label:
+//  *                             type: string
+//  *                             example: "active"
+//  *                           count:
+//  *                             type: integer
+//  *                             example: 20
+//  *                     priorities:
+//  *                       type: array
+//  *                       items:
+//  *                         type: object
+//  *                         properties:
+//  *                           value:
+//  *                             type: string
+//  *                             example: "medium"
+//  *                           label:
+//  *                             type: string
+//  *                             example: "medium"
+//  *                           count:
+//  *                             type: integer
+//  *                             example: 12
+//  *                     sites:
+//  *                       type: array
+//  *                       items:
+//  *                         type: object
+//  *                         properties:
+//  *                           value:
+//  *                             type: string
+//  *                             format: uuid
+//  *                             example: "550e8400-e29b-41d4-a716-446655440001"
+//  *                           label:
+//  *                             type: string
+//  *                             example: "Siège Social (PAR001)"
+//  *                           count:
+//  *                             type: integer
+//  *                             example: 5
+//  *                           city:
+//  *                             type: string
+//  *                             example: "Paris"
+//  *                     agents:
+//  *                       type: array
+//  *                       items:
+//  *                         type: object
+//  *                         properties:
+//  *                           value:
+//  *                             type: string
+//  *                             format: uuid
+//  *                             example: "660e8400-e29b-41d4-a716-446655440002"
+//  *                           label:
+//  *                             type: string
+//  *                             example: "Jean Dupont"
+//  *                           count:
+//  *                             type: integer
+//  *                             example: 3
+//  *                           email:
+//  *                             type: string
+//  *                             example: "jean.dupont@example.com"
+//  *       400:
+//  *         description: Requête invalide
+//  *       403:
+//  *         description: Accès refusé
+//  *       500:
+//  *         description: Erreur serveur
+//  */
+// router.get('/options-filter', checkpointController.getFilterOptions);
 
 /**
  * @swagger

@@ -3,6 +3,12 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 class CheckpointService {
+  constructor() {
+    this.siteRepository = prisma.site;
+    this.checkpointRepository = prisma.checkpoint;
+    this.agentRepository = prisma.user;
+  }
+
   async getFilteredCheckpoints(filters = {}) {
     try {
       const {
@@ -255,146 +261,146 @@ if (inAlert !== undefined) {
     }
   }
 
-  async getFilterOptions(currentFilters = {}) {
-    try {
-      // Récupérer toutes les zones uniques
-      const zones = await prisma.checkpoint.groupBy({
-        by: ["zone"],
-        where: {
-          zone: { not: null },
-        },
-        _count: {
-          zone: true,
-        },
-        orderBy: {
-          zone: "asc",
-        },
-      });
+  // async getFilterOptions(currentFilters = {}) {
+  //   try {
+  //     // Récupérer toutes les zones uniques
+  //     const zones = await prisma.checkpoint.groupBy({
+  //       by: ["zone"],
+  //       where: {
+  //         zone: { not: null },
+  //       },
+  //       _count: {
+  //         zone: true,
+  //       },
+  //       orderBy: {
+  //         zone: "asc",
+  //       },
+  //     });
 
-      // Récupérer tous les types de checkpoint uniques
-      const checkpointTypes = await prisma.checkpoint.groupBy({
-        by: ["checkpointType"],
-        where: {
-          checkpointType: { not: null },
-        },
-        _count: {
-          checkpointType: true,
-        },
-        orderBy: {
-          checkpointType: "asc",
-        },
-      });
+  //     // Récupérer tous les types de checkpoint uniques
+  //     const checkpointTypes = await prisma.checkpoint.groupBy({
+  //       by: ["checkpointType"],
+  //       where: {
+  //         checkpointType: { not: null },
+  //       },
+  //       _count: {
+  //         checkpointType: true,
+  //       },
+  //       orderBy: {
+  //         checkpointType: "asc",
+  //       },
+  //     });
 
-      // Récupérer tous les statuts uniques
-      const statuses = await prisma.checkpoint.groupBy({
-        by: ["status"],
-        where: {
-          status: { not: null },
-        },
-        _count: {
-          status: true,
-        },
-        orderBy: {
-          status: "asc",
-        },
-      });
+  //     // Récupérer tous les statuts uniques
+  //     const statuses = await prisma.checkpoint.groupBy({
+  //       by: ["status"],
+  //       where: {
+  //         status: { not: null },
+  //       },
+  //       _count: {
+  //         status: true,
+  //       },
+  //       orderBy: {
+  //         status: "asc",
+  //       },
+  //     });
 
-      // Récupérer toutes les priorités uniques
-      const priorities = await prisma.checkpoint.groupBy({
-        by: ["priority"],
-        where: {
-          priority: { not: null },
-        },
-        _count: {
-          priority: true,
-        },
-        orderBy: {
-          priority: "asc",
-        },
-      });
+  //     // Récupérer toutes les priorités uniques
+  //     const priorities = await prisma.checkpoint.groupBy({
+  //       by: ["priority"],
+  //       where: {
+  //         priority: { not: null },
+  //       },
+  //       _count: {
+  //         priority: true,
+  //       },
+  //       orderBy: {
+  //         priority: "asc",
+  //       },
+  //     });
 
-      // Récupérer tous les sites pour le filtre site
-      const sites = await prisma.site.findMany({
-        where: currentFilters.siteId ? { id: currentFilters.siteId } : {},
-        select: {
-          id: true,
-          name: true,
-          code: true,
-          city: true,
-          _count: {
-            select: {
-              checkpoints: true,
-            },
-          },
-        },
-        orderBy: {
-          name: "asc",
-        },
-      });
+  //     // Récupérer tous les sites pour le filtre site
+  //     const sites = await prisma.site.findMany({
+  //       where: currentFilters.siteId ? { id: currentFilters.siteId } : {},
+  //       select: {
+  //         id: true,
+  //         name: true,
+  //         code: true,
+  //         city: true,
+  //         _count: {
+  //           select: {
+  //             checkpoints: true,
+  //           },
+  //         },
+  //       },
+  //       orderBy: {
+  //         name: "asc",
+  //       },
+  //     });
 
-      // Récupérer tous les agents pour le filtre agent
-      const agents = await prisma.user.findMany({
-        where: {
-          role: { in: ["AGENT", "AGENT_GESTION"] },
-          ...(currentFilters.agentId && { id: currentFilters.agentId }),
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          _count: {
-            select: {
-              checkpointsAssigned: true,
-            },
-          },
-        },
-        orderBy: {
-          lastName: "asc",
-          firstName: "asc",
-        },
-      });
+  //     // Récupérer tous les agents pour le filtre agent
+  //     const agents = await prisma.user.findMany({
+  //       where: {
+  //         role: { in: ["AGENT", "AGENT_GESTION"] },
+  //         ...(currentFilters.agentId && { id: currentFilters.agentId }),
+  //       },
+  //       select: {
+  //         id: true,
+  //         firstName: true,
+  //         lastName: true,
+  //         email: true,
+  //         _count: {
+  //           select: {
+  //             checkpointsAssigned: true,
+  //           },
+  //         },
+  //       },
+  //       orderBy: {
+  //         lastName: "asc",
+  //         firstName: "asc",
+  //       },
+  //     });
 
-      return {
-        zones: zones.map((z) => ({
-          value: z.zone,
-          label: z.zone,
-          count: z._count.zone,
-        })),
-        checkpointTypes: checkpointTypes.map((ct) => ({
-          value: ct.checkpointType,
-          label: ct.checkpointType,
-          count: ct._count.checkpointType,
-        })),
-        statuses: statuses.map((s) => ({
-          value: s.status,
-          label: s.status,
-          count: s._count.status,
-        })),
-        priorities: priorities.map((p) => ({
-          value: p.priority,
-          label: p.priority,
-          count: p._count.priority,
-        })),
-        sites: sites.map((s) => ({
-          value: s.id,
-          label: `${s.name} (${s.code})`,
-          count: s._count.checkpoints,
-          city: s.city,
-        })),
-        agents: agents.map((a) => ({
-          value: a.id,
-          label: `${a.firstName} ${a.lastName}`,
-          count: a._count.checkpointsAssigned,
-          email: a.email,
-        })),
-      };
-    } catch (error) {
-      throw new Error(
-        `Erreur lors de la récupération des options de filtre: ${error.message}`
-      );
-    }
-  }
+  //     return {
+  //       zones: zones.map((z) => ({
+  //         value: z.zone,
+  //         label: z.zone,
+  //         count: z._count.zone,
+  //       })),
+  //       checkpointTypes: checkpointTypes.map((ct) => ({
+  //         value: ct.checkpointType,
+  //         label: ct.checkpointType,
+  //         count: ct._count.checkpointType,
+  //       })),
+  //       statuses: statuses.map((s) => ({
+  //         value: s.status,
+  //         label: s.status,
+  //         count: s._count.status,
+  //       })),
+  //       priorities: priorities.map((p) => ({
+  //         value: p.priority,
+  //         label: p.priority,
+  //         count: p._count.priority,
+  //       })),
+  //       sites: sites.map((s) => ({
+  //         value: s.id,
+  //         label: `${s.name} (${s.code})`,
+  //         count: s._count.checkpoints,
+  //         city: s.city,
+  //       })),
+  //       agents: agents.map((a) => ({
+  //         value: a.id,
+  //         label: `${a.firstName} ${a.lastName}`,
+  //         count: a._count.checkpointsAssigned,
+  //         email: a.email,
+  //       })),
+  //     };
+  //   } catch (error) {
+  //     throw new Error(
+  //       `Erreur lors de la récupération des options de filtre: ${error.message}`
+  //     );
+  //   }
+  // }
   async createCheckpoint(checkpointData) {
     try {
       // Vérifier que le site existe
@@ -1152,112 +1158,138 @@ if (inAlert !== undefined) {
   }
 
   async getFilterOptions(preFilters) {
-    // Construire les conditions de base
-    const baseWhere = {};
-
-    if (preFilters && preFilters.siteId) baseWhere.siteId = preFilters.siteId;
-    if (preFilters && preFilters.zone) baseWhere.zone = preFilters.zone;
-    if (preFilters && preFilters.checkpointType)
-      baseWhere.type = preFilters.checkpointType;
-    if (preFilters && preFilters.status) baseWhere.status = preFilters.status;
-    if (preFilters && preFilters.priority)
-      baseWhere.priority = preFilters.priority;
-    if (preFilters && preFilters.agentId)
-      baseWhere.agentId = preFilters.agentId;
-
     try {
-      // Récupérer toutes les données en parallèle
-      const [
-        sites,
-        zonesResult,
-        typesResult,
-        statusesResult,
-        prioritiesResult,
-        agents,
-      ] = await Promise.all([
-        // 1. Sites disponibles
-        this.siteRepository.find({
-          where:
-            preFilters && preFilters.siteId ? { id: preFilters.siteId } : {},
-          select: ["id", "name"],
-          order: { name: "ASC" },
-        }),
+      // Récupérer toutes les zones uniques
+      const zones = await prisma.checkpoint.groupBy({
+        by: ["zone"],
+        _count: {
+          zone: true,
+        },
+        orderBy: {
+          zone: "asc",
+        },
+      });
 
-        // 2. Zones distinctes
-        this.checkpointRepository
-          .createQueryBuilder("checkpoint")
-          .select("DISTINCT(checkpoint.zone)", "zone")
-          .where(baseWhere)
-          .orderBy("checkpoint.zone", "ASC")
-          .getRawMany(),
+      // Récupérer tous les types de checkpoint uniques
+      const checkpointTypes = await prisma.checkpoint.groupBy({
+        by: ["checkpointType"],
+        _count: {
+          checkpointType: true,
+        },
+        orderBy: {
+          checkpointType: "asc",
+        },
+      });
 
-        // 3. Types de checkpoints distincts
-        this.checkpointRepository
-          .createQueryBuilder("checkpoint")
-          .select("DISTINCT(checkpoint.type)", "type")
-          .where(baseWhere)
-          .orderBy("checkpoint.type", "ASC")
-          .getRawMany(),
+      // Récupérer tous les statuts uniques
+      const statuses = await prisma.checkpoint.groupBy({
+        by: ["status"],
+        _count: {
+          status: true,
+        },
+        orderBy: {
+          status: "asc",
+        },
+      });
 
-        // 4. Statuts distincts
-        this.checkpointRepository
-          .createQueryBuilder("checkpoint")
-          .select("DISTINCT(checkpoint.status)", "status")
-          .where(baseWhere)
-          .orderBy("checkpoint.status", "ASC")
-          .getRawMany(),
+      // Récupérer toutes les priorités uniques
+      const priorities = await prisma.checkpoint.groupBy({
+        by: ["priority"],
+        _count: {
+          priority: true,
+        },
+        orderBy: {
+          priority: "asc",
+        },
+      });
 
-        // 5. Priorités distinctes
-        this.checkpointRepository
-          .createQueryBuilder("checkpoint")
-          .select("DISTINCT(checkpoint.priority)", "priority")
-          .where(baseWhere)
-          .orderBy("checkpoint.priority", "ASC")
-          .getRawMany(),
+      // Récupérer tous les sites pour le filtre site
+      const sites = await prisma.site.findMany({
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          city: true,
+          _count: {
+            select: {
+              checkpoints: true,
+            },
+          },
+        },
+        orderBy: {
+          name: "asc",
+        },
+      });
 
-        // 6. Agents disponibles
-        this.agentRepository.find({
-          where:
-            preFilters && preFilters.agentId ? { id: preFilters.agentId } : {},
-          select: ["id", "name"],
-          order: { name: "ASC" },
-        }),
-      ]);
-
-      // Formater les résultats
-      const zones = zonesResult
-        .map((z) => z.zone)
-        .filter((zone) => zone !== null && zone !== undefined);
-
-      const checkpointTypes = typesResult
-        .map((t) => t.type)
-        .filter((type) => type !== null && type !== undefined);
-
-      const statuses = statusesResult
-        .map((s) => s.status)
-        .filter((status) => status !== null && status !== undefined);
-
-      const priorities = prioritiesResult
-        .map((p) => p.priority)
-        .filter((priority) => priority !== null && priority !== undefined);
+      // Récupérer tous les agents pour le filtre agent
+      const agents = await prisma.user.findMany({
+        where: {
+          role: { in: ["AGENT_CONTROLE", "AGENT_GESTION"] },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          _count: {
+            select: {
+              agentAssignments: {
+                where: {
+                  endDate: null,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [
+          { lastName: "asc" },
+          { firstName: "asc" }
+        ],
+      });
 
       return {
-        sites: sites.map((site) => ({ id: site.id, name: site.name })),
-        zones: zones,
-        checkpointTypes: checkpointTypes,
-        statuses: statuses,
-        priorities: priorities,
-        agents: agents.map((agent) => ({ id: agent.id, name: agent.name })),
+        zones: zones.map((z) => ({
+          value: z.zone,
+          label: z.zone,
+          count: z._count.zone,
+        })),
+        checkpointTypes: checkpointTypes.map((ct) => ({
+          value: ct.checkpointType,
+          label: ct.checkpointType,
+          count: ct._count.checkpointType,
+        })),
+        statuses: statuses.map((s) => ({
+          value: s.status,
+          label: s.status,
+          count: s._count.status,
+        })),
+        priorities: priorities.map((p) => ({
+          value: p.priority,
+          label: p.priority,
+          count: p._count.priority,
+        })),
+        sites: sites.map((s) => ({
+          value: s.id,
+          label: `${s.name} (${s.code})`,
+          count: s._count.checkpoints,
+          city: s.city,
+        })),
+        agents: agents.map((a) => ({
+          value: a.id,
+          label: `${a.firstName} ${a.lastName}`,
+          count: a._count.agentAssignments,
+          email: a.email,
+        })),
       };
     } catch (error) {
       console.error("Error getting filter options:", error);
       // Retourner des valeurs par défaut en cas d'erreur
       return {
-        sites: [],
         zones: [],
         checkpointTypes: [],
         statuses: [],
         priorities: [],
+        sites: [],
         agents: [],
       };
     }

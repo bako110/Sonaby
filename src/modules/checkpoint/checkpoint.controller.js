@@ -192,66 +192,66 @@ class CheckpointController {
     });
   }
 });
-  getFilterOptions = asyncHandler(async (req, res) => {
-  try {
-    // 1. Récupérer les filtres
-    const {
-      siteId,
-      zone,
-      checkpointType,
-      status,
-      priority,
-      agentId
-    } = req.query;
+//   getFilterOptions = asyncHandler(async (req, res) => {
+//   try {
+//     // 1. Récupérer les filtres
+//     const {
+//       siteId,
+//       zone,
+//       checkpointType,
+//       status,
+//       priority,
+//       agentId
+//     } = req.query;
 
-    // 2. Validation UUID
-    const isValidUUID = (uuid) => {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      return uuidRegex.test(uuid);
-    };
+//     // 2. Validation UUID
+//     const isValidUUID = (uuid) => {
+//       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+//       return uuidRegex.test(uuid);
+//     };
 
-    if (siteId && !isValidUUID(siteId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Format UUID invalide pour siteId'
-      });
-    }
+//     if (siteId && !isValidUUID(siteId)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Format UUID invalide pour siteId'
+//       });
+//     }
     
-    if (agentId && !isValidUUID(agentId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Format UUID invalide pour agentId'
-      });
-    }
+//     if (agentId && !isValidUUID(agentId)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Format UUID invalide pour agentId'
+//       });
+//     }
 
-    // 3. Construction des pré-filtres
-    const currentFilters = {};
+//     // 3. Construction des pré-filtres
+//     const currentFilters = {};
     
-    if (siteId) currentFilters.siteId = siteId;
-    if (zone) currentFilters.zone = zone;
-    if (checkpointType) currentFilters.checkpointType = checkpointType;
-    if (status) currentFilters.status = status;
-    if (priority) currentFilters.priority = priority;
-    if (agentId) currentFilters.agentId = agentId;
+//     if (siteId) currentFilters.siteId = siteId;
+//     if (zone) currentFilters.zone = zone;
+//     if (checkpointType) currentFilters.checkpointType = checkpointType;
+//     if (status) currentFilters.status = status;
+//     if (priority) currentFilters.priority = priority;
+//     if (agentId) currentFilters.agentId = agentId;
 
-    // 4. Appel au service
-    const filterOptions = await checkpointService.getFilterOptions(currentFilters);
+//     // 4. Appel au service
+//     const filterOptions = await checkpointService.getFilterOptions(currentFilters);
     
-    // 5. Réponse
-    res.status(200).json({
-      success: true,
-      message: 'Options de filtre récupérées avec succès',
-      data: filterOptions
-    });
+//     // 5. Réponse
+//     res.status(200).json({
+//       success: true,
+//       message: 'Options de filtre récupérées avec succès',
+//       data: filterOptions
+//     });
     
-  } catch (error) {
-    console.error('Error in getFilterOptions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur lors de la récupération des options de filtre'
-    });
-  }
-});
+//   } catch (error) {
+//     console.error('Error in getFilterOptions:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Erreur serveur lors de la récupération des options de filtre'
+//     });
+//   }
+// });
 
   createCheckpoint = asyncHandler(async (req, res) => {
     // Vérifier les permissions ADMIN et AGENT_GESTION
