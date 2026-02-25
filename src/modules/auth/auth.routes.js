@@ -252,6 +252,11 @@ router.patch('/:userId/change-password',
   authController.resetPasswordByAdmin
 );
 
+// Route pour reset le mot de passe (alias pour change-password)
+router.patch('/:userId/reset-password', 
+  authenticateToken, // Protection par token
+  authController.resetPasswordByAdmin
+);
 
 /**
  * @swagger

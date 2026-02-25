@@ -247,24 +247,24 @@ class UserService {
 
   async updateUser(id, data) {
   try {
-    console.log('==============================');
-    console.log('🔵 updateUser CALLED');
-    console.log('🆔 ID reçu du frontend:', id);
-    console.log('📦 Type de data:', typeof data);
-    console.log('📦 Data brute reçue:', data);
-    console.log('📦 Data stringify:', JSON.stringify(data, null, 2));
-    console.log('==============================');
+    // console.log('==============================');
+    // console.log('🔵 updateUser CALLED');
+    // console.log('🆔 ID reçu du frontend:', id);
+    // console.log('📦 Type de data:', typeof data);
+    // console.log('📦 Data brute reçue:', data);
+    // console.log('📦 Data stringify:', JSON.stringify(data, null, 2));
+    // console.log('==============================');
 
     // Accepter toute modification sans vérification, mais ignorer matricule
     const { assignedSites, permissions, assignedCheckpoints, password, matricule, ...updateData } = data || {};
 
-    console.log('🟢 Champs extraits:');
-    console.log('   - assignedSites:', assignedSites);
-    console.log('   - assignedCheckpoints:', assignedCheckpoints);
-    console.log('   - permissions:', permissions);
-    console.log('   - password fourni ?: ', !!password);
-    console.log('   - matricule ignoré:', matricule);
-    console.log('   - autres champs updateData:', JSON.stringify(updateData, null, 2));
+    // console.log('🟢 Champs extraits:');
+    // console.log('   - assignedSites:', assignedSites);
+    // console.log('   - assignedCheckpoints:', assignedCheckpoints);
+    // console.log('   - permissions:', permissions);
+    // console.log('   - password fourni ?: ', !!password);
+    // console.log('   - matricule ignoré:', matricule);
+    // console.log('   - autres champs updateData:', JSON.stringify(updateData, null, 2));
 
     // Gérer le mot de passe
     if (password) {
