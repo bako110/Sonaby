@@ -40,7 +40,7 @@ if (search && search.trim() !== '') {
 
 // 2. Filtre par nom (SANS mode)
 if (name && name.trim() !== '') {
-  whereClause.name = { contains: name }; // ✅ UN SEUL, SANS mode
+  whereClause.name = { contains: name, mode: "insensitive" }; // ✅ AJOUT: mode insensitive
 }
 
 // 3. Filtres simples
