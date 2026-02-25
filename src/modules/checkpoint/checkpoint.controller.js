@@ -177,7 +177,7 @@ class CheckpointController {
     // 8. Réponse
     res.status(200).json({
       success: true,
-      message: 'Checkpoints filtrés récupérés avec succès',
+      message: 'Checkpoints filtrés récupérés avec succès, ok',
       data: result.checkpoints,
       pagination: result.pagination,
       filterOptions: result.filterOptions,

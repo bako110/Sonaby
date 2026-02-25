@@ -688,6 +688,8 @@ router.get('/filter', checkpointController.getFilteredCheckpoints);
  */
 router.get('/', checkpointController.getAllCheckpoints);
 
+
+
 /**
  * @swagger
  * /api/checkpoints/stats:
