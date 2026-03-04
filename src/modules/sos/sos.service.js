@@ -603,6 +603,14 @@ async createSOS(sosData, sentBy) {
                 lastName: true,
                 email: true
               }
+            },
+            resolver:{
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true
+              }
             }
           },
           orderBy: {
