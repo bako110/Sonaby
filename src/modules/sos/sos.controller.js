@@ -4,7 +4,7 @@ const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class SOSController {
  createSOS = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE','CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes.'
@@ -77,7 +77,7 @@ class SOSController {
 
   
   createGeneralSOS = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE','CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes.'
@@ -144,7 +144,7 @@ class SOSController {
   });
 
   getSOSById = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE','CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes.'
@@ -174,7 +174,7 @@ class SOSController {
   });
 
   deactivateSOS = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE','CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes.'
@@ -211,7 +211,7 @@ class SOSController {
   });
 
   getActiveSOS = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION', 'AGENT_CONTROLE','CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes.'
@@ -234,7 +234,7 @@ class SOSController {
   });
 
   getSOSStats = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION','CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes.'
@@ -296,7 +296,7 @@ class SOSController {
 
   // Méthode pour récupérer la liste simple des SOS
   getSOSList = asyncHandler(async (req, res) => {
-    if (!['ADMIN', 'AGENT_GESTION'].includes(req.user.role)) {
+    if (!['ADMIN', 'AGENT_GESTION','CHEF_SERVICE'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Accès refusé. Permissions insuffisantes.'
