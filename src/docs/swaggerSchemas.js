@@ -487,9 +487,21 @@ const incidentQuerySchema = baseQuerySchema.extend({
 });
 
 const sosQuerySchema = baseQuerySchema.extend({
-  checkpointId: z.string().optional().describe("Checkpoint ID filter"),
-  triggeredBy: z.string().optional().describe("Triggered by user ID filter"),
-  isResolved: z.string().optional().describe("Resolution status filter (true/false)")
+  checkpointId: z.string().uuid().optional().describe("Filtre par ID du checkpoint"),
+  agentId: z.string().uuid().optional().describe("Filtre par ID de l'agent déclencheur"),
+  userId: z.string().uuid().optional().describe("Filtre par ID utilisateur (déclencheur ou résolveur)"),
+  isResolved: z.string().optional().describe("Statut de résolution (true/false)"),
+  searchTerm: z.string().optional().describe("Recherche textuelle dans message, checkpoint ou site"),
+  statut: z.string().optional().describe("Statut du SOS (CRITICAL, HIGH, MEDIUM, LOW)"),
+  priorite: z.string().optional().describe("Niveau de priorité du SOS"),
+  typeIncident: z.string().optional().describe("Type d'incident SOS"),
+  dateDebut: z.string().optional().describe("Date de début (format ISO 8601)"),
+  dateFin: z.string().optional().describe("Date de fin (format ISO 8601)"),
+  sortBy: z.string().optional().describe("Champ de tri (triggeredAt, isResolved, message)"),
+  sortOrder: z.enum(['asc', 'desc']).optional().describe("Ordre de tri (asc/desc)"),
+  // Backwards compatibility
+  triggeredBy: z.string().uuid().optional().describe("[Obsolète] Utiliser agentId à la place"),
+  active: z.string().optional().describe("[Obsolète] Utiliser isResolved à la place")
 });
 
 // =====================================================================================
@@ -1011,6 +1023,40 @@ const SosAlert = {
       nullable: true,
       description: "Notes sur la résolution de l'alerte",
       example: "Fausse alerte - Propriétaire qui avait perdu ses clés"
+    },
+    // Champs de filtrage optionnels
+    statut: {
+      type: "string",
+      enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+      nullable: true,
+      description: "Niveau de criticité du SOS",
+      example: "CRITICAL"
+    },
+    priorite: {
+      type: "string", 
+      nullable: true,
+      description: "Niveau de priorité du SOS",
+      example: "URGENT"
+    },
+    typeIncident: {
+      type: "string",
+      nullable: true, 
+      description: "Type d'incident SOS",
+      example: "SECURITY_BREACH"
+    },
+    // Relations
+    checkpoint: {
+      $ref: "#/components/schemas/Checkpoint",
+      description: "Checkpoint associé à l'alerte"
+    },
+    triggerer: {
+      $ref: "#/components/schemas/User", 
+      description: "Utilisateur ayant déclenché l'alerte"
+    },
+    resolver: {
+      $ref: "#/components/schemas/User",
+      nullable: true,
+      description: "Utilisateur ayant résolu l'alerte"
     }
   },
   example: {
@@ -1022,7 +1068,30 @@ const SosAlert = {
     isResolved: true,
     resolvedAt: "2024-11-23T17:15:00Z",
     resolvedBy: "6985b877-c56b-11f0-aa39-0242ac140013",
-    resolutionNotes: "Fausse alerte - Propriétaire qui avait perdu ses clés"
+    resolutionNotes: "Fausse alerte - Propriétaire qui avait perdu ses clés",
+    statut: "CRITICAL",
+    priorite: "URGENT", 
+    typeIncident: "SECURITY_BREACH",
+    checkpoint: {
+      id: "770e8400-e29b-41d4-a716-446655440002",
+      name: "Entrée principale",
+      site: {
+        id: "site-123",
+        name: "Site Sonabhy Central"
+      }
+    },
+    triggerer: {
+      id: "a8969b03-c8e6-11f0-aa39-0242ac140013",
+      firstName: "Jean",
+      lastName: "Dupont",
+      email: "jean.dupont@sonabhy.com"
+    },
+    resolver: {
+      id: "6985b877-c56b-11f0-aa39-0242ac140013", 
+      firstName: "Marie",
+      lastName: "Laurent",
+      email: "marie.laurent@sonabhy.com"
+    }
   }
 };
 
@@ -1204,7 +1273,7 @@ const CreateIncidentInput = {
 
 const CreateSosInput = {
   type: "object",
-  required: ["checkpointId", "message"],
+  required: ["checkpointId", "templateId"],
   properties: {
     checkpointId: { 
       type: "string", 
@@ -1212,15 +1281,38 @@ const CreateSosInput = {
       description: "ID du checkpoint d'où provient l'alerte",
       example: "770e8400-e29b-41d4-a716-446655440002"
     },
+    templateId: {
+      type: "integer",
+      description: "ID du template prédéfini (table sos_templates)",
+      example: 5
+    },
     message: { 
       type: "string",
-      description: "Message décrivant la situation d'urgence",
-      example: "Tentative d'effraction véhicule dans le parking"
+      description: "[Optionnel] Message personnalisé (sinon utilise le template)",
+      example: "Situation particulière nécessitant attention immédiate"
+    },
+    statut: {
+      type: "string",
+      enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+      description: "[Optionnel] Niveau de criticité du SOS",
+      example: "CRITICAL"
+    },
+    priorite: {
+      type: "string", 
+      description: "[Optionnel] Niveau de priorité du SOS", 
+      example: "URGENT"
+    },
+    typeIncident: {
+      type: "string",
+      description: "[Optionnel] Type d'incident SOS",
+      example: "SECURITY_BREACH"
     }
   },
   example: {
     checkpointId: "770e8400-e29b-41d4-a716-446655440002",
-    message: "Tentative d'effraction véhicule dans le parking"
+    templateId: 5,
+    statut: "CRITICAL",
+    priorite: "URGENT"
   }
 };
 

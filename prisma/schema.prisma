@@ -380,6 +380,9 @@ model SosAlert {
   triggeredBy     String     @map("triggered_by") @db.Char(36)
   triggeredAt     DateTime?  @default(now()) @map("triggered_at") @db.Timestamp(0)
   message         String?    @db.Text
+  statut          String?    @default("MEDIUM") @db.VarChar(20)
+  priorite        String?    @default("NORMAL") @db.VarChar(50)
+  typeIncident    String?    @map("type_incident") @default("GENERAL") @db.VarChar(50)
   isResolved      Boolean?   @default(false) @map("is_resolved")
   resolvedAt      DateTime?  @map("resolved_at") @db.Timestamp(0)
   resolvedBy      String?    @map("resolved_by") @db.Char(36)
@@ -390,6 +393,9 @@ model SosAlert {
 
   @@index([checkpointId], map: "idx_sos_alerts_checkpoint_id")
   @@index([triggeredAt], map: "idx_sos_alerts_triggered_at")
+  @@index([statut], map: "idx_sos_alerts_statut")
+  @@index([priorite], map: "idx_sos_alerts_priorite")
+  @@index([typeIncident], map: "idx_sos_alerts_type_incident")
   @@index([resolvedBy], map: "resolved_by")
   @@index([triggeredBy], map: "triggered_by")
   @@map("sos_alerts")

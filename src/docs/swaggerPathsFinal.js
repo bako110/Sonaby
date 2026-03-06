@@ -2136,18 +2136,64 @@ const swaggerPathsFinal = {
 '/api/v1/sos': {
   get: {
     tags: ['SOS'],
-    summary: 'Lister toutes les alertes SOS',
+    summary: 'Lister toutes les alertes SOS avec filtres avancés',
     security: [{ bearerAuth: [] }],
     parameters: [
-      { name: 'page', in: 'query', schema: { type: 'string' } },
-      { name: 'limit', in: 'query', schema: { type: 'string' } },
-      { name: 'checkpointId', in: 'query', schema: { type: 'string' } },
-      { name: 'active', in: 'query', schema: { type: 'string' } }
+      { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 }, description: 'Numéro de page' },
+      { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 10 }, description: 'Nombre d\'éléments par page' },
+      { name: 'checkpointId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par ID de checkpoint' },
+      { name: 'agentId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par ID d\'agent déclencheur' },
+      { name: 'userId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'Filtrer par ID utilisateur (déclencheur ou résolveur)' },
+      { name: 'isResolved', in: 'query', schema: { type: 'boolean' }, description: 'Filtrer par statut de résolution' },
+      { name: 'searchTerm', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle dans message, checkpoint ou site' },
+      { name: 'statut', in: 'query', schema: { type: 'string', enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] }, description: 'Filtrer par statut de criticité' },
+      { name: 'priorite', in: 'query', schema: { type: 'string' }, description: 'Filtrer par niveau de priorité' },
+      { name: 'typeIncident', in: 'query', schema: { type: 'string' }, description: 'Filtrer par type d\'incident' },
+      { name: 'dateDebut', in: 'query', schema: { type: 'string', format: 'date-time' }, description: 'Date de début pour filtrage par période (format ISO 8601)' },
+      { name: 'dateFin', in: 'query', schema: { type: 'string', format: 'date-time' }, description: 'Date de fin pour filtrage par période (format ISO 8601)' },
+      { name: 'sortBy', in: 'query', schema: { type: 'string', enum: ['triggeredAt', 'isResolved', 'message'], default: 'triggeredAt' }, description: 'Champ de tri' },
+      { name: 'sortOrder', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' }, description: 'Ordre de tri' },
+      // Paramètres obsolètes pour compatibilité
+      { name: 'triggeredBy', in: 'query', schema: { type: 'string', format: 'uuid' }, description: '[Obsolète] Utiliser agentId à la place' },
+      { name: 'active', in: 'query', schema: { type: 'boolean' }, description: '[Obsolète] Utiliser isResolved à la place' }
     ],
     responses: {
       200: {
-        description: 'Liste des alertes SOS',
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/PaginatedResponse' } } }
+        description: 'Liste des alertes SOS avec filtres appliqués',
+        content: { 
+          'application/json': { 
+            schema: { 
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', example: true },
+                data: { 
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/SosAlert' }
+                },
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    page: { type: 'integer' },
+                    limit: { type: 'integer' },
+                    total: { type: 'integer' },
+                    pages: { type: 'integer' },
+                    hasNext: { type: 'boolean' },
+                    hasPrev: { type: 'boolean' }
+                  }
+                },
+                appliedFilters: { type: 'object', description: 'Filtres appliqués à la requête' }
+              }
+            }
+          } 
+        }
+      },
+      400: {
+        description: 'Paramètres de filtrage invalides',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+      },
+      401: {
+        description: 'Non autorisé',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
       }
     }
   },
