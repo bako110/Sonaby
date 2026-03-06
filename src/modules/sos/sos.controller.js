@@ -123,17 +123,22 @@ class SOSController {
 
     const validated = sosQuerySchema.parse(req.query);
     
+    // Map old params to new filter object for backwards compatibility
+    const filters = {
+      ...validated,
+      // Handle backwards compatibility
+      searchTerm: validated.searchTerm || validated.search,
+      agentId: validated.agentId || validated.triggeredBy,
+      isResolved: validated.isResolved !== undefined ? validated.isResolved : validated.active
+    };
+    
     try {
-      const result = await sosService.getAllSOS(
-        validated.page, 
-        validated.limit, 
-        validated.checkpointId,
-        validated.active
-      );
+      const result = await sosService.getAllSOS(filters);
       res.json({
         success: true,
         data: result.sosAlerts,
-        pagination: result.pagination
+        pagination: result.pagination,
+        appliedFilters: result.appliedFilters
       });
     } catch (error) {
       res.status(500).json({

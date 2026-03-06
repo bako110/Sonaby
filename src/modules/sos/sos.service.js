@@ -4,10 +4,7 @@ const notificationService = require('../notification/notification.service');
 class SOSService {
   async createSOS(sosData, sentBy) {
     try {
-      console.log('🔍 DEBUG - sosData:', sosData);
-      console.log('🔍 DEBUG - sentBy:', sentBy);
-      console.log('🔍 DEBUG - TemplateId reçu:', sosData.templateId);
-      
+
       // 1. Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
         where: { id: sosData.checkpointId },
@@ -93,8 +90,6 @@ class SOSService {
         }
       });
 
-      console.log('🔍 DEBUG - SOS créé avec succès:', sos.id);
-
       // ============ NOTIFICATION UNIQUE POUR LE SITE ============
       // Construire le nom complet du déclencheur à partir des données déjà récupérées
       const triggeredByName = sos.triggerer ? 
@@ -113,6 +108,7 @@ class SOSService {
         templateTitle: template.titre, // Titre du template
         message: sos.message // Message du SOS (qui vient du template)
       });
+      
       // ========================================================
 
       // 5. Retourner la réponse avec infos du template
@@ -562,20 +558,106 @@ async createSOS(sosData, sentBy) {
     }
   }
 
-  async getAllSOS(page = 1, limit = 10, checkpointId = null, active = null) {
+  async getAllSOS(filters = {}) {
     try {
+      const {
+        page = 1,
+        limit = 10,
+        statut,
+        priorite,
+        typeIncident,
+        checkpointId,
+        agentId,
+        userId,
+        dateDebut,
+        dateFin,
+        searchTerm,
+        isResolved,
+        sortBy = 'triggeredAt',
+        sortOrder = 'desc'
+      } = filters;
+
       const skip = (page - 1) * limit;
       
       let whereClause = {};
       
+      // Filtre par checkpoint
       if (checkpointId) {
         whereClause.checkpointId = checkpointId;
       }
 
-      if (active !== null) {
-        // active=true signifie isResolved=false
-        whereClause.isResolved = !active;
+      // Filtre par statut résolu/non résolu
+      if (isResolved !== undefined && isResolved !== null) {
+        whereClause.isResolved = isResolved;
       }
+
+      // Filtre par agent (celui qui a déclenché le SOS)
+      if (agentId) {
+        whereClause.triggeredBy = agentId;
+      }
+
+      // Construire les conditions OR pour userId et searchTerm
+      const orConditions = [];
+
+      // Filtre par userId (soit déclencheur soit résolveur)
+      if (userId) {
+        orConditions.push(
+          { triggeredBy: userId },
+          { resolvedBy: userId }
+        );
+      }
+
+      // Recherche textuelle (dans le message et nom du checkpoint)
+      if (searchTerm) {
+        orConditions.push(
+          { message: { contains: searchTerm } },
+          {
+            checkpoint: {
+              name: { contains: searchTerm }
+            }
+          },
+          {
+            checkpoint: {
+              site: {
+                name: { contains: searchTerm }
+              }
+            }
+          }
+        );
+      }
+
+      // Appliquer les conditions OR si elles existent
+      if (orConditions.length > 0) {
+        whereClause.OR = orConditions;
+      }
+
+      // Filtres par date (plage)
+      if (dateDebut || dateFin) {
+        whereClause.triggeredAt = {};
+        if (dateDebut) {
+          whereClause.triggeredAt.gte = new Date(dateDebut);
+        }
+        if (dateFin) {
+          whereClause.triggeredAt.lte = new Date(dateFin);
+        }
+      }
+
+      // Filtres par statut, priorité, type s'ils sont ajoutés au schéma Prisma
+      if (statut) {
+        whereClause.statut = statut;
+      }
+      if (priorite) {
+        whereClause.priorite = priorite;
+      }
+      if (typeIncident) {
+        whereClause.typeIncident = typeIncident;
+      }
+
+      // Gestion du tri
+      const orderBy = {};
+      const validSortFields = ['triggeredAt', 'isResolved', 'message'];
+      const sortField = validSortFields.includes(sortBy) ? sortBy : 'triggeredAt';
+      orderBy[sortField] = sortOrder === 'asc' ? 'asc' : 'desc';
 
       const [sosAlerts, total] = await Promise.all([
         prisma.sosAlert.findMany({
@@ -613,9 +695,7 @@ async createSOS(sosData, sentBy) {
               }
             }
           },
-          orderBy: {
-            triggeredAt: 'desc'
-          }
+          orderBy
         }),
         prisma.sosAlert.count({ where: whereClause })
       ]);
@@ -626,11 +706,14 @@ async createSOS(sosData, sentBy) {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1
+        },
+        appliedFilters: filters
       };
     } catch (error) {
-      throw new Error(`Erreur lors de la récupération des SOS: ${error.message}`);
+      throw new Error(`Erreur lors de la récupération des SOS filtrés: ${error.message}`);
     }
   }
 
@@ -822,6 +905,7 @@ async createSOS(sosData, sentBy) {
       throw new Error(`Erreur lors de la récupération des statistiques SOS: ${error.message}`);
     }
   }
+
 
   // ============ MÉTHODES OBSOLÈTES (À SUPPRIMER ÉVENTUELLEMENT) ============
 

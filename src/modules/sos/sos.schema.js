@@ -30,10 +30,22 @@ const sosIdSchema = z.object({
 const sosQuerySchema = z.object({
   page: z.string().optional().transform(val => val ? parseInt(val) : 1),
   limit: z.string().optional().transform(val => val ? parseInt(val) : 10),
-  search: z.string().optional(),
+  searchTerm: z.string().optional(),
   checkpointId: z.string().uuid().optional(),
-  triggeredBy: z.string().uuid().optional(),
-  isResolved: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined)
+  agentId: z.string().uuid().optional(),
+  userId: z.string().uuid().optional(),
+  isResolved: z.string().optional().transform(val => val === 'true' ? true : val === 'false' ? false : undefined),
+  statut: z.string().optional(),
+  priorite: z.string().optional(), 
+  typeIncident: z.string().optional(),
+  dateDebut: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  dateFin: z.string().optional().transform(val => val ? new Date(val) : undefined),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+  // Backwards compatibility
+  search: z.string().optional().transform(val => val),
+  triggeredBy: z.string().uuid().optional().transform(val => val),
+  active: z.string().optional().transform(val => val === 'true' ? false : val === 'false' ? true : undefined)
 });
 
 
