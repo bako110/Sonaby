@@ -4,134 +4,10 @@ const notificationService = require('../notification/notification.service');
 class SOSService {
   async createSOS(sosData, sentBy) {
     try {
-
-      // 1. Vérifier que le checkpoint existe
-      const checkpoint = await prisma.checkpoint.findUnique({
-        where: { id: sosData.checkpointId },
-        include: {
-          site: {
-            select: {
-              id: true,
-              name: true,
-              address: true,
-              city: true,
-              country: true
-            }
-          }
-        }
-      });
-
-      if (!checkpoint) {
-        throw new Error('Checkpoint non trouvé');
-      }
-
-      // 2. Récupérer le template - OBLIGATOIRE
-      console.log('🔍 DEBUG - Recherche template ID:', sosData.templateId);
-      const template = await prisma.sosTemplate.findUnique({
-        where: { 
-          id: sosData.templateId
-        }
-      });
-
-      if (!template) {
-        throw new Error(`Template SOS ID ${sosData.templateId} non trouvé`);
-      }
-
-      console.log('🔍 DEBUG - Template trouvé:', {
-        id: template.id,
-        titre: template.titre,
-        messagePreview: template.message.substring(0, 50) + '...'
-      });
-
-      // 3. Vérifier s'il y a déjà un SOS actif (non résolu) pour ce checkpoint
-      const activeSOS = await prisma.sosAlert.findFirst({
-        where: {
-          checkpointId: sosData.checkpointId,
-          isResolved: false
-        }
-      });
-
-      if (activeSOS) {
-        throw new Error('Un SOS est déjà actif pour ce checkpoint');
-      }
-
-      console.log('🔍 DEBUG - Création SOS avec template:', template.titre);
-      
-      // 4. Créer le SOS avec le message du template
-      const sos = await prisma.sosAlert.create({
-        data: {
-          checkpointId: sosData.checkpointId,
-          message: template.message,
-          triggeredBy: sentBy,
-          isResolved: false
-        },
-        include: {
-          checkpoint: {
-            include: {
-              site: {
-                select: {
-                  id: true,
-                  name: true,
-                  address: true,
-                  city: true,
-                  country: true
-                }
-              }
-            }
-          },
-          triggerer: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true
-            }
-          }
-        }
-      });
-
-      // ============ NOTIFICATION UNIQUE POUR LE SITE ============
-      // Construire le nom complet du déclencheur à partir des données déjà récupérées
-      const triggeredByName = sos.triggerer ? 
-        `${sos.triggerer.firstName} ${sos.triggerer.lastName}` : 
-        'Utilisateur inconnu';
-
-      // Appeler la notification avec les vraies données
-      await this.createSOSNotificationForSite({
-        sosId: sos.id,
-        checkpointId: sos.checkpointId,
-        checkpointName: sos.checkpoint.name, // Nom du checkpoint depuis la relation
-        siteId: sos.checkpoint.site.id, // ID du site depuis la relation
-        siteName: sos.checkpoint.site.name, // Nom du site depuis la relation
-        triggeredBy: triggeredByName,
-        triggeredById: sos.triggeredBy,
-        templateTitle: template.titre, // Titre du template
-        message: sos.message // Message du SOS (qui vient du template)
-      });
-      
-      // ========================================================
-
-      // 5. Retourner la réponse avec infos du template
-      return {
-        ...sos,
-        templateInfo: {
-          id: template.id,
-          titre: template.titre,
-          usedTemplate: true
-        }
-      };
-      
-    } catch (error) {
-      console.error('❌ Erreur création SOS:', error);
-      throw new Error(`Erreur lors de la création du SOS: ${error.message}`);
-    }
-  }
-async createSOS(sosData, sentBy) {
-    try {
-      console.log('🔍 DEBUG - sosData:', sosData);
+      console.log('🔍 DEBUG - sosData reçu:', sosData);
       console.log('🔍 DEBUG - sentBy:', sentBy);
-      console.log('🔍 DEBUG - TemplateId reçu:', sosData.templateId);
-      
+      console.log('🔍 DEBUG - templateId reçu:', sosData.templateId);
+
       // 1. Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
         where: { id: sosData.checkpointId },
@@ -152,23 +28,37 @@ async createSOS(sosData, sentBy) {
         throw new Error('Checkpoint non trouvé');
       }
 
-      // 2. Récupérer le template - OBLIGATOIRE
-      console.log('🔍 DEBUG - Recherche template ID:', sosData.templateId);
-      const template = await prisma.sosTemplate.findUnique({
-        where: { 
-          id: sosData.templateId
-        }
-      });
+      // 2. Gestion du message : template optionnel ou message par défaut
+      let finalMessage = 'Alerte SOS déclenchée'; // Message par défaut
+      let templateInfo = null;
 
-      if (!template) {
-        throw new Error(`Template SOS ID ${sosData.templateId} non trouvé`);
+      // Si un templateId est fourni, tenter de récupérer le template
+      if (sosData.templateId) {
+        console.log('🔍 DEBUG - Recherche template ID:', sosData.templateId);
+        const template = await prisma.sosTemplate.findUnique({
+          where: { 
+            id: sosData.templateId
+          }
+        });
+
+        if (template) {
+          console.log('🔍 DEBUG - Template trouvé:', template.titre);
+          finalMessage = template.message;
+          templateInfo = {
+            id: template.id,
+            titre: template.titre,
+            usedTemplate: true
+          };
+        } else {
+          console.log('⚠️ DEBUG - Template non trouvé, utilisation du message par défaut');
+          // Continuer avec le message par défaut sans lancer d'erreur
+        }
       }
 
-      console.log('🔍 DEBUG - Template trouvé:', {
-        id: template.id,
-        titre: template.titre,
-        messagePreview: template.message.substring(0, 50) + '...'
-      });
+      // Si un message personnalisé est fourni dans sosData, l'utiliser
+      if (sosData.message) {
+        finalMessage = sosData.message;
+      }
 
       // 3. Vérifier s'il y a déjà un SOS actif (non résolu) pour ce checkpoint
       const activeSOS = await prisma.sosAlert.findFirst({
@@ -182,14 +72,17 @@ async createSOS(sosData, sentBy) {
         throw new Error('Un SOS est déjà actif pour ce checkpoint');
       }
 
-      console.log('🔍 DEBUG - Création SOS avec template:', template.titre);
+      console.log('🔍 DEBUG - Création SOS avec message:', finalMessage.substring(0, 50));
       
-      // 4. Créer le SOS avec le message du template
+      // 4. Créer le SOS avec le message final et les champs optionnels
       const sos = await prisma.sosAlert.create({
         data: {
           checkpointId: sosData.checkpointId,
-          message: template.message,
+          message: finalMessage,
           triggeredBy: sentBy,
+          statut: sosData.statut || undefined,
+          priorite: sosData.priorite || undefined,
+          typeIncident: sosData.typeIncident || undefined,
           isResolved: false
         },
         include: {
@@ -217,21 +110,20 @@ async createSOS(sosData, sentBy) {
         }
       });
 
-      console.log('🔍 DEBUG - SOS créé avec succès:', sos.id);
+      console.log('✅ SOS créé avec succès:', sos.id);
 
-      // ============ NOTIFICATION UNIQUE POUR LE SITE ============
+      // ============ NOTIFICATION POUR LE SITE ============
       try {
-        // Construire le nom complet du déclencheur
         const triggeredByName = sos.triggerer ? 
           `${sos.triggerer.firstName} ${sos.triggerer.lastName}` : 
           'Utilisateur inconnu';
 
-        // Utiliser le service de notification importé
+        // Utiliser le service de notification
         let notificationTitle, notificationMessage;
         
-        if (template.titre) {
-          notificationTitle = `🚨 ${template.titre} - ${sos.checkpoint.name}`;
-          notificationMessage = `Alerte "${template.titre}" déclenchée au checkpoint "${sos.checkpoint.name}" (${sos.checkpoint.site.name}) par ${triggeredByName}`;
+        if (templateInfo && templateInfo.titre) {
+          notificationTitle = `🚨 ${templateInfo.titre} - ${sos.checkpoint.name}`;
+          notificationMessage = `Alerte "${templateInfo.titre}" déclenchée au checkpoint "${sos.checkpoint.name}" (${sos.checkpoint.site.name}) par ${triggeredByName}`;
         } else {
           notificationTitle = `🚨 ALERTE SOS - ${sos.checkpoint.name}`;
           notificationMessage = `Alerte SOS déclenchée au checkpoint "${sos.checkpoint.name}" (${sos.checkpoint.site.name}) par ${triggeredByName}`;
@@ -255,7 +147,7 @@ async createSOS(sosData, sentBy) {
             siteName: sos.checkpoint.site.name,
             triggeredBy: triggeredByName,
             triggeredById: sos.triggeredBy,
-            templateTitle: template.titre,
+            templateTitle: templateInfo ? templateInfo.titre : null,
             message: sos.message,
             action: 'sos_alert_site',
             timestamp: new Date().toISOString()
@@ -268,17 +160,22 @@ async createSOS(sosData, sentBy) {
         // Continuer même si la notification échoue
         console.log('ℹ️ Le SOS a été créé, mais la notification a échoué');
       }
-      // ========================================================
+      // ================================================
 
-      // 5. Retourner la réponse avec infos du template
-      return {
-        ...sos,
-        templateInfo: {
-          id: template.id,
-          titre: template.titre,
-          usedTemplate: true
-        }
+      // 5. Retourner la réponse avec infos du template si utilisé
+      const response = {
+        ...sos
       };
+
+      if (templateInfo) {
+        response.templateInfo = templateInfo;
+      } else {
+        response.templateInfo = {
+          usedTemplate: false
+        };
+      }
+
+      return response;
       
     } catch (error) {
       console.error('❌ Erreur création SOS:', error);
