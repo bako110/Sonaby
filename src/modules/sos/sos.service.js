@@ -82,7 +82,8 @@ class SOSService {
           triggeredBy: sentBy,
           statut: sosData.statut || undefined,
           priorite: sosData.priorite || undefined,
-          typeIncident: sosData.typeIncident || undefined,
+          // Utiliser le titre du template comme typeIncident si template utilisé
+          typeIncident: templateInfo ? templateInfo.titre : (sosData.typeIncident || undefined),
           isResolved: false
         },
         include: {
