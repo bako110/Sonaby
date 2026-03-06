@@ -492,7 +492,7 @@ const sosQuerySchema = baseQuerySchema.extend({
   userId: z.string().uuid().optional().describe("Filtre par ID utilisateur (déclencheur ou résolveur)"),
   isResolved: z.string().optional().describe("Statut de résolution (true/false)"),
   searchTerm: z.string().optional().describe("Recherche textuelle dans message, checkpoint ou site"),
-  statut: z.string().optional().describe("Statut du SOS (CRITICAL, HIGH, MEDIUM, LOW)"),
+  statut: z.string().optional().describe("Statut du SOS (MEDIUM, HIGH, LOW, CRITICAL)"),
   priorite: z.string().optional().describe("Niveau de priorité du SOS"),
   typeIncident: z.string().optional().describe("Type d'incident SOS"),
   dateDebut: z.string().optional().describe("Date de début (format ISO 8601)"),
@@ -1027,22 +1027,24 @@ const SosAlert = {
     // Champs de filtrage optionnels
     statut: {
       type: "string",
-      enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+      enum: ["MEDIUM", "HIGH", "LOW", "CRITICAL"],
       nullable: true,
-      description: "Niveau de criticité du SOS",
-      example: "CRITICAL"
+      description: "Statut du SOS",
+      example: "MEDIUM"
     },
     priorite: {
-      type: "string", 
+      type: "string",
+      enum: ["NORMAL", "HIGH", "LOW", "URGENT"],
       nullable: true,
       description: "Niveau de priorité du SOS",
-      example: "URGENT"
+      example: "NORMAL"
     },
     typeIncident: {
       type: "string",
+      enum: ["GENERAL", "SECURITY", "TECHNICAL", "EMERGENCY", "OTHER"],
       nullable: true, 
       description: "Type d'incident SOS",
-      example: "SECURITY_BREACH"
+      example: "GENERAL"
     },
     // Relations
     checkpoint: {
@@ -1069,9 +1071,9 @@ const SosAlert = {
     resolvedAt: "2024-11-23T17:15:00Z",
     resolvedBy: "6985b877-c56b-11f0-aa39-0242ac140013",
     resolutionNotes: "Fausse alerte - Propriétaire qui avait perdu ses clés",
-    statut: "CRITICAL",
-    priorite: "URGENT", 
-    typeIncident: "SECURITY_BREACH",
+    statut: "EN_ATTENTE",
+    priorite: "NORMAL", 
+    typeIncident: "GENERAL",
     checkpoint: {
       id: "770e8400-e29b-41d4-a716-446655440002",
       name: "Entrée principale",
@@ -1293,26 +1295,28 @@ const CreateSosInput = {
     },
     statut: {
       type: "string",
-      enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
-      description: "[Optionnel] Niveau de criticité du SOS",
-      example: "CRITICAL"
+      enum: ["MEDIUM", "HIGH", "LOW", "CRITICAL"],
+      description: "[Optionnel] Statut du SOS",
+      example: "MEDIUM"
     },
     priorite: {
-      type: "string", 
+      type: "string",
+      enum: ["NORMAL", "HIGH", "LOW", "URGENT"],
       description: "[Optionnel] Niveau de priorité du SOS", 
-      example: "URGENT"
+      example: "NORMAL"
     },
     typeIncident: {
       type: "string",
+      enum: ["GENERAL", "SECURITY", "TECHNICAL", "EMERGENCY", "OTHER"],
       description: "[Optionnel] Type d'incident SOS",
-      example: "SECURITY_BREACH"
+      example: "GENERAL"
     }
   },
   example: {
     checkpointId: "770e8400-e29b-41d4-a716-446655440002",
     templateId: 5,
-    statut: "CRITICAL",
-    priorite: "URGENT"
+    statut: "MEDIUM",
+    priorite: "NORMAL"
   }
 };
 
