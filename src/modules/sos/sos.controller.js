@@ -12,12 +12,7 @@ class SOSController {
     }
 
     const validated = createSOSSchema.parse(req.body);
-    
-    console.log('🔍 DEBUG CONTROLLER - req.user:', req.user);
-    console.log('🔍 DEBUG CONTROLLER - req.user.userId:', req.user?.userId);
-    console.log('🔍 DEBUG CONTROLLER - validated data:', validated);
-    console.log('🔍 DEBUG CONTROLLER - Using templateId:', validated.templateId);
-    
+
     // Utiliser l'utilisateur authentifié comme triggeredBy
     const sentBy = req.user.userId;
     

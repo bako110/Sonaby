@@ -33,22 +33,21 @@ class DashboardService {
         totalVisitorsToday,
         incidentsCountToday
       ] = await Promise.all([
-        // Visites en cours pour ce checkpoint aujourd'hui
+        // Visites en cours pour ce checkpoint aujourd'hui (exitTime null)
         prisma.visit.count({
           where: {
             checkpointId,
             entryTime: { gte: startOfDay, lt: endOfDay },
-            exitTime: null,
-            status: { in: ['active', 'present'] }
+            exitTime: null
           }
         }),
         
-        // Visites terminées pour ce checkpoint aujourd'hui
+        // Visites terminées pour ce checkpoint aujourd'hui (exitTime non null)
         prisma.visit.count({
           where: {
             checkpointId,
             entryTime: { gte: startOfDay, lt: endOfDay },
-            status: 'finished'
+            exitTime: { not: null }
           }
         }),
         
