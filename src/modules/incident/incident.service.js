@@ -545,6 +545,22 @@ class IncidentService {
       delete updateFields.reportedBy;
       delete updateFields.createdAt;
 
+      // Gérer les relations Prisma (siteId et visitId doivent être transformés en connect)
+      if (updateFields.siteId) {
+        updateFields.site = { connect: { id: updateFields.siteId } };
+        delete updateFields.siteId;
+      }
+
+      if (updateFields.visitId) {
+        if (updateFields.visitId === '') {
+          // Déconnecter le visiteur si visitId est vide
+          updateFields.visiteur = { disconnect: true };
+        } else {
+          updateFields.visiteur = { connect: { id: updateFields.visitId } };
+        }
+        delete updateFields.visitId;
+      }
+
       const incident = await prisma.incident.update({
         where: { id },
         data: updateFields,

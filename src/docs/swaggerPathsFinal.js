@@ -1186,7 +1186,14 @@ const swaggerPathsFinal = {
       summary: '🔍 Récupérer un incident par ID',
       description: 'Récupère les détails complets d\'un incident avec ses relations',
       security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID de l\'incident' }],
+      parameters: [{ 
+        name: 'id', 
+        in: 'path', 
+        required: true, 
+        schema: { type: 'string', format: 'uuid' }, 
+        description: 'ID de l\'incident',
+        example: '31cd07e8-1c78-11f1-9fa5-0242ac140006'
+      }],
       responses: {
         200: {
           description: '✅ Incident trouvé',
@@ -1221,10 +1228,17 @@ const swaggerPathsFinal = {
     },
     patch: {
       tags: ['Incidents'],
-      summary: '✏️ Modifier un incident (partiel)',
-      description: 'Modifie partiellement un incident existant. Seuls les champs fournis seront mis à jour.',
+      summary: '✏️ Modifier un incident (modification partielle)',
+      description: 'Modifie partiellement un incident existant. Seuls les champs fournis seront mis à jour. Les autres champs restent inchangés.',
       security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID de l\'incident' }],
+      parameters: [{ 
+        name: 'id', 
+        in: 'path', 
+        required: true, 
+        schema: { type: 'string', format: 'uuid' }, 
+        description: 'ID de l\'incident à modifier',
+        example: '31cd07e8-1c78-11f1-9fa5-0242ac140006'
+      }],
       requestBody: {
         required: true,
         content: {
@@ -1232,24 +1246,48 @@ const swaggerPathsFinal = {
             schema: {
               type: 'object',
               properties: {
-                titre: { type: 'string', maxLength: 255, example: 'Incident modifié' },
-                description: { type: 'string', example: 'Description mise à jour' },
-                typeIncident: { type: 'string', example: 'SECURITE' },
-                severite: { type: 'string', enum: ['FAIBLE', 'MOYENNE', 'ELEVEE', 'CRITIQUE'], example: 'CRITIQUE' },
-                priorite: { type: 'string', enum: ['BASSE', 'NORMALE', 'HAUTE', 'URGENTE'], example: 'HAUTE' },
-                source: { type: 'string', enum: ['AGENT', 'SYSTEME', 'VISITEUR'], example: 'AGENT' },
-                dateIncident: { type: 'string', format: 'date-time', example: '2026-03-10T10:00:00Z' },
-                siteId: { type: 'string', format: 'uuid' },
-                visitId: { type: 'string', format: 'uuid' },
-                actionsImmediates: { type: 'string', example: 'Mesures prises immédiatement' },
-                temoinPresent: { type: 'boolean', example: true },
-                notifierAgents: { type: 'boolean', example: false }
+                titre: { type: 'string', maxLength: 255, description: 'Titre de l\'incident' },
+                description: { type: 'string', description: 'Description détaillée' },
+                typeIncident: { type: 'string', description: 'Type d\'incident' },
+                severite: { type: 'string', enum: ['FAIBLE', 'MOYENNE', 'ELEVEE', 'CRITIQUE'], description: 'Niveau de sévérité' },
+                priorite: { type: 'string', enum: ['BASSE', 'NORMALE', 'HAUTE', 'URGENTE'], description: 'Niveau de priorité' },
+                source: { type: 'string', enum: ['AGENT', 'SYSTEME', 'VISITEUR'], description: 'Source de l\'incident' },
+                dateIncident: { type: 'string', format: 'date-time', description: 'Date de l\'incident (ISO 8601)' },
+                siteId: { type: 'string', format: 'uuid', description: 'ID du site' },
+                visitId: { type: 'string', format: 'uuid', description: 'ID de la visite (optionnel)' },
+                actionsImmediates: { type: 'string', description: 'Actions immédiates prises' },
+                temoinPresent: { type: 'boolean', description: 'Présence de témoins' },
+                notifierAgents: { type: 'boolean', description: 'Notifier les agents' }
               }
             },
-            example: {
-              titre: 'Vol de matériel informatique',
-              severite: 'CRITIQUE',
-              priorite: 'URGENTE'
+            examples: {
+              'Modification complète': {
+                value: {
+                  titre: 'Vol de matériel informatique - Mis à jour',
+                  description: 'Vol d\'un ordinateur portable dans la salle serveur. Enquête en cours.',
+                  typeIncident: 'Vol ou tentative de vol',
+                  severite: 'CRITIQUE',
+                  priorite: 'URGENTE',
+                  source: 'AGENT',
+                  dateIncident: '2026-03-10T00:00:00.000Z',
+                  siteId: 'a67243c2-d5b2-11f0-9a3d-0242ac140006',
+                  actionsImmediates: 'Sécurisation de la salle serveur et revue des caméras de surveillance',
+                  temoinPresent: true,
+                  notifierAgents: true
+                }
+              },
+              'Modification partielle - Sévérité': {
+                value: {
+                  severite: 'CRITIQUE',
+                  priorite: 'URGENTE'
+                }
+              },
+              'Modification partielle - Description': {
+                value: {
+                  description: 'Description mise à jour après investigation',
+                  actionsImmediates: 'Nouvelles mesures de sécurité mises en place'
+                }
+              }
             }
           }
         }
@@ -1270,21 +1308,81 @@ const swaggerPathsFinal = {
             }
           }
         },
-        400: { description: '❌ Données invalides' },
-        403: { description: '❌ Accès refusé - Permissions insuffisantes' },
-        404: { description: '❌ Incident non trouvé' },
-        500: { description: '❌ Erreur serveur' }
+        400: { 
+          description: '❌ Données invalides',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Données invalides' },
+                  errors: { type: 'array', items: { type: 'object' } }
+                }
+              }
+            }
+          }
+        },
+        403: { 
+          description: '❌ Accès refusé - Permissions insuffisantes (ADMIN, AGENT_GESTION, CHEF_SERVICE requis)',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Accès refusé. Permissions insuffisantes.' }
+                }
+              }
+            }
+          }
+        },
+        404: { 
+          description: '❌ Incident non trouvé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Incident non trouvé' }
+                }
+              }
+            }
+          }
+        },
+        500: { 
+          description: '❌ Erreur serveur',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Erreur lors de la modification de l\'incident' }
+                }
+              }
+            }
+          }
+        }
       }
     },
     delete: {
       tags: ['Incidents'],
       summary: '🗑️ Supprimer un incident',
-      description: 'Supprime définitivement un incident',
+      description: 'Supprime définitivement un incident. Cette action est irréversible. Requiert les permissions ADMIN, AGENT_GESTION ou CHEF_SERVICE.',
       security: [{ bearerAuth: [] }],
-      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID de l\'incident' }],
+      parameters: [{ 
+        name: 'id', 
+        in: 'path', 
+        required: true, 
+        schema: { type: 'string', format: 'uuid' }, 
+        description: 'ID de l\'incident à supprimer',
+        example: 'fe87aef6-1be6-11f1-9fa5-0242ac140006'
+      }],
       responses: {
         200: {
-          description: '✅ Incident supprimé',
+          description: '✅ Incident supprimé avec succès',
           content: {
             'application/json': {
               schema: {
@@ -1297,9 +1395,48 @@ const swaggerPathsFinal = {
             }
           }
         },
-        403: { description: '❌ Accès refusé' },
-        404: { description: '❌ Incident non trouvé' },
-        500: { description: '❌ Erreur serveur' }
+        403: { 
+          description: '❌ Accès refusé - Permissions insuffisantes',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Accès refusé. Permissions insuffisantes.' }
+                }
+              }
+            }
+          }
+        },
+        404: { 
+          description: '❌ Incident non trouvé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Incident non trouvé' }
+                }
+              }
+            }
+          }
+        },
+        500: { 
+          description: '❌ Erreur serveur',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: false },
+                  message: { type: 'string', example: 'Erreur lors de la suppression' }
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
