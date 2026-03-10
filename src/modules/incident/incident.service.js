@@ -547,15 +547,29 @@ class IncidentService {
 
       // Gérer les relations Prisma (siteId et visitId doivent être transformés en connect)
       if (updateFields.siteId) {
+        // Vérifier que le site existe
+        const siteExists = await prisma.site.findUnique({
+          where: { id: updateFields.siteId }
+        });
+        if (!siteExists) {
+          throw new Error('Site non trouvé');
+        }
         updateFields.site = { connect: { id: updateFields.siteId } };
         delete updateFields.siteId;
       }
 
-      if (updateFields.visitId) {
-        if (updateFields.visitId === '') {
-          // Déconnecter le visiteur si visitId est vide
+      if (updateFields.visitId !== undefined) {
+        if (updateFields.visitId === '' || updateFields.visitId === null) {
+          // Déconnecter le visiteur si visitId est vide ou null
           updateFields.visiteur = { disconnect: true };
         } else {
+          // Vérifier que le visiteur existe
+          const visitorExists = await prisma.visitor.findUnique({
+            where: { id: updateFields.visitId }
+          });
+          if (!visitorExists) {
+            throw new Error(`Visiteur avec l'ID ${updateFields.visitId} non trouvé`);
+          }
           updateFields.visiteur = { connect: { id: updateFields.visitId } };
         }
         delete updateFields.visitId;
