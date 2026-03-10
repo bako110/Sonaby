@@ -462,10 +462,11 @@ const swaggerPathsFinal = {
   get: {
     tags: ['VisitorGroups'],
     summary: 'Récupérer les groupes de visiteurs avec filtres et pagination',
-    description: 'Récupère les groupes filtrés avec options de filtre dynamiques',
+    description: 'Récupère les groupes filtrés. Si checkpointId est fourni, retourne uniquement les groupes de la semaine courante (lundi-dimanche) avec la période',
     security: [{ bearerAuth: [] }],
     parameters: [
       { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Recherche textuelle sur le nom/prénom du responsable' },
+      { name: 'checkpointId', in: 'query', schema: { type: 'string', format: 'uuid' }, description: 'ID du checkpoint (filtre par semaine courante)' },
       { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Numéro de page' },
       { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 }, description: 'Nombre d\'éléments par page' }
     ],
@@ -513,9 +514,19 @@ const swaggerPathsFinal = {
                     pages: { type: 'integer', example: 6 }
                   }
                 },
-                filters: {
+                periode: {
                   type: 'object',
-                  description: 'Filtres appliqués'
+                  description: 'Présent uniquement si checkpointId est fourni',
+                  properties: {
+                    debut: { type: 'string', format: 'date-time', example: '2026-03-09T23:00:00.000Z' },
+                    fin: { type: 'string', format: 'date-time', example: '2026-03-15T22:59:59.999Z' }
+                  }
+                },
+                date: {
+                  type: 'string',
+                  format: 'date',
+                  description: 'Présent uniquement si checkpointId est fourni',
+                  example: '2026-03-10'
                 }
               }
             }

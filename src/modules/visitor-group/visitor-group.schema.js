@@ -50,6 +50,11 @@ const visitorGroupQuerySchema = z.object({
 
   search: z
     .string()
+    .optional(),
+  
+  checkpointId: z
+    .string()
+    .uuid('ID du checkpoint invalide')
     .optional()
 });
 

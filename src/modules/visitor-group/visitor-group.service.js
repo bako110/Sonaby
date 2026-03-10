@@ -85,20 +85,41 @@ class VisitorGroupService {
   /**
    * Liste paginée des groupes avec filtre sur le nom du responsable
    */
-  async getFilteredVisitorGroups({ search, page = 1, limit = 10 }) {
+  async getFilteredVisitorGroups({ search, checkpointId, page = 1, limit = 10 }) {
     try {
       const skip = (page - 1) * limit;
 
-      const where = search
-        ? {
-            responsibleVisitor: {
-              OR: [
-                { firstName: { contains: search, mode: 'insensitive' } },
-                { lastName: { contains: search, mode: 'insensitive' } }
-              ]
-            }
-          }
-        : {};
+      const where = {};
+      
+      // Filtre par recherche textuelle
+      if (search) {
+        where.responsibleVisitor = {
+          OR: [
+            { firstName: { contains: search, mode: 'insensitive' } },
+            { lastName: { contains: search, mode: 'insensitive' } }
+          ]
+        };
+      }
+      
+      // Filtre par checkpoint (groupes de la semaine)
+      if (checkpointId) {
+        // Calculer le début (lundi) et la fin (dimanche) de la semaine actuelle
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        const day = startOfWeek.getDay();
+        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+        startOfWeek.setDate(diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        where.createdAt = {
+          gte: startOfWeek,
+          lte: endOfWeek
+        };
+      }
 
       const [total, visitorGroups] = await Promise.all([
         prisma.visitorGroup.count({ where }),
@@ -119,6 +140,26 @@ class VisitorGroupService {
         })
       ]);
 
+      // Calculer la période si filtrage par checkpoint
+      let periode = null;
+      if (checkpointId) {
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        const day = startOfWeek.getDay();
+        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+        startOfWeek.setDate(diff);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        periode = {
+          debut: startOfWeek.toISOString(),
+          fin: endOfWeek.toISOString()
+        };
+      }
+
       return {
         visitorGroups,
         pagination: {
@@ -126,7 +167,8 @@ class VisitorGroupService {
           page,
           limit,
           pages: Math.ceil(total / limit)
-        }
+        },
+        periode
       };
 
     } catch (error) {

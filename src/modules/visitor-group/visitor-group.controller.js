@@ -112,12 +112,20 @@ class VisitorGroupController {
       updatedAt: g.updatedAt
     }));
 
-    res.status(200).json({
+    const response = {
       success: true,
       message: 'Groupes récupérés avec succès',
       data: visitorGroups,
       pagination: result.pagination
-    });
+    };
+    
+    // Ajouter la période si présente
+    if (result.periode) {
+      response.periode = result.periode;
+      response.date = new Date().toISOString().split('T')[0];
+    }
+    
+    res.status(200).json(response);
   });
 }
 

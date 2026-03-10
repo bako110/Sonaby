@@ -85,6 +85,7 @@ router.post('/', visitorGroupController.createVisitorGroup);
  * /api/v1/visitor-groups/filter:
  *   get:
  *     summary: Récupérer les groupes avec filtres et pagination
+ *     description: Si checkpointId est fourni, retourne uniquement les groupes de la semaine courante (lundi-dimanche) avec la période
  *     tags: [VisitorGroups]
  *     security:
  *       - bearerAuth: []
@@ -93,6 +94,13 @@ router.post('/', visitorGroupController.createVisitorGroup);
  *         name: search
  *         schema:
  *           type: string
+ *         description: Recherche par nom/prénom du visiteur responsable
+ *       - in: query
+ *         name: checkpointId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID du checkpoint (filtre par semaine courante)
  *       - in: query
  *         name: page
  *         schema:
@@ -106,6 +114,73 @@ router.post('/', visitorGroupController.createVisitorGroup);
  *     responses:
  *       200:
  *         description: Groupes récupérés avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Groupes récupérés avec succès
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       responsibleVisitor:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           firstName:
+ *                             type: string
+ *                           lastName:
+ *                             type: string
+ *                       otherVisitors:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                       expectedCount:
+ *                         type: integer
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     pages:
+ *                       type: integer
+ *                 periode:
+ *                   type: object
+ *                   description: Présent uniquement si checkpointId est fourni
+ *                   properties:
+ *                     debut:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-03-09T23:00:00.000Z"
+ *                     fin:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-03-15T22:59:59.999Z"
+ *                 date:
+ *                   type: string
+ *                   format: date
+ *                   description: Présent uniquement si checkpointId est fourni
+ *                   example: "2026-03-10"
  */
 router.get('/filter', visitorGroupController.getFilteredVisitorGroups);
 
