@@ -14,7 +14,8 @@ class DashboardService {
         where: { id: checkpointId },
         select: {
           id: true,
-          name: true
+          name: true,
+          siteId: true
         }
       });
 
@@ -26,6 +27,13 @@ class DashboardService {
       const today = new Date();
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+      console.log('=== DEBUG DASHBOARD ===');
+      console.log('Checkpoint ID:', checkpointId);
+      console.log('Site ID:', checkpoint.siteId);
+      console.log('Aujourd\'hui:', today.toISOString());
+      console.log('Début du jour:', startOfDay.toISOString());
+      console.log('Fin du jour:', endOfDay.toISOString());
 
       const [
         visitsInProgress,
@@ -58,13 +66,16 @@ class DashboardService {
             entryTime: { gte: startOfDay, lt: endOfDay }
           }
         }),
-        
-        // Total des incidents pour ce checkpoint aujourd'hui
+
+        // Total des incidents pour ce site aujourd'hui
         prisma.incident.count({
           where: {
-            siteId: checkpointId,
+            siteId: checkpoint.siteId,
             dateIncident: { gte: startOfDay, lt: endOfDay }
           }
+        }).then(count => {
+          console.log('Incidents trouvés pour aujourd\'hui:', count);
+          return count;
         })
       ]);
 

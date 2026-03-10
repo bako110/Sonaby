@@ -215,7 +215,7 @@ model Visitor {
   responsibleGroups     VisitorGroup[]     @relation("ResponsibleVisitor")
   incidents             Incident[]
   nonDesirables         NonDesirable[]
-  id_types              id_types           @relation(fields: [idType], references: [type_name], onDelete: NoAction, onUpdate: NoAction, map: "visitors_ibfk_1")
+  id_types              id_types?          @relation(fields: [idType], references: [type_name], onDelete: NoAction, onUpdate: NoAction, map: "visitors_ibfk_1")
   visits                Visit[]
 
   @@unique([idType, idNumber], map: "unique_identity")
