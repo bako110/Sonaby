@@ -69,6 +69,8 @@ router.post('/', sosController.createSOS);
 router.post('/general', sosController.createGeneralSOS);
 router.get('/:id', sosController.getSOSById);
 router.patch('/:id', sosController.deactivateSOS);
+router.delete('/:id', sosController.deleteSOS);
+
 /**
  * @swagger
  * tags:

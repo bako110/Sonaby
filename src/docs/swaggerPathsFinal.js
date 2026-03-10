@@ -2565,6 +2565,81 @@ const swaggerPathsFinal = {
           description: 'SOS déjà résolu'
         }
       }
+    },
+    delete: {
+      tags: ['SOS'],
+      summary: 'Supprimer une alerte SOS',
+      description: 'Permet de supprimer définitivement une alerte SOS de la base de données. Cette action est irréversible.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { 
+          name: 'id', 
+          in: 'path', 
+          required: true, 
+          schema: { type: 'string', format: 'uuid' },
+          description: 'L\'ID unique de l\'alerte SOS à supprimer',
+          example: '92f374cf-1beb-11f1-9fa5-0242ac140006'
+        }
+      ],
+      responses: {
+        200: {
+          description: 'SOS supprimé avec succès',
+          content: { 
+            'application/json': { 
+              schema: { 
+                type: 'object', 
+                properties: { 
+                  success: { type: 'boolean', example: true }, 
+                  message: { type: 'string', example: 'SOS supprimé avec succès' }, 
+                  data: { $ref: '#/components/schemas/SosAlert' } 
+                } 
+              } 
+            } 
+          }
+        },
+        404: {
+          description: 'SOS non trouvé',
+          content: { 
+            'application/json': { 
+              schema: { 
+                type: 'object', 
+                properties: { 
+                  success: { type: 'boolean', example: false }, 
+                  message: { type: 'string', example: 'SOS non trouvé' } 
+                } 
+              } 
+            } 
+          }
+        },
+        403: {
+          description: 'Accès refusé - Permissions insuffisantes',
+          content: { 
+            'application/json': { 
+              schema: { 
+                type: 'object', 
+                properties: { 
+                  success: { type: 'boolean', example: false }, 
+                  message: { type: 'string', example: 'Accès refusé. Permissions insuffisantes.' } 
+                } 
+              } 
+            } 
+          }
+        },
+        500: {
+          description: 'Erreur serveur',
+          content: { 
+            'application/json': { 
+              schema: { 
+                type: 'object', 
+                properties: { 
+                  success: { type: 'boolean', example: false }, 
+                  message: { type: 'string' } 
+                } 
+              } 
+            } 
+          }
+        }
+      }
     }
   },
   '/api/v1/sos/active': {

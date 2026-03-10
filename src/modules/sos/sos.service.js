@@ -884,6 +884,53 @@ class SOSService {
       throw new Error(`Erreur suppression template: ${error.message}`);
     }
   }
+
+  // Supprimer un SOS
+  async deleteSOS(sosId) {
+    try {
+      // Vérifier que le SOS existe
+      const sos = await prisma.sosAlert.findUnique({
+        where: { id: sosId },
+        include: {
+          checkpoint: {
+            include: {
+              site: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          },
+          triggerer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true
+            }
+          }
+        }
+      });
+
+      if (!sos) {
+        throw new Error('SOS non trouvé');
+      }
+
+      // Supprimer le SOS de la base de données
+      const deletedSOS = await prisma.sosAlert.delete({
+        where: { id: sosId }
+      });
+
+      console.log('✅ SOS supprimé avec succès:', sosId);
+
+      return deletedSOS;
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new Error('SOS non trouvé');
+      }
+      throw new Error(`Erreur lors de la suppression du SOS: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new SOSService();

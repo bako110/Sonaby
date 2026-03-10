@@ -399,6 +399,38 @@ class SOSController {
       }
     }
   }
+
+  // Supprimer un SOS
+  deleteSOS = asyncHandler(async (req, res) => {
+    if (!['ADMIN', 'AGENT_GESTION', 'CHEF_SERVICE'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Permissions insuffisantes.'
+      });
+    }
+
+    const validated = sosIdSchema.parse(req.params);
+    
+    try {
+      const deletedSOS = await sosService.deleteSOS(validated.id);
+      res.json({
+        success: true,
+        message: 'SOS supprimé avec succès',
+        data: deletedSOS
+      });
+    } catch (error) {
+      if (error.message.includes('non trouvé')) {
+        return res.status(404).json({
+          success: false,
+          message: error.message
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  });
 }
 
 module.exports = new SOSController();
