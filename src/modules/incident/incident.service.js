@@ -563,14 +563,28 @@ class IncidentService {
           // Déconnecter le visiteur si visitId est vide ou null
           updateFields.visiteur = { disconnect: true };
         } else {
-          // Vérifier que le visiteur existe
-          const visitorExists = await prisma.visitor.findUnique({
-            where: { id: updateFields.visitId }
+          // Récupérer le visiteur à partir de la visite
+          const visit = await prisma.visit.findUnique({
+            where: { id: updateFields.visitId },
+            select: { 
+              id: true, 
+              visitorId: true,
+              visitor: {
+                select: { id: true, firstName: true, lastName: true }
+              }
+            }
           });
-          if (!visitorExists) {
-            throw new Error(`Visiteur avec l'ID ${updateFields.visitId} non trouvé`);
+          
+          if (!visit) {
+            throw new Error(`Visite avec l'ID ${updateFields.visitId} non trouvée`);
           }
-          updateFields.visiteur = { connect: { id: updateFields.visitId } };
+          
+          if (!visit.visitorId) {
+            throw new Error('Cette visite n\'a pas de visiteur associé');
+          }
+          
+          // Connecter le visiteur (pas la visite)
+          updateFields.visiteur = { connect: { id: visit.visitorId } };
         }
         delete updateFields.visitId;
       }
