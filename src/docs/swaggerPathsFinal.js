@@ -1218,6 +1218,89 @@ const swaggerPathsFinal = {
           }
         }
       }
+    },
+    patch: {
+      tags: ['Incidents'],
+      summary: '✏️ Modifier un incident (partiel)',
+      description: 'Modifie partiellement un incident existant. Seuls les champs fournis seront mis à jour.',
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID de l\'incident' }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                titre: { type: 'string', maxLength: 255, example: 'Incident modifié' },
+                description: { type: 'string', example: 'Description mise à jour' },
+                typeIncident: { type: 'string', example: 'SECURITE' },
+                severite: { type: 'string', enum: ['FAIBLE', 'MOYENNE', 'ELEVEE', 'CRITIQUE'], example: 'CRITIQUE' },
+                priorite: { type: 'string', enum: ['BASSE', 'NORMALE', 'HAUTE', 'URGENTE'], example: 'HAUTE' },
+                source: { type: 'string', enum: ['AGENT', 'SYSTEME', 'VISITEUR'], example: 'AGENT' },
+                dateIncident: { type: 'string', format: 'date-time', example: '2026-03-10T10:00:00Z' },
+                siteId: { type: 'string', format: 'uuid' },
+                visitId: { type: 'string', format: 'uuid' },
+                actionsImmediates: { type: 'string', example: 'Mesures prises immédiatement' },
+                temoinPresent: { type: 'boolean', example: true },
+                notifierAgents: { type: 'boolean', example: false }
+              }
+            },
+            example: {
+              titre: 'Vol de matériel informatique',
+              severite: 'CRITIQUE',
+              priorite: 'URGENTE'
+            }
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '✅ Incident modifié avec succès',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Incident modifié avec succès' },
+                  data: { $ref: '#/components/schemas/Incident' }
+                }
+              }
+            }
+          }
+        },
+        400: { description: '❌ Données invalides' },
+        403: { description: '❌ Accès refusé - Permissions insuffisantes' },
+        404: { description: '❌ Incident non trouvé' },
+        500: { description: '❌ Erreur serveur' }
+      }
+    },
+    delete: {
+      tags: ['Incidents'],
+      summary: '🗑️ Supprimer un incident',
+      description: 'Supprime définitivement un incident',
+      security: [{ bearerAuth: [] }],
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' }, description: 'ID de l\'incident' }],
+      responses: {
+        200: {
+          description: '✅ Incident supprimé',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  success: { type: 'boolean', example: true },
+                  message: { type: 'string', example: 'Incident supprimé avec succès' }
+                }
+              }
+            }
+          }
+        },
+        403: { description: '❌ Accès refusé' },
+        404: { description: '❌ Incident non trouvé' },
+        500: { description: '❌ Erreur serveur' }
+      }
     }
   },
   '/api/v1/incidents/visitor/{visitorId}': {

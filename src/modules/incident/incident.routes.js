@@ -13,7 +13,7 @@ router.get('/visitor/:visitorId', incidentController.getIncidentsByVisitor);
 router.get('/visit/:visitId/visitor-incidents', incidentController.getIncidentsByVisitIdVisitor);
 router.post('/', incidentController.createIncident);
 router.get('/:id', incidentController.getIncidentById);
-router.put('/:id', incidentController.updateIncident);
+router.patch('/:id', incidentController.updateIncident);
 router.patch('/:id/resolve', incidentController.resolveIncident);
 router.delete('/:id', incidentController.deleteIncident);
 router.get(
