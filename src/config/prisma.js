@@ -6,7 +6,7 @@ const globalForPrisma = global;
 
 // Si déjà défini, on réutilise ; sinon on crée un nouveau client
 const prisma = globalForPrisma.prisma || new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'], // utile pour debug en prod
+  log: ['warn', 'error'], // Logs réduits : seulement warnings et erreurs
 });
 
 // On ne le réaffecte globalement qu'en dev pour éviter les fuites de connexion
