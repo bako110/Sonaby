@@ -58,11 +58,26 @@ class SOSService {
         where: {
           checkpointId: sosData.checkpointId,
           isResolved: false
-        }
+        },
+        select: { id: true, triggeredAt: true, message: true }
       });
 
       if (activeSOS) {
-        throw new Error('Un SOS est déjà actif pour ce checkpoint');
+        // Retourner le SOS actif existant au lieu de lancer une erreur
+        const existing = await prisma.sosAlert.findUnique({
+          where: { id: activeSOS.id },
+          include: {
+            checkpoint: {
+              include: {
+                site: { select: { id: true, name: true, city: true } }
+              }
+            },
+            triggerer: {
+              select: { id: true, firstName: true, lastName: true, email: true, role: true }
+            }
+          }
+        });
+        return existing;
       }
 
       

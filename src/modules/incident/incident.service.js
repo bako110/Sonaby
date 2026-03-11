@@ -570,8 +570,19 @@ class IncidentService {
             throw new Error('Cette visite n\'a pas de visiteur associé');
           }
           
-          // Connecter le visiteur (pas la visite)
-          updateFields.visiteur = { connect: { id: visit.visitorId } };
+          // Vérifier que le visiteur existe toujours en base
+          const visitorExists = await prisma.visitor.findUnique({
+            where: { id: visit.visitorId },
+            select: { id: true }
+          });
+          
+          if (!visitorExists) {
+            // Le visiteur a été supprimé, on déconnecte la relation
+            updateFields.visiteur = { disconnect: true };
+          } else {
+            // Connecter le visiteur (pas la visite)
+            updateFields.visiteur = { connect: { id: visit.visitorId } };
+          }
         }
         delete updateFields.visitId;
       }
