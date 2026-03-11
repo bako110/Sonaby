@@ -80,10 +80,6 @@ class SOSController {
     }
 
     const validated = createGeneralSOSSchema.parse(req.body);
-    
-    console.log('🔍 DEBUG CONTROLLER - req.user:', req.user);
-    console.log('🔍 DEBUG CONTROLLER - req.user.userId:', req.user?.userId);
-    
     // Utiliser l'utilisateur authentifié comme triggeredBy
     const sentBy = req.user.userId;
     

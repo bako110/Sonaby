@@ -177,35 +177,18 @@ app.use(errorHandler);
 
 // Démarrage serveur - IMPORTANT pour Fly.io
 const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🎯 Server running on port ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📍 Host: 0.0.0.0:${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
-  console.log(`🌐 Production Docs: https://sonaby.onrender.com/api/docs`);
-  console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
-  console.log(`🚀 Ready to accept requests!`);
-  console.log("DATABASE_URL:", process.env.DATABASE_URL);
-  console.log("JWT_SECRET:", process.env.JWT_SECRET);
-  console.log("REFRESH_TOKEN_SECRET:", process.env.REFRESH_TOKEN_SECRET);
-  console.log("NODE_ENV:", process.env.NODE_ENV);
-  console.log("PORT:", process.env.PORT);
-
 });
  
 
 // Graceful shutdown pour Fly.io
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, starting graceful shutdown');
   server.close(() => {
-    console.log('Process terminated');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, starting graceful shutdown');
   server.close(() => {
-    console.log('Process terminated');
     process.exit(0);
   });
 });

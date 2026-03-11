@@ -103,8 +103,6 @@ class PermissionsService {
           }
         });
       }
-      
-      console.log('✅ Permissions initialisées');
       return true;
     } catch (error) {
       console.error('❌ Erreur initialisation permissions:', error);

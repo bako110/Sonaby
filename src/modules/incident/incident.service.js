@@ -122,8 +122,6 @@ class IncidentService {
    */
   async sendIncidentNotifications(incident, site, reporter, assignedUsers = [], visitor = null) {
     try {
-      console.log('🔔 Début envoi notifications incident');
-
       // Récupérer les administrateurs
       const admins = await prisma.user.findMany({
         where: {
@@ -213,9 +211,6 @@ class IncidentService {
           });
         }
       }
-
-      console.log('✅ Notifications incident envoyées avec succès');
-
     } catch (error) {
       console.error('❌ Erreur lors de l\'envoi des notifications incident:', error);
       // Ne pas bloquer la création de l'incident
@@ -251,9 +246,6 @@ class IncidentService {
           updatedByName: `${updater.firstName} ${updater.lastName}`
         });
       }
-
-      console.log('✅ Notification mise à jour incident envoyée');
-
     } catch (error) {
       console.error('❌ Erreur notification mise à jour incident:', error);
     }
@@ -264,8 +256,6 @@ class IncidentService {
    */
   async sendIncidentResolutionNotification(incident, resolvedById) {
     try {
-      console.log('🔔 Envoi notification résolution incident');
-
       // Récupérer le résolveur
       const resolver = await prisma.user.findUnique({
         where: { id: resolvedById },
@@ -357,9 +347,6 @@ class IncidentService {
           });
         }
       }
-
-      console.log('✅ Notification résolution incident envoyée');
-
     } catch (error) {
       console.error('❌ Erreur notification résolution incident:', error);
     }
@@ -792,8 +779,6 @@ class IncidentService {
 
       // Ici vous pourriez intégrer un système de notification
       // Email, SMS, WebSocket, etc.
-      console.log(`Notification envoyée à ${agents.length} agents pour l'incident ${incident.id}`);
-
       // Pour l'instant, on simule la notification
       return {
         notifiedAgents: agents.length,

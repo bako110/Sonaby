@@ -467,8 +467,6 @@ class AgentService {
 
   async assignToCheckpoint(agentId, checkpointId) {
     try {
-      console.log('🔗 [DEBUG] Assignation agent au checkpoint:', { agentId, checkpointId });
-
       // Vérifier que l'agent existe (utiliser User avec rôle AGENT_CONTROLE)
       const agent = await prisma.user.findFirst({
         where: { 
@@ -515,7 +513,6 @@ class AgentService {
       // Vérifier si l'agent est déjà assigné à ce checkpoint
       const alreadyAssigned = agent.assignedCheckpoints.some(cp => cp.id === checkpointId);
       if (alreadyAssigned) {
-        console.log('ℹ️ [DEBUG] Agent déjà assigné à ce checkpoint');
         return {
           id: checkpoint.id,
           name: checkpoint.name,
@@ -586,9 +583,6 @@ class AgentService {
           }
         }
       });
-
-      console.log('✅ [DEBUG] Agent assigné au checkpoint ET checkpoint ajouté dans assignedCheckpoints');
-
       return updatedCheckpoint;
     } catch (error) {
       console.error('❌ [ERROR] Erreur lors de l\'assignation:', error.message);

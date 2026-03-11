@@ -167,10 +167,6 @@ class CheckpointController {
         delete filtersForResponse[key];
       }
     });
-
-    console.log('=== DEBUG: Filters envoyés au service ===');
-    console.log(filtersForService);
-
     // 7. Appel au service
     const result = await checkpointService.getFilteredCheckpoints(filtersForService);
     

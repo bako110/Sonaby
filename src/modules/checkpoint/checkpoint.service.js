@@ -799,9 +799,6 @@ if (inAlert !== undefined) {
             }
         });
         if (!agent) throw new Error("Agent non trouvé");
-
-        console.log(`🔍 Désaffectation de l'agent ${agent.firstName} ${agent.lastName} du checkpoint ${checkpoint.name}`);
-
         // Vérifier s'il y a une assignation directe
         const hasDirectAssignment = checkpoint.agentId === agentId;
         const hasManyToManyAssignment = agent.assignedCheckpoints.length > 0;
@@ -821,7 +818,6 @@ if (inAlert !== undefined) {
                     data: { agentId: null },
                 })
             );
-            console.log(`✅ Retrait de l'assignation directe (agentId → null)`);
         }
 
         // 2️⃣ Retirer le checkpoint de l’agent (relation many-to-many assignedCheckpoints)
@@ -836,7 +832,6 @@ if (inAlert !== undefined) {
                     },
                 })
             );
-            console.log(`✅ Retrait de la relation many-to-many assignedCheckpoints`);
         }
 
         // 3️⃣ SUPPRIMER l’affectation dans AgentCheckpointAssignment
@@ -848,13 +843,8 @@ if (inAlert !== undefined) {
                 },
             })
         );
-        console.log(`✅ Suppression des enregistrements AgentCheckpointAssignment`);
-
         // Exécuter toutes les opérations en transaction
         await prisma.$transaction(transactionOperations);
-
-        console.log(`✅ Agent ${agentId} désaffecté du checkpoint ${checkpointId}`);
-
         // Récupérer le checkpoint mis à jour
         const updatedCheckpoint = await prisma.checkpoint.findUnique({
             where: { id: checkpointId },
@@ -1010,10 +1000,6 @@ if (inAlert !== undefined) {
       });
 
       // TODO: Implémenter les notifications (email/SMS)
-      console.log(
-        `SOS envoyé pour le checkpoint ${checkpoint.name} par ${sos.sender.firstName} ${sos.sender.lastName}`
-      );
-
       return sos;
     } catch (error) {
       throw new Error(`Erreur lors de l'envoi du SOS: ${error.message}`);

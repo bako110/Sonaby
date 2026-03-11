@@ -4,10 +4,6 @@ const notificationService = require('../notification/notification.service');
 class SOSService {
   async createSOS(sosData, sentBy) {
     try {
-      console.log('🔍 DEBUG - sosData reçu:', sosData);
-      console.log('🔍 DEBUG - sentBy:', sentBy);
-      console.log('🔍 DEBUG - templateId reçu:', sosData.templateId);
-
       // 1. Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
         where: { id: sosData.checkpointId },
@@ -34,7 +30,6 @@ class SOSService {
 
       // Si un templateId est fourni, tenter de récupérer le template
       if (sosData.templateId) {
-        console.log('🔍 DEBUG - Recherche template ID:', sosData.templateId);
         const template = await prisma.sosTemplate.findUnique({
           where: { 
             id: sosData.templateId
@@ -42,7 +37,6 @@ class SOSService {
         });
 
         if (template) {
-          console.log('🔍 DEBUG - Template trouvé:', template.titre);
           finalMessage = template.message;
           templateInfo = {
             id: template.id,
@@ -50,7 +44,6 @@ class SOSService {
             usedTemplate: true
           };
         } else {
-          console.log('⚠️ DEBUG - Template non trouvé, utilisation du message par défaut');
           // Continuer avec le message par défaut sans lancer d'erreur
         }
       }
@@ -72,7 +65,6 @@ class SOSService {
         throw new Error('Un SOS est déjà actif pour ce checkpoint');
       }
 
-      console.log('🔍 DEBUG - Création SOS avec message:', finalMessage.substring(0, 50));
       
       // 4. Créer le SOS avec le message final et les champs optionnels
       const sos = await prisma.sosAlert.create({
@@ -110,9 +102,6 @@ class SOSService {
           }
         }
       });
-
-      console.log('✅ SOS créé avec succès:', sos.id);
-
       // ============ NOTIFICATION POUR LE SITE ============
       try {
         const triggeredByName = sos.triggerer ? 
@@ -154,12 +143,9 @@ class SOSService {
             timestamp: new Date().toISOString()
           }
         });
-
-        console.log('✅ Notification envoyée avec succès');
       } catch (notificationError) {
         console.error('⚠️ Erreur lors de l\'envoi de la notification:', notificationError.message);
         // Continuer même si la notification échoue
-        console.log('ℹ️ Le SOS a été créé, mais la notification a échoué');
       }
       // ================================================
 
@@ -187,8 +173,6 @@ class SOSService {
   
   async createGeneralSOS(sosData, sentBy) {
     try {
-      console.log('🔍 DEBUG - sosData (GENERAL):', sosData);
-      console.log('🔍 DEBUG - sentBy (GENERAL):', sentBy);
       
       // Vérifier que le checkpoint existe
       const checkpoint = await prisma.checkpoint.findUnique({
@@ -209,9 +193,6 @@ class SOSService {
       if (!checkpoint) {
         throw new Error('Checkpoint non trouvé');
       }
-
-      console.log('🔍 DEBUG - About to create GENERAL SOS with triggeredBy:', sentBy);
-      
       // Créer un SOS automatique avec message prédéfini
       const sosAlert = await prisma.sosAlert.create({
         data: {
@@ -347,8 +328,6 @@ class SOSService {
    */
   async sendSOSNotificationForSite(sos) {
     try {
-      console.log('🔔 Envoi notification SOS pour le site');
-      
       // Récupérer les détails complets du SOS avec les relations
       const sosWithDetails = await prisma.sosAlert.findUnique({
         where: { id: sos.id },
@@ -382,9 +361,6 @@ class SOSService {
         triggeredById: sos.triggeredBy,
         message: sos.message || 'Alerte SOS déclenchée'
       });
-
-      console.log('✅ Notification SOS envoyée pour tout le site');
-      
     } catch (error) {
       console.error('❌ Erreur lors de l\'envoi de la notification SOS:', error);
     }
@@ -395,8 +371,6 @@ class SOSService {
    */
   async sendSOSResolutionNotificationForSite(resolvedSOS, resolvedById) {
     try {
-      console.log('🔔 Envoi notification résolution SOS pour le site');
-      
       // Récupérer les détails du résolveur
       const resolver = await prisma.user.findUnique({
         where: { id: resolvedById },
@@ -427,9 +401,6 @@ class SOSService {
         resolvedById: resolvedById,
         resolvedAt: new Date().toISOString()
       });
-
-      console.log('✅ Notification résolution SOS envoyée pour tout le site');
-      
     } catch (error) {
       console.error('❌ Erreur notification résolution SOS:', error);
     }
@@ -442,13 +413,6 @@ class SOSService {
    */
   async sendNotifications(sos) {
     try {
-      console.log(`🚨 SOS ALERT 🚨`);
-      console.log(`Checkpoint: ${sos.checkpoint.name}`);
-      console.log(`Site: ${sos.checkpoint.site.name} (${sos.checkpoint.site.city})`);
-      console.log(`Envoyé par: ${sos.triggerer.firstName} ${sos.triggerer.lastName}`);
-      console.log(`Message: ${sos.message || 'Aucun message'}`);
-      console.log(`Heure: ${sos.triggeredAt}`);
-      
       return true;
     } catch (error) {
       console.error('Erreur lors de l\'envoi des notifications:', error);
@@ -920,9 +884,6 @@ class SOSService {
       const deletedSOS = await prisma.sosAlert.delete({
         where: { id: sosId }
       });
-
-      console.log('✅ SOS supprimé avec succès:', sosId);
-
       return deletedSOS;
     } catch (error) {
       if (error.code === 'P2025') {

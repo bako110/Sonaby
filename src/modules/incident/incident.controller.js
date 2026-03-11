@@ -4,8 +4,6 @@ const { asyncHandler } = require('../../middleware/asyncHandler');
 
 class IncidentController {
   createIncident = asyncHandler(async (req, res) => {
-    console.log('DEBUG - req.user:', req.user);
-    
     if (!['ADMIN', 'AGENT_GESTION', 'CHEF_SERVICE', 'AGENT_CONTROLE'].includes(req.user?.role)) {
       return res.status(403).json({
         success: false,

@@ -28,13 +28,6 @@ class DashboardService {
       const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-      console.log('=== DEBUG DASHBOARD ===');
-      console.log('Checkpoint ID:', checkpointId);
-      console.log('Site ID:', checkpoint.siteId);
-      console.log('Aujourd\'hui:', today.toISOString());
-      console.log('Début du jour:', startOfDay.toISOString());
-      console.log('Fin du jour:', endOfDay.toISOString());
-
       const [
         visitsInProgress,
         visitsCompleted,
@@ -74,7 +67,6 @@ class DashboardService {
             dateIncident: { gte: startOfDay, lt: endOfDay }
           }
         }).then(count => {
-          console.log('Incidents trouvés pour aujourd\'hui:', count);
           return count;
         })
       ]);

@@ -5,8 +5,6 @@ const prisma = new PrismaClient();
 class AppointmentService {
  async createAppointment(appointmentData) {
     try {
-      console.log('📅 Données reçues pour création de rendez-vous:', appointmentData);
-
       // Vérifier que l'organisateur existe
       const organizer = await prisma.user.findUnique({
         where: { id: appointmentData.organizerId }
@@ -50,9 +48,6 @@ class AppointmentService {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-
-      console.log('📅 Données traitées pour création:', processedData);
-
       const appointment = await prisma.rendezvous.create({
         data: processedData,
         include: {
@@ -76,8 +71,6 @@ class AppointmentService {
           } : undefined
         }
       });
-
-      console.log('✅ Rendez-vous créé avec succès:', appointment.id);
       return appointment;
     } catch (error) {
       console.error('❌ Erreur lors de la création du rendez-vous:', error);

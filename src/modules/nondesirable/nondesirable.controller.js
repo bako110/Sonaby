@@ -138,8 +138,6 @@ class NonDesirableController {
 
  createUnknownNonDesirable = asyncHandler(async (req, res) => {
   try {
-    console.log("=== DEBUG req.user ===", req.user);
-    console.log("=== DEBUG req.files ===", req.files); // <-- nouveau
 
     if (!req.body || typeof req.body !== "object") {
       return res.status(400).json({
@@ -161,9 +159,6 @@ class NonDesirableController {
 
     // 🔥 Récupération sûre de reportedBy
     let reportedBy = req.user?.userId || (await getFallbackReportedBy());
-
-    console.log("=== REPORTER FINAL ===", reportedBy);
-
     // 🔥 PASSER req.files et non req.file
     const result = await nonDesirableService.createUnknownNonDesirable({
       validatedData,
@@ -249,27 +244,18 @@ getBlacklistHistory = asyncHandler(async (req, res) => {
 });
 
    removeUnknown = asyncHandler(async (req, res) => {
-  console.log('=== REMOVE UNKNOWN START ===');
-  console.log('Body reçu :', req.body);
-
   try {
     // Validation avec Zod
     const parsed = removeUnknownSchema.safeParse(req.body);
 
     if (!parsed.success) {
-      console.log('Validation Zod échouée :', safeparsed.error.errors);
       return res.status(400).json({ success: false, error: parsed.error.errors });
     }
 
     const { id, reason, reportedBy } = parsed.data;
-    console.log('Validation réussie :', { id, reason, reportedBy });
-
     // Appel du service
     const result = await nonDesirableService.removeUnknown(id, reason, reportedBy);
-    console.log('Résultat du service :', result);
-
     res.status(200).json({ success: true, ...result });
-    console.log('=== REMOVE UNKNOWN FINISH ===');
   } catch (error) {
     console.error('Erreur catchée :', error);
     res.status(500).json({ success: false, message: error.message });

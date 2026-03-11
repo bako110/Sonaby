@@ -59,8 +59,6 @@ const authController = {
     
     getProfile: asyncHandler(async (req, res) => {
         const userId = req.user.userId;
-        console.log("L'identifiant de l'utilisateur est:", userId);
-        
         const user = await authService.getUserProfile({ userId });
         
         res.json({

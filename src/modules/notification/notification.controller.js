@@ -15,15 +15,12 @@ class NotificationController {
         includeGlobal = true
       } = req.query;
 
-      console.log('📌 getUserNotifications - userId:', userId, 'params:', { limit, unreadOnly, includeGlobal });
-
       const result = await notificationService.getUserNotifications(userId, {
         limit: parseInt(limit),
         unreadOnly: unreadOnly === 'true',
         includeGlobal: includeGlobal !== 'false'
       });
 
-      console.log('📌 Notifications trouvées:', result.count);
       return res.status(200).json(result);
     } catch (error) {
       console.error('❌ Erreur controller - récupération notifications:', error);

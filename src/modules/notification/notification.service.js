@@ -69,7 +69,6 @@ class NotificationService {
         });
 
         if (existingNotification) {
-          console.log(`⚠️ Notification site similaire existe déjà, ignorée: ${type} - ${title}`);
           return existingNotification;
         }
       }
@@ -97,8 +96,6 @@ class NotificationService {
       } else {
         this.emitToWebSocket(notification);
       }
-
-      console.log(`✅ Notification créée: ${type} - ${title}`);
       return notification;
     } catch (error) {
       console.error('❌ Erreur création notification:', error);
@@ -575,7 +572,6 @@ async createSOSNotificationForSite({
           metadata: notification.metadata,
           createdAt: notification.createdAt
         });
-        console.log(`📡 Notification WebSocket envoyée au site:${siteId}`);
       }
     } catch (error) {
       console.warn(`⚠️ Erreur WebSocket site ${siteId}:`, error.message);
@@ -598,7 +594,6 @@ async createSOSNotificationForSite({
           createdAt: notification.createdAt,
           isRead: notification.isRead
         });
-        console.log(`📡 Notification WebSocket envoyée à user:${userId}`);
       }
     } catch (error) {
       console.warn(`⚠️ Erreur WebSocket user ${userId}:`, error.message);
@@ -619,7 +614,6 @@ async createSOSNotificationForSite({
           metadata: notification.metadata,
           createdAt: notification.createdAt
         });
-        console.log('📡 Notification WebSocket globale envoyée');
       }
     } catch (error) {
       console.warn('⚠️ Erreur WebSocket globale:', error.message);

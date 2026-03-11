@@ -428,9 +428,6 @@ class VisitorService {
   async createOrFindVisitor(visitorData) {
     try {
       const { idType, idNumber, photoUrl, idScanUrl, ...rest } = visitorData;
-
-      console.log('🔍 Recherche visiteur existant:', { idType, idNumber });
-
       const existingVisitor = await prisma.visitor.findFirst({
         where: { idType, idNumber },
         select: {
@@ -461,8 +458,6 @@ class VisitorService {
       let undesirableRecord = null;
 
       if (existingVisitor) {
-        console.log('✅ Visiteur existant trouvé:', existingVisitor.id);
-
         undesirableRecord = await prisma.nonDesirable.findFirst({
           where: { visitorId: existingVisitor.id },
           select: { id: true, reason: true, createdAt: true }
@@ -485,7 +480,6 @@ class VisitorService {
         if (idScanUrl && idScanUrl !== existingVisitor.idScanUrl) updateData.idScanUrl = idScanUrl;
 
         if (Object.keys(updateData).length > 0) {
-          console.log('🔄 Mise à jour des données visiteur:', updateData);
           await prisma.visitor.update({
             where: { id: existingVisitor.id },
             data: updateData
@@ -507,9 +501,6 @@ class VisitorService {
               : "Visiteur existant"
         };
       }
-
-      console.log('🆕 Création nouveau visiteur...');
-
       const newVisitor = await prisma.visitor.create({
         data: {
           ...rest,
@@ -521,9 +512,6 @@ class VisitorService {
           blacklistReason: visitorData.blacklistReason || null
         }
       });
-
-      console.log('✅ Nouveau visiteur créé:', newVisitor.id);
-
       return {
         success: true,
         status: "NEW_VISITOR_CREATED",
@@ -553,7 +541,6 @@ class VisitorService {
         const filePath = path.join(__dirname, '../../../', fileUrl);
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
-          console.log(`🗑️ Fichier supprimé: ${filePath}`);
         }
       }
     } catch (error) {
@@ -634,7 +621,6 @@ class VisitorService {
         throw new Error(`Site avec ID ${siteId} non trouvé`);
       }
 
-      console.log(`📅 Récupération planning pour site: ${site.name} (${siteId})`);
 
       const today = new Date();
       const currentDay = today.getDay();
@@ -651,7 +637,6 @@ class VisitorService {
       const startDate = weekMonday;
       const endDate = weekSunday;
 
-      console.log(`📅 Période: ${startDate.toISOString().split('T')[0]} → ${endDate.toISOString().split('T')[0]}`);
 
       const checkpoints = await prisma.checkpoint.findMany({
         where: { siteId: siteId, active: true },
@@ -659,7 +644,6 @@ class VisitorService {
       });
       
       const checkpointIds = checkpoints.map(cp => cp.id);
-      console.log(`🔍 ${checkpoints.length} checkpoint(s) trouvé(s) pour le site ${site.name}`);
 
       const emptyResponse = {
         weekPeriod: { start: startDate, end: endDate, siteId: siteId, siteName: site.name },
@@ -671,7 +655,6 @@ class VisitorService {
       };
 
       if (checkpointIds.length === 0) {
-        console.log(`⚠️ Aucun checkpoint actif trouvé pour le site ${site.name}`);
         return emptyResponse;
       }
 
@@ -704,7 +687,6 @@ class VisitorService {
         orderBy: { entryTime: "asc" }
       });
 
-      console.log(`📊 ${visits.length} visite(s) trouvée(s) pour la période`);
 
       const uniqueVisitorsMap = new Map();
       const checkpointStats = new Map();
@@ -926,10 +908,6 @@ class VisitorService {
       if (visitsCount > 0) {
         throw new Error('Impossible de supprimer un visiteur qui a des visites associées');
       }
-
-      console.log(`🗑️ Suppression du visiteur ${id}`);
-      console.log(`📋 Groupes responsables à supprimer automatiquement: ${existingVisitor.responsibleGroups?.length || 0}`);
-
       // Supprime les fichiers
       await this.deleteVisitorFiles(id);
 

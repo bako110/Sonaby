@@ -72,10 +72,6 @@ class VisitorController {
         delete filtersForService[key];
       }
     });
-
-    console.log('=== DEBUG: Filtres envoyés au service ===');
-    console.log(filtersForService);
-
     const result = await visitorService.getFilteredVisitors(filtersForService);
     
     // Vérifier que result n'est pas undefined
@@ -163,10 +159,6 @@ class VisitorController {
     }
 
     try {
-        console.log('=============== CREATE VISITOR DEBUG ===============');
-        console.log('📋 req.body keys:', Object.keys(req.body || {}));
-        console.log('📂 req.files keys:', Object.keys(req.files || {}));
-        console.log('📂 req.files full:', JSON.stringify(req.files, null, 2));
         
         // 🔹 Nettoyer les données: convertir les chaînes vides en null
         const cleanedData = Object.keys(req.body).reduce((acc, key) => {
@@ -184,29 +176,16 @@ class VisitorController {
             return acc;
         }, {});
 
-        console.log('📝 Cleaned data:', JSON.stringify(cleanedData, null, 2));
         const validatedData = createVisitorWithTransform.parse(cleanedData);
-        console.log('✅ Validated data:', JSON.stringify(validatedData, null, 2));
 
         // 🔹 Mapper les fichiers uploadés avec flexibilité
         const photoFile = req.files?.photoUrl?.[0] || req.files?.photo?.[0];
         const idScanFile = req.files?.idScanUrl?.[0] || req.files?.file?.[0];
-
-        console.log('📸 Photo file object:', photoFile ? { path: photoFile.path, size: photoFile.size } : null);
-        console.log('📄 ID Scan file object:', idScanFile ? { path: idScanFile.path, size: idScanFile.size } : null);
-
         const photoUrl = photoFile ? uploadService.getPublicUrl(photoFile) : null;
         const idScanUrl = idScanFile ? uploadService.getPublicUrl(idScanFile) : null;
-
-        console.log('🔗 Photo URL:', photoUrl);
-        console.log('🔗 ID Scan URL:', idScanUrl);
-
         const finalData = { ...validatedData, photoUrl, idScanUrl };
-        console.log('📦 Final data to service:', JSON.stringify(finalData, null, 2));
 
         const result = await visitorService.createOrFindVisitor(finalData);
-        console.log('✅ Service result:', result);
-
         res.status(result.status === "NEW_VISITOR_CREATED" ? 201 : 200).json({
             success: true,
             message: result.message,
@@ -476,7 +455,6 @@ class VisitorController {
     getvisitorsAgents = asyncHandler(async (req, res) => {
       try {
         const userId = req.params.userId;
-        console.log("id de l'agent:", userId)
         const {
           currentOnly = 'true',
           includeInactive = 'false',

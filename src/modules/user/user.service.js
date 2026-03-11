@@ -53,9 +53,6 @@ class UserService {
         }
       }
     }
-
-    console.log('🔐 Permissions reçues du frontend:', data.permissions);
-
     const hashedPassword = await bcrypt.hash(data.password, 12);
 
     const { assignedSites, assignedCheckpoints, permissions, password, ...userData } = data;
@@ -74,7 +71,6 @@ class UserService {
             });
 
             if (!perm) {
-              console.log(`➕ Création automatique de la permission: ${permName}`);
               perm = await prisma.permission.create({
                 data: {
                   name: permName,
@@ -328,9 +324,7 @@ class UserService {
 
     // Gérer le mot de passe
     if (password) {
-      console.log('🔐 Hashing password...');
       updateData.passwordHash = await bcrypt.hash(password, 12);
-      console.log('🔐 Password hash généré');
     }
 
     const updateOperations = {
@@ -339,35 +333,26 @@ class UserService {
 
     // Mettre à jour les sites assignés
     if (assignedSites !== undefined && assignedSites !== null && Array.isArray(assignedSites)) {
-      console.log('🔵 Updating assignedSites - Valeur reçue:', assignedSites);
-      console.log('🗑 Suppression anciens userSite...');
-      
       await prisma.userSite.deleteMany({
         where: { userId: id }
       });
 
       if (assignedSites.length > 0) {
-        console.log('➕ Création nouveaux sites:', assignedSites);
         updateOperations.assignedSites = {
           create: assignedSites.map(siteId => ({ siteId }))
         };
       } else {
-        console.log('⚠️ assignedSites est un tableau vide');
       }
     }
 
     // Mettre à jour les checkpoints assignés
     if (assignedCheckpoints !== undefined && assignedCheckpoints !== null && Array.isArray(assignedCheckpoints)) {
-      console.log('🔵 Updating assignedCheckpoints - Valeur reçue:', assignedCheckpoints);
-
       await prisma.agentCheckpointAssignment.deleteMany({
         where: { userId: id }
       });
 
       if (assignedCheckpoints.length > 0) {
         const now = new Date();
-        console.log('➕ Création nouvelles assignations checkpoints à:', now);
-
         updateOperations.agentAssignments = {
           create: assignedCheckpoints.map(checkpointId => ({
             checkpointId,
@@ -375,14 +360,11 @@ class UserService {
           }))
         };
       } else {
-        console.log('⚠️ assignedCheckpoints est vide');
       }
     }
 
     // Mettre à jour les permissions
     if (permissions !== undefined && permissions !== null && Array.isArray(permissions)) {
-      console.log('🔵 Updating permissions - Valeur reçue:', permissions);
-
       await prisma.userPermission.deleteMany({
         where: { userId: id }
       });
@@ -391,14 +373,11 @@ class UserService {
         updateOperations.permissions = {
           create: await Promise.all(
             permissions.map(async (permName) => {
-              console.log('🔍 Vérification permission:', permName);
-
               let perm = await prisma.permission.findUnique({
                 where: { name: permName }
               });
 
               if (!perm) {
-                console.log(`➕ Création automatique permission: ${permName}`);
                 perm = await prisma.permission.create({
                   data: {
                     name: permName,
@@ -406,18 +385,14 @@ class UserService {
                   }
                 });
               }
-
-              console.log('✅ Permission ID utilisé:', perm.id);
               return { permissionId: perm.id };
             })
           )
         };
       } else {
-        console.log('⚠️ permissions est vide');
       }
     }
 
-    console.log('📤 updateOperations final:', JSON.stringify(updateOperations, null, 2));
 
     // Mettre à jour l'utilisateur
     const updatedUser = await prisma.user.update({
@@ -473,7 +448,6 @@ class UserService {
       }
     });
 
-    console.log('✅ Utilisateur mis à jour:', JSON.stringify(updatedUser, null, 2));
 
     return {
       ...updatedUser,
@@ -490,8 +464,6 @@ class UserService {
   }
 }
   async deleteUser(id) {
-    console.log(' [DEBUG] Suppression de l\'utilisateur:', id);
-    
     // 1. Vérifier que l'utilisateur existe
     const user = await prisma.user.findUnique({
       where: { id },
@@ -507,15 +479,10 @@ class UserService {
     if (!user) {
       throw new Error('Utilisateur non trouvé');
     }
-
-    console.log(' [DEBUG] Utilisateur trouvé:', user.email);
-
     // 2. Supprimer les relations avec les sites (UserSite)
     const deletedSites = await prisma.userSite.deleteMany({
       where: { userId: id }
     });
-    console.log(' [DEBUG] Sites assignés supprimés:', deletedSites.count, 'relations');
-
     // 3. Supprimer les relations avec les checkpoints (assignedCheckpoints)
     // Pour la relation many-to-many, il faut déconnecter les checkpoints
     const userWithCheckpoints = await prisma.user.findUnique({
@@ -539,35 +506,26 @@ class UserService {
           }
         }
       });
-      console.log(' [DEBUG] Checkpoints assignés déconnectés:', checkpointIds.length, 'checkpoints');
     }
 
     // 4. Supprimer les permissions de l'utilisateur (UserPermission)
     const deletedPermissions = await prisma.userPermission.deleteMany({
       where: { userId: id }
     });
-    console.log(' [DEBUG] Permissions supprimées:', deletedPermissions.count, 'permissions');
-
     // 5. Supprimer les refresh tokens de l'utilisateur
     const deletedTokens = await prisma.refreshToken.deleteMany({
       where: { userId: id }
     });
-    console.log(' [DEBUG] Refresh tokens supprimés:', deletedTokens.count, 'tokens');
-
     // 6. Mettre à jour les checkpoints où cet agent était assigné via agentId
     const updatedCheckpoints = await prisma.checkpoint.updateMany({
       where: { agentId: id },
       data: { agentId: null }
     });
-    console.log(' [DEBUG] Checkpoints mis à jour (agentId null):', updatedCheckpoints.count, 'checkpoints');
 
     // 7. Supprimer l'utilisateur lui-même
     const deletedUser = await prisma.user.delete({
       where: { id }
     });
-
-    console.log(' [DEBUG] Utilisateur supprimé avec succès:', deletedUser.email);
-
     return {
       message: 'Utilisateur et toutes ses relations supprimés avec succès',
       deletedUser: {

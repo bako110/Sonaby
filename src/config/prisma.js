@@ -18,7 +18,6 @@ if (process.env.NODE_ENV !== 'production') {
 async function testConnection() {
   try {
     await prisma.$connect();
-    console.log('✅ Prisma connected successfully');
   } catch (err) {
     console.error('❌ Prisma connection error:', err);
   }

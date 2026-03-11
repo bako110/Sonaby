@@ -60,9 +60,6 @@ class AuthService {
     // Connexion
      async login(data) {
     const { identifier, password } = data;
-
-    console.log('🔍 [LOGIN DEBUG] Tentative de connexion avec identifiant:', identifier);
-
     // Vérifier si c'est un email, téléphone ou username
     const isEmail = identifier.includes('@');
     const isPhone = /^[0-9+\-\s()]{10,20}$/.test(identifier);
@@ -100,9 +97,6 @@ class AuthService {
             updatedAt: true
         }
     });
-
-    console.log('🔍 [LOGIN DEBUG] Utilisateur trouvé:', user ? 'Oui' : 'Non');
-    
     if (!user) {
         throw new AppError(401, 'Identifiant ou mot de passe incorrect');
     }
@@ -110,12 +104,7 @@ class AuthService {
     if (!user.isActive) {
         throw new AppError(403, 'Votre compte est désactivé. Veuillez contacter un administrateur.');
     }
-
-    console.log('🔐 [LOGIN DEBUG] Vérification du mot de passe...');
-    console.log('🔐 [LOGIN DEBUG] Password hash stored:', user.passwordHash.substring(0, 20) + '...');
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    console.log('🔐 [LOGIN DEBUG] Password valid:', isPasswordValid);
-    
     if (!isPasswordValid) {
         throw new AppError(401, 'Identifiant ou mot de passe incorrect');
     }
@@ -228,8 +217,6 @@ class AuthService {
 
    async resetPasswordByAdmin(userId, newPassword) {
   try {
-    console.log('🔐 Réinitialisation admin pour userId:', userId);
-    
     // Vérifier que l'utilisateur existe
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -262,9 +249,6 @@ class AuthService {
     await prisma.refreshToken.deleteMany({
       where: { userId: userId }
     });
-    
-    console.log('✅ Mot de passe réinitialisé par admin pour:', user.email);
-    
     return {
       success: true,
       message: 'Mot de passe réinitialisé avec succès',
@@ -389,8 +373,6 @@ class AuthService {
 
     // Tableau de bord complet pour agent de contrôle
     async getAgentDashboardData(userId) {
-    console.log("🔍 DEBUG → Chargement dashboard agent:", userId);
-
     // 1️⃣ Charger l'utilisateur
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -417,8 +399,6 @@ class AuthService {
     }
 
     // 2️⃣ Récupérer le checkpoint UNIQUEMENT via AgentCheckpointAssignment
-    console.log("🔍 DEBUG → Recherche UNIQUE dans AgentCheckpointAssignment…");
-
     const assignment = await prisma.agentCheckpointAssignment.findFirst({
         where: { 
             userId: userId,
@@ -440,12 +420,8 @@ class AuthService {
         },
         orderBy: { startDate: 'desc' } // Prend la plus récente
     });
-
-    console.log("🔍 DEBUG → Assignment trouvé:", assignment ? "OUI" : "NON");
-
     // 3️⃣ Si AUCUN assignment → tableau vide
     if (!assignment) {
-        console.log("⚠️  Aucun checkpoint assigné via AgentCheckpointAssignment");
         return {
             agent: {
                 ...user,
@@ -470,13 +446,6 @@ class AuthService {
     // Récupérer le checkpoint depuis l'assignment
     const agentCheckpoint = assignment.checkpoint;
     const checkpointId = agentCheckpoint.id; // ← L'ID UNIQUE du checkpoint
-
-    console.log(
-        "✅ Checkpoint trouvé via AgentCheckpointAssignment:",
-        agentCheckpoint.name,
-        "(ID:", checkpointId + ")"
-    );
-
     // 4️⃣ Récupérer visiteurs + visites du checkpoint (avec son ID)
     const [visitors, visits] = await Promise.all([
         prisma.visitor.findMany({
